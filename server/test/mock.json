@@ -1,0 +1,37 @@
+[{
+    "name": "archlinux",
+    "storageDir": "/arch",
+    "interval": "* 1 * 2 3 4",
+    "image": "ubuntu:latest",
+    "command": ["sleep", "5"],
+    "envs": ["RSYNC_USER=asdh"],
+    "volumes": [],
+    "rm": true,
+    "debug": false,
+    "user": "mirror:mirror"
+},
+{
+    "name": "gmt",
+    "storageDir": "/gmt",
+    "interval": "* 1 * 2 3 4",
+    "image": "debian:latest",
+    "command": ["sleep", "5"],
+    "envs": ["RSYNC_PASS=asdh"],
+    "volumes": [],
+    "rm": true,
+    "debug": false,
+    "user": "1000:1001"
+},
+{
+    "name": "pypi",
+    "storageDir": "/pypi",
+    "interval": "* 1 * 2 3 4",
+    "image": "ustclug/alpine:latest",
+    "command": ["sleep", "5"],
+    "envs": ["RSYNC_PASS=asdh"],
+    "volumes": [],
+    "rm": true,
+    "debug": false,
+    "user": ""
+}
+]
