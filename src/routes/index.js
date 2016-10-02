@@ -33,31 +33,26 @@ if (isDev) {
   })
 }
 
-const routerProxy = {
-  router,
-  url: '/',
-  use(url, cb) {
+const methods = ['get', 'put', 'post', 'delete', 'use']
+const routerProxy = { router, url: '/' }
+for (const m of methods) {
+  routerProxy[m] = function(url, cb) {
     if (typeof url === 'string') {
       this.url = url
     } else {
       cb = url
     }
-    this.router.use(this.url, cb)
+    this.router[m](this.url, cb)
     return this
-  },
-  get(cb) { this.router.get(this.url, cb); return this; },
-  put(cb) { this.router.put(this.url, cb); return this; },
-  post(cb) { this.router.post(this.url, cb); return this; },
-  delete(cb) { this.router.delete(this.url, cb); return this; },
-  routes() { return this.router.routes() }
+  }
 }
 
-router.get('/repositories', async (ctx) => {
+routerProxy.get('/repositories', async (ctx) => {
   await Repo.find({}, { id: false })
     .then(data => ctx.body = data)
 })
 
-routerProxy.use('/repositories/:name', bodyParser({
+.use('/repositories/:name', bodyParser({
   onerror: function(err, ctx) {
     if (err) {
       ctx.status = 400
@@ -65,55 +60,55 @@ routerProxy.use('/repositories/:name', bodyParser({
     }
   }
 }))
-.get(async (ctx) => {
-  await Repo.findById(ctx.params.name)
-    .then((data) => {
-      if (data !== null) {
-        ctx.body = data
-      } else {
-        ctx.status = 404
-      }
+  .get(async (ctx) => {
+    await Repo.findById(ctx.params.name)
+      .then((data) => {
+        if (data !== null) {
+          ctx.body = data
+        } else {
+          ctx.status = 404
+        }
+      })
+      .catch(err => {
+        console.error('get repo', err)
+        ctx.status = 500
+        ctx.body = err
+      })
+  })
+  .post(async (ctx) => {
+    const body = ctx.request.body
+    body.name = ctx.params.name
+    await Repo.create(body)
+      .then((repo) => {
+        ctx.body = `sucessfully created new repo: ${body.name}`
+        ctx.body = { message: `sucessfully created new repo: ${body.name}` }
+      }, (err) => {
+        ctx.status = 400
+        ctx.body = { message: err.errmsg }
+      })
+  })
+  .put(async (ctx) => {
+    await Repo.findByIdAndUpdate(ctx.params.name, ctx.request.body, {
+      runValidators: true
     })
+    .then(() => ctx.body = `${ctx.params.name} updated`)
     .catch(err => {
-      console.error('get repo', err)
+      console.error('updating', err)
       ctx.status = 500
       ctx.body = err
     })
-})
-.post(async (ctx) => {
-  const body = ctx.request.body
-  body.name = ctx.params.name
-  await Repo.create(body)
-    .then((repo) => {
-      ctx.body = `sucessfully created new repo: ${body.name}`
-      ctx.body = { message: `sucessfully created new repo: ${body.name}` }
-    }, (err) => {
-      ctx.status = 400
-      ctx.body = { message: err.errmsg }
+  })
+  .delete(async ctx => {
+    await Repo.findByIdAndRemove(ctx.params.name)
+    .then(() => ctx.status = 204)
+    .catch(err => {
+      console.error('updating', err)
+      ctx.status = 500
+      ctx.body = err
     })
-})
-.put(async (ctx) => {
-  await Repo.findByIdAndUpdate(ctx.params.name, ctx.request.body, {
-    runValidators: true
   })
-  .then(() => ctx.body = `${ctx.params.name} updated`)
-  .catch(err => {
-    console.error('updating', err)
-    ctx.status = 500
-    ctx.body = err
-  })
-})
-.delete(async ctx => {
-  await Repo.findByIdAndRemove(ctx.params.name)
-  .then(() => ctx.status = 204)
-  .catch(err => {
-    console.error('updating', err)
-    ctx.status = 500
-    ctx.body = err
-  })
-})
 
-router.get('/repositories/:name/sync', async (ctx) => {
+.get('/repositories/:name/sync', async (ctx) => {
   const name = ctx.params.name
   try {
     const config = await Repo.findById(name)
@@ -135,7 +130,7 @@ router.get('/repositories/:name/sync', async (ctx) => {
   }
 })
 
-router.get('/containers', async (ctx) => {
+.get('/containers', async (ctx) => {
   await docker.listContainers({ all: true })
     .then((cts) => {
       ctx.body = cts.filter(info => info.Names[0].startsWith(`/${PREFIX}-`))
