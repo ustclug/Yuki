@@ -20,7 +20,7 @@ if (!process.env.NODE_ENV) {
 
 if (process.env.NODE_ENV === 'test') {
   applyPolyFill()
-  require('./app.js').listen(port)
+  module.exports = require('./app.js').listen(port).address()
 } else {
   var basename = require('path').basename
   var progName = basename(process.argv[1])
