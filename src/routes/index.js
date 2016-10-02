@@ -18,6 +18,7 @@ const router = koarouter({ prefix: '/api/v1' })
 
 const isTest = process.env.NODE_ENV === 'test'
 const isDev = process.env.NODE_ENV.startsWith('dev')
+const isProd = process.env.NODE_ENV.startsWith('prod')
 const uri = isTest ?
               'mongodb://127.0.0.1/test' :
               `mongodb://${config.user}:${config.passwd}@127.0.0.1/${config.dbname}`
@@ -32,17 +33,31 @@ if (isDev) {
   })
 }
 
-const listContainers = Promise.promisify(docker.listContainers, { context: docker })
+const routerProxy = {
+  router,
+  url: '/',
+  use(url, cb) {
+    if (typeof url === 'string') {
+      this.url = url
+    } else {
+      cb = url
+    }
+    this.router.use(this.url, cb)
+    return this
+  },
+  get(cb) { this.router.get(this.url, cb); return this; },
+  put(cb) { this.router.put(this.url, cb); return this; },
+  post(cb) { this.router.post(this.url, cb); return this; },
+  delete(cb) { this.router.delete(this.url, cb); return this; },
+  routes() { return this.router.routes() }
+}
 
-// NOTE: id can be name of the container
-const getContainer = id => Promise.promisifyAll(docker.getContainer(id))
-
-router.get('/repositories/list', async (ctx) => {
+router.get('/repositories', async (ctx) => {
   await Repo.find({}, { id: false })
     .then(data => ctx.body = data)
 })
 
-router.use('/repositories/:name', bodyParser({
+routerProxy.use('/repositories/:name', bodyParser({
   onerror: function(err, ctx) {
     if (err) {
       ctx.status = 400
@@ -50,7 +65,7 @@ router.use('/repositories/:name', bodyParser({
     }
   }
 }))
-.get('/repositories/:name', async (ctx) => {
+.get(async (ctx) => {
   await Repo.findById(ctx.params.name)
     .then((data) => {
       if (data !== null) {
@@ -60,12 +75,12 @@ router.use('/repositories/:name', bodyParser({
       }
     })
     .catch(err => {
-      console.log('get repo', err)
+      console.error('get repo', err)
       ctx.status = 500
       ctx.body = err
     })
 })
-.post('/repositories/:name', async (ctx) => {
+.post(async (ctx) => {
   const body = ctx.request.body
   body.name = ctx.params.name
   await Repo.create(body)
@@ -77,21 +92,23 @@ router.use('/repositories/:name', bodyParser({
       ctx.body = { message: err.errmsg }
     })
 })
-.put('/repositories/:name', async (ctx) => {
+.put(async (ctx) => {
   await Repo.findByIdAndUpdate(ctx.params.name, ctx.request.body, {
     runValidators: true
   })
   .then(() => ctx.body = `${ctx.params.name} updated`)
   .catch(err => {
-    console.log('updating', err)
+    console.error('updating', err)
+    ctx.status = 500
     ctx.body = err
   })
 })
-.delete('/repositories/:name', async ctx => {
+.delete(async ctx => {
   await Repo.findByIdAndRemove(ctx.params.name)
-  .then(() => ctx.body = `${ctx.params.name} deleted`)
+  .then(() => ctx.status = 204)
   .catch(err => {
-    console.log('updating', err)
+    console.error('updating', err)
+    ctx.status = 500
     ctx.body = err
   })
 })
@@ -106,28 +123,28 @@ router.get('/repositories/:name/sync', async (ctx) => {
       User: config.user || '',
       Env: config.envs,
       HostConfig: {
-        Binds: [].concat(config.volumes, `${config.storageDir}:/data`)
+        Binds: [].concat(config.volumes, `${config.storageDir}:/repo`)
       },
       name: `${PREFIX}-${name}`,
     })
-    ctx.body = ''
+    ctx.status = 200
   } catch (e) {
-    /* handle error */
     console.error('bringUp', e)
+    ctx.status = 500
     ctx.body = e
   }
 })
 
-router.get('/containers/list', async (ctx) => {
-  await listContainers({ all: true })
+router.get('/containers', async (ctx) => {
+  await docker.listContainers({ all: true })
     .then((cts) => {
       ctx.body = cts.filter(info => info.Names[0].startsWith(`/${PREFIX}-`))
     })
 })
 .get('/containers/:repo/inspect', async (ctx) => {
   const name = `${PREFIX}-${ctx.params.repo}`
-  const ct = getContainer(name)
-  await ct.inspectAsync()
+  const ct = docker.getContainer(name)
+  await ct.inspect()
     .then((data) => {
       ctx.body = data
     }, (err) => {
@@ -138,9 +155,9 @@ router.get('/containers/list', async (ctx) => {
 })
 .get('/containers/:repo/logs', async (ctx) => {
   const name = `${PREFIX}-${ctx.params.repo}`
-  const ct = getContainer(name)
+  const ct = docker.getContainer(name)
 
-  await ct.logsAsync({
+  await ct.logs({
     stdout: true,
     stderr: true,
     follow: false,

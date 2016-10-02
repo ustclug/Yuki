@@ -8,7 +8,7 @@ import Promise from 'bluebird'
 import models from '../models'
 import data from './mock.json'
 import mongoose from 'mongoose'
-import fetch from 'node-fetch'
+import request from '../request'
 
 const Repo = models.Repository
 
@@ -17,31 +17,16 @@ test.before(async t => {
     promiseLibrary: Promise,
   })
   mongoose.Promise = Promise
-  fetch.Promise = Promise
   await Repo.remove({})
   for (const r of data) {
     await Repo.create(r)
   }
 })
 
-function request(url, data, method = 'GET') {
-  if (data !== null && typeof data === 'object') {
-    if (method === 'GET') method = 'POST'
-    return fetch(url, {
-      method: method,
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(data)
-    })
-  }
-  return fetch(url, { method })
-}
-
 const API = 'http://localhost:9999/api/v1'
 
 test('List repositories', t => {
-  return fetch(`${API}/repositories/list`)
+  return request(`${API}/repositories`)
     .then(res => {
       t.true(res.ok)
       return res.json()
@@ -55,7 +40,7 @@ test('List repositories', t => {
 })
 
 test('Get repository', t => {
-  return fetch(`${API}/repositories/pypi`)
+  return request(`${API}/repositories/pypi`)
     .then(res => {
       t.true(res.ok)
       return res.json()
@@ -79,7 +64,7 @@ test('Update repository', t => {
   }, 'PUT')
     .then(res => {
       t.true(res.ok)
-      return fetch(`${API}/repositories/pypi`)
+      return request(`${API}/repositories/pypi`)
     })
     .then(res => {
       t.true(res.ok)
@@ -104,7 +89,7 @@ test('New repository', t => {
   })
     .then(res => {
       t.is(res.status, 200)
-      return fetch(`${API}/repositories/bioc`)
+      return request(`${API}/repositories/bioc`)
     })
     .then(res => {
       t.is(res.status, 200)
@@ -121,8 +106,8 @@ test('New repository', t => {
 test('Remove repository', t => {
   return request(`${API}/repositories/gmt`, null, 'DELETE')
     .then(res => {
-      t.is(res.status, 200)
-      return fetch(`${API}/repositories/gmt`)
+      t.is(res.status, 204)
+      return request(`${API}/repositories/gmt`)
     })
     .then(res => {
       t.is(res.status, 404)

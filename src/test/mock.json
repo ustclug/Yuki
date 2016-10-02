@@ -11,6 +11,18 @@
     "user": "mirror:mirror"
 },
 {
+    "name": "ubuntu",
+    "storageDir": "/tmp",
+    "interval": "* 1 * 2 3 4",
+    "image": "ustclug/alpine:latest",
+    "command": ["sh"],
+    "envs": ["RSYNC_PASS=asdh"],
+    "volumes": [],
+    "rm": true,
+    "debug": false,
+    "user": "1000:1001"
+},
+{
     "name": "gmt",
     "storageDir": "/gmt",
     "interval": "* 1 * 2 3 4",

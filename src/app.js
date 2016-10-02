@@ -9,7 +9,7 @@ const app = new Koa()
 
 app.use(routes)
 app.on('error', (err) => {
-  console.log(err)
+  console.error('Uncaught error: ', err)
 })
 
 module.exports = app
