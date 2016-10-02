@@ -2,13 +2,13 @@
 
 'use strict'
 
-import '../'
+import {port} from '../src'
 import test from 'ava'
 import Promise from 'bluebird'
-import models from '../models'
+import models from '../src/models'
 import data from './mock.json'
 import mongoose from 'mongoose'
-import request from '../request'
+import request from '../src/request'
 
 const Repo = models.Repository
 
@@ -23,7 +23,7 @@ test.before(async t => {
   }
 })
 
-const API = 'http://localhost:9999/api/v1'
+const API = `http://localhost:${port}/api/v1`
 
 test('List repositories', t => {
   return request(`${API}/repositories`)
