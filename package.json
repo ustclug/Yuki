@@ -5,7 +5,10 @@
   "main": "src/index.js",
   "scripts": {
     "test": "NODE_ENV=test ava",
-    "dev": "NODE_ENV=dev bin/yukid"
+    "yuki": "bin/yuki",
+    "yukid": "bin/yukid",
+    "yukid:test": "NODE_ENV=test bin/yukid",
+    "yukid:dev": "NODE_ENV=dev bin/yukid"
   },
   "author": "knight_42 <anonymousknight96@gmail.com>",
   "license": "MIT",
