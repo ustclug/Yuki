@@ -35,7 +35,7 @@ if (isDev) {
 
 const methods = ['get', 'put', 'post', 'delete', 'use']
 const routerProxy = { router, url: '/' }
-for (const m of methods) {
+methods.forEach(m => {
   routerProxy[m] = function(url, cb) {
     if (typeof url === 'string') {
       this.url = url
@@ -45,7 +45,7 @@ for (const m of methods) {
     this.router[m](this.url, cb)
     return this
   }
-}
+})
 
 routerProxy.get('/repositories', async (ctx) => {
   await Repo.find({}, { id: false })
@@ -116,16 +116,23 @@ routerProxy.get('/repositories', async (ctx) => {
       ctx.status = 404
       return
     }
-    await bringUp({
+    const debug = !!ctx.query.debug // dirty hack, convert to boolean
+    const opts = {
       Image: config.image,
       Cmd: config.command,
       User: config.user || '',
       Env: config.envs,
+      AttachStdin: debug,
+      AttachStdout: debug,
+      AttachStderr: debug,
+      Tty: false,
+      OpenStdin: true,
       HostConfig: {
         Binds: [].concat(config.volumes, `${config.storageDir}:/repo`)
       },
       name: `${PREFIX}-${name}`,
-    })
+    }
+    await bringUp(opts)
     ctx.status = 200
   } catch (e) {
     console.error('bringUp', e)
