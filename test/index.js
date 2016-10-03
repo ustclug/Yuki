@@ -18,9 +18,7 @@ test.before(async t => {
   })
   mongoose.Promise = Promise
   await Repo.remove({})
-  for (const r of data) {
-    await Repo.create(r)
-  }
+  await Repo.create(data)
 })
 
 const API = `http://localhost:${port}/api/v1`
@@ -39,7 +37,7 @@ test('List repositories', t => {
     })
 })
 
-test('Get repository', t => {
+test.serial('Get repository', t => {
   return request(`${API}/repositories/pypi`)
     .then(res => {
       t.true(res.ok)
@@ -56,7 +54,7 @@ test('Get repository', t => {
     })
 })
 
-test('Update repository', t => {
+test.serial('Update repository', t => {
   return request(`${API}/repositories/pypi`, {
     image: 'alpine:edge',
     command: ['echo', '1'],
