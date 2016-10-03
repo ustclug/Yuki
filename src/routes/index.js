@@ -98,7 +98,7 @@ routerProxy.get('/repositories', async (ctx) => {
       ctx.body = err
     })
   })
-  .delete(async ctx => {
+  .delete(async (ctx) => {
     await Repo.findByIdAndRemove(ctx.params.name)
     .then(() => ctx.status = 204)
     .catch(err => {
@@ -112,6 +112,10 @@ routerProxy.get('/repositories', async (ctx) => {
   const name = ctx.params.name
   try {
     const config = await Repo.findById(name)
+    if (config === null) {
+      ctx.status = 404
+      return
+    }
     await bringUp({
       Image: config.image,
       Cmd: config.command,
