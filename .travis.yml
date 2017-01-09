@@ -9,9 +9,10 @@ cache:
 
 services:
   - docker
-  - mongodb
 
 before_script:
-  - sleep 15
+  - set -e
+  - docker run -id -e MONGO_USER=mirror -e MONGO_PASS=averylongpass -e MONGO_DB=mirror -p 127.0.0.1:27017:27017 --name mongo knight42/mongodb:latest
+  - npm run build
 
 script: npm test
