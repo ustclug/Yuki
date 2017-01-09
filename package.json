@@ -6,17 +6,17 @@
   "scripts": {
     "test": "NODE_ENV=test ava --no-cache",
     "dev": "babel -wd dist src",
-    "build": "babel -d dist src",
-    "build:prod": "NODE_ENV=production babel -d dist src",
+    "build": "NODE_ENV=production babel -d dist src",
+    "build:test": "babel -d dist src",
     "yukid": "NODE_ENV=production dist/index.js daemon",
-    "yukid:test": "NODE_ENV=test dist/index.js daemon",
-    "yukid:dev": "NODE_ENV=dev dist/index.js daemon"
+    "yukid:dev": "NODE_ENV=dev dist/index.js daemon",
+    "yukid:test": "NODE_ENV=test dist/index.js daemon"
   },
   "author": "knight_42 <anonymousknight96@gmail.com>",
   "license": "MIT",
   "dependencies": {
     "bluebird": "^3.4.7",
-    "dockode": "git+https://github.com/knight42/dockode.git",
+    "dockode": "^1.0.1",
     "koa": "^2.0.0",
     "koa-bodyparser": "^3.2.0",
     "koa-router": "^7.1.0",
@@ -47,21 +47,29 @@
   },
   "babel": {
     "presets": [
-      ["env", {
-        "node": 6
-      }]
+      [
+        "env",
+        {
+          "node": 6
+        }
+      ]
     ],
     "env": {
       "production": {
-        "presets": ["babili"]
+        "presets": [
+          "babili"
+        ]
       }
     },
     "plugins": [
       "add-module-exports",
-      ["transform-runtime", {
+      [
+        "transform-runtime",
+        {
           "polyfill": false,
           "regenerator": true
-      }]
+        }
+      ]
     ]
   },
   "ava": {
