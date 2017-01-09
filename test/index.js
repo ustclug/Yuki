@@ -2,13 +2,13 @@
 
 'use strict'
 
-import {port} from '../src'
+import {port} from '../dist'
 import test from 'ava'
 import Promise from 'bluebird'
-import models from '../src/models'
+import models from '../dist/models'
 import data from './mock.json'
 import mongoose from 'mongoose'
-import request from '../src/request'
+import request from '../dist/request'
 
 const Repo = models.Repository
 
@@ -86,7 +86,7 @@ test('New repository', t => {
     user: 'mirror'
   })
     .then(res => {
-      t.is(res.status, 200)
+      t.is(res.status, 201)
       return request(`${API}/repositories/bioc`)
     })
     .then(res => {
