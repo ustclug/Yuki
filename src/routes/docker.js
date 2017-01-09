@@ -3,18 +3,35 @@
 'use strict'
 
 import Docker from 'dockode'
+import config from '../config'
 
-let docker
+let docker = null
+const daemon = new Map()
+daemon.set('tcp', {
+  host: '127.0.0.1',
+  port: 2375,
+})
+daemon.set('socket', {
+  socketPath: '/var/run/docker.sock',
+})
 
-if (!process.env.NODE_ENV.startsWith('prod')) {
-  docker = new Docker({
-    host: '127.0.0.1',
-    port: 2375
-  })
+if (!config.isProd) {
+  for (const type of ['tcp', 'socket']) {
+    const val = daemon.get(type)
+    try {
+      docker = new Docker(val)
+      break
+    } catch (e) {
+      // ignore
+    }
+  }
 } else {
-  docker = new Docker({
-    socketPath: '/var/run/docker.sock'
-  })
+  docker = new Docker(daemon.get('socket'))
+}
+
+if (docker === null) {
+  console.error('Unable to connect to docker daemon')
+  process.exit(1)
 }
 
 export default docker
