@@ -1,8 +1,11 @@
-*.swp
+*.sw[po]
 *.[oa]
 *.py[co]
 *~
 *.bac
 __pycache__/
 node_modules/
+coverage
+.nyc_output
 reference/
+dist/
