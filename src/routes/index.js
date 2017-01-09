@@ -2,53 +2,51 @@
 
 'use strict'
 
-import config from '../config.json'
 import mongoose from 'mongoose'
 import koarouter from 'koa-router'
 import bodyParser from 'koa-bodyparser'
 import Promise from 'bluebird'
 import docker from './docker'
 import models from '../models'
-import {bringUp} from './util'
+import config from '../config'
+import { bringUp } from './util'
 
 mongoose.Promise = Promise
 const PREFIX = 'syncing'
 const Repo = models.Repository
 const router = koarouter({ prefix: '/api/v1' })
 
-const isTest = process.env.NODE_ENV === 'test'
-const isDev = process.env.NODE_ENV.startsWith('dev')
-const isProd = process.env.NODE_ENV.startsWith('prod')
-const uri = isTest ?
-              'mongodb://127.0.0.1/test' :
-              `mongodb://${config.user}:${config.passwd}@127.0.0.1/${config.dbname}`
+const uri = config.isTest ?
+              `mongodb://${config.dbhost}/test` :
+              `mongodb://${config.dbuser}:${config.dbpasswd}@${config.dbhost}/${config.dbname}`
 
 mongoose.connect(uri, {
   promiseLibrary: Promise,
 })
-if (isDev) {
+
+const routerProxy = { router, url: '/' }
+
+if (config.isDev) {
   router.use('/', async (ctx, next) => {
     console.log(ctx.request.method, ctx.request.url)
     await next()
   })
 }
 
-const methods = ['get', 'put', 'post', 'delete', 'use']
-const routerProxy = { router, url: '/' }
-methods.forEach(m => {
+['get', 'put', 'post', 'delete', 'use'].forEach(m => {
   routerProxy[m] = function(url, cb) {
-    if (typeof url === 'string') {
-      this.url = url
-    } else {
+    if (typeof cb === 'undefined') {
       cb = url
+    } else {
+      this.url = url
     }
     this.router[m](this.url, cb)
     return this
   }
 })
 
-routerProxy.get('/repositories', async (ctx) => {
-  await Repo.find({}, { id: false })
+routerProxy.get('/repositories', (ctx) => {
+  return Repo.find({}, { id: false })
     .then(data => ctx.body = data)
 })
 
@@ -60,8 +58,8 @@ routerProxy.get('/repositories', async (ctx) => {
     }
   }
 }))
-  .get(async (ctx) => {
-    await Repo.findById(ctx.params.name)
+  .get((ctx) => {
+    return Repo.findById(ctx.params.name)
       .then((data) => {
         if (data !== null) {
           ctx.body = data
@@ -75,63 +73,66 @@ routerProxy.get('/repositories', async (ctx) => {
         ctx.body = err
       })
   })
-  .post(async (ctx) => {
+  .post((ctx) => {
     const body = ctx.request.body
     body.name = ctx.params.name
-    await Repo.create(body)
+    return Repo.create(body)
       .then((repo) => {
-        ctx.body = `sucessfully created new repo: ${body.name}`
+        ctx.status = 201
         ctx.body = { message: `sucessfully created new repo: ${body.name}` }
       }, (err) => {
         ctx.status = 400
         ctx.body = { message: err.errmsg }
       })
   })
-  .put(async (ctx) => {
-    await Repo.findByIdAndUpdate(ctx.params.name, ctx.request.body, {
+  .put((ctx) => {
+    return Repo.findByIdAndUpdate(ctx.params.name, ctx.request.body, {
       runValidators: true
     })
-    .then(() => ctx.body = `${ctx.params.name} updated`)
+    .then(() => {
+      ctx.body = `${ctx.params.name} updated`
+      ctx.status = 204
+    })
     .catch(err => {
       console.error('updating', err)
       ctx.status = 500
       ctx.body = err
     })
   })
-  .delete(async (ctx) => {
-    await Repo.findByIdAndRemove(ctx.params.name)
-    .then(() => ctx.status = 204)
-    .catch(err => {
-      console.error('updating', err)
-      ctx.status = 500
-      ctx.body = err
-    })
+  .delete((ctx) => {
+    return Repo.findByIdAndRemove(ctx.params.name)
+      .then(() => ctx.status = 204)
+      .catch(err => {
+        console.error('deleting', err)
+        ctx.status = 500
+        ctx.body = err
+      })
   })
 
 .get('/repositories/:name/sync', async (ctx) => {
   const name = ctx.params.name
+  const config = await Repo.findById(name)
+  if (config === null) {
+    ctx.status = 404
+    return
+  }
+  const debug = !!ctx.query.debug // dirty hack, convert to boolean
+  const opts = {
+    Image: config.image,
+    Cmd: config.command,
+    User: config.user || '',
+    Env: config.envs,
+    AttachStdin: debug,
+    AttachStdout: debug,
+    AttachStderr: debug,
+    Tty: false,
+    OpenStdin: true,
+    HostConfig: {
+      Binds: [].concat(config.volumes, `${config.storageDir}:/repo`)
+    },
+    name: `${PREFIX}-${name}`,
+  }
   try {
-    const config = await Repo.findById(name)
-    if (config === null) {
-      ctx.status = 404
-      return
-    }
-    const debug = !!ctx.query.debug // dirty hack, convert to boolean
-    const opts = {
-      Image: config.image,
-      Cmd: config.command,
-      User: config.user || '',
-      Env: config.envs,
-      AttachStdin: debug,
-      AttachStdout: debug,
-      AttachStderr: debug,
-      Tty: false,
-      OpenStdin: true,
-      HostConfig: {
-        Binds: [].concat(config.volumes, `${config.storageDir}:/repo`)
-      },
-      name: `${PREFIX}-${name}`,
-    }
     await bringUp(opts)
     ctx.status = 200
   } catch (e) {
@@ -141,16 +142,16 @@ routerProxy.get('/repositories', async (ctx) => {
   }
 })
 
-.get('/containers', async (ctx) => {
-  await docker.listContainers({ all: true })
+.get('/containers', (ctx) => {
+  return docker.listContainers({ all: true })
     .then((cts) => {
       ctx.body = cts.filter(info => info.Names[0].startsWith(`/${PREFIX}-`))
     })
 })
-.get('/containers/:repo/inspect', async (ctx) => {
+.get('/containers/:repo/inspect', (ctx) => {
   const name = `${PREFIX}-${ctx.params.repo}`
   const ct = docker.getContainer(name)
-  await ct.inspect()
+  return ct.inspect()
     .then((data) => {
       ctx.body = data
     }, (err) => {
@@ -159,11 +160,11 @@ routerProxy.get('/repositories', async (ctx) => {
       ctx.body = err.json
     })
 })
-.get('/containers/:repo/logs', async (ctx) => {
+.get('/containers/:repo/logs', (ctx) => {
   const name = `${PREFIX}-${ctx.params.repo}`
   const ct = docker.getContainer(name)
 
-  await ct.logs({
+  return ct.logs({
     stdout: true,
     stderr: true,
     follow: false,
