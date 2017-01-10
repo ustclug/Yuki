@@ -3,11 +3,12 @@
   "version": "0.1.0",
   "description": "",
   "main": "dist/index.js",
+  "repository": "https://github.com/knight42/Yuki",
   "scripts": {
     "test": "NODE_ENV=test ava --no-cache",
-    "dev": "babel -wd dist src",
-    "build": "NODE_ENV=production babel -d dist src",
-    "build:test": "babel -d dist src",
+    "dev": "babel -wd dist server",
+    "build": "NODE_ENV=production babel -d dist server",
+    "build:test": "babel -d dist server",
     "yukid": "NODE_ENV=production dist/index.js daemon",
     "yukid:dev": "NODE_ENV=dev dist/index.js daemon",
     "yukid:test": "NODE_ENV=test dist/index.js daemon"
