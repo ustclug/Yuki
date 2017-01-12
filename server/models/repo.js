@@ -38,4 +38,4 @@ schema.virtual('name')
   })
 
 schema.set('toJSON', { versionKey: false, getters: true })
-export default mongoose.model('Repoistory', schema)
+export default mongoose.model('Repository', schema)
