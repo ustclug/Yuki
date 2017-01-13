@@ -3,6 +3,7 @@
 'use strict'
 
 import docker from './docker'
+import logger from '../logger'
 import readline from 'readline'
 import {Transform} from 'stream'
 
@@ -39,20 +40,19 @@ function progresBar(stream) {
 }
 
 async function bringUp(config) {
+  let ct
   try {
-    const ct = await docker.createContainer(config)
-    await ct.start()
-      .catch(err => console.error(`startContainer ${config.name}: `, err))
+    ct = await docker.createContainer(config)
   } catch (err) {
     if (err.statusCode === 404) {
       await docker.pull(config.Image)
-        //.then(strem => stream.pipe(progresBar(process.stdout)))
-        .catch(err => console.error('pullImage:', err))
       await bringUp(config)
     } else {
-      console.error(`createContainer ${config.name}: `, err)
+      throw err
     }
   }
+  await ct.start()
+  return ct
 }
 
 export {bringUp}

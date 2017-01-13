@@ -3,6 +3,7 @@
 'use strict'
 
 import Docker from 'dockode'
+import Promise from 'bluebird'
 import config from '../config'
 
 let docker = null
@@ -10,16 +11,17 @@ const daemon = new Map()
 daemon.set('tcp', {
   host: '127.0.0.1',
   port: 2375,
+  promiseLibrary: Promise
 })
 daemon.set('socket', {
   socketPath: '/var/run/docker.sock',
+  promiseLibrary: Promise
 })
 
 if (!config.isProd) {
   for (const type of ['tcp', 'socket']) {
-    const val = daemon.get(type)
     try {
-      docker = new Docker(val)
+      docker = new Docker(daemon.get(type))
       break
     } catch (e) {
       // ignore

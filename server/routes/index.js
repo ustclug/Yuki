@@ -9,6 +9,7 @@ import Promise from 'bluebird'
 import docker from './docker'
 import models from '../models'
 import config from '../config'
+import logger from '../logger'
 import { bringUp } from './util'
 
 mongoose.Promise = Promise
@@ -17,8 +18,8 @@ const Repo = models.Repository
 const router = koarouter({ prefix: '/api/v1' })
 
 const uri = config.isTest ?
-              `mongodb://${config.dbhost}/test` :
-              `mongodb://${config.dbuser}:${config.dbpasswd}@${config.dbhost}/${config.dbname}`
+  `mongodb://${config.dbHost}/test` :
+  `mongodb://${config.dbUser}:${config.dbPasswd}@${config.dbHost}:${config.dbPort}/${config.dbName}`
 
 mongoose.connect(uri, {
   promiseLibrary: Promise,
@@ -26,9 +27,13 @@ mongoose.connect(uri, {
 
 const routerProxy = { router, url: '/' }
 
+function setErrMsg(ctx, msg) {
+  ctx.body = { message: msg }
+}
+
 if (config.isDev) {
   router.use('/', async (ctx, next) => {
-    console.log(ctx.request.method, ctx.request.url)
+    logger.debug(ctx.request.method, ctx.request.url)
     await next()
   })
 }
@@ -54,7 +59,7 @@ routerProxy.get('/repositories', (ctx) => {
   onerror: function(err, ctx) {
     if (err) {
       ctx.status = 400
-      ctx.body = { message: 'invalid json' }
+      setErrMsg(ctx, 'invalid json')
     }
   }
 }))
@@ -62,15 +67,20 @@ routerProxy.get('/repositories', (ctx) => {
     return Repo.findById(ctx.params.name)
       .then((data) => {
         if (data !== null) {
+          // dirty workaround to get rid of _id
+          // cannot exclude _id in query
+          // since name is a virtual key which depends on _id
+          data = data.toJSON()
+          delete data['_id']
           ctx.body = data
         } else {
           ctx.status = 404
         }
       })
       .catch(err => {
-        console.error('get repo', err)
+        logger.error('Get repo:', err)
         ctx.status = 500
-        ctx.body = err
+        setErrMsg(ctx, err)
       })
   })
   .post((ctx) => {
@@ -79,10 +89,10 @@ routerProxy.get('/repositories', (ctx) => {
     return Repo.create(body)
       .then((repo) => {
         ctx.status = 201
-        ctx.body = { message: `sucessfully created new repo: ${body.name}` }
+        ctx.body = {}
       }, (err) => {
         ctx.status = 400
-        ctx.body = { message: err.errmsg }
+        setErrMsg(ctx, err.errmsg)
       })
   })
   .put((ctx) => {
@@ -90,56 +100,66 @@ routerProxy.get('/repositories', (ctx) => {
       runValidators: true
     })
     .then(() => {
-      ctx.body = `${ctx.params.name} updated`
+      ctx.body = {}
       ctx.status = 204
     })
     .catch(err => {
-      console.error('updating', err)
+      logger.error('updating', err)
       ctx.status = 500
-      ctx.body = err
+      setErrMsg(ctx, err)
     })
   })
   .delete((ctx) => {
     return Repo.findByIdAndRemove(ctx.params.name)
       .then(() => ctx.status = 204)
       .catch(err => {
-        console.error('deleting', err)
+        logger.error('deleting', err)
         ctx.status = 500
-        ctx.body = err
+        setErrMsg(ctx, err)
       })
   })
 
 .get('/repositories/:name/sync', async (ctx) => {
   const name = ctx.params.name
-  const config = await Repo.findById(name)
-  if (config === null) {
+  const cfg = await Repo.findById(name)
+  if (cfg === null) {
     ctx.status = 404
     return
   }
   const debug = !!ctx.query.debug // dirty hack, convert to boolean
   const opts = {
-    Image: config.image,
-    Cmd: config.command,
-    User: config.user || '',
-    Env: config.envs,
+    Image: cfg.image,
+    Cmd: cfg.command,
+    User: cfg.user || '',
+    Env: cfg.envs,
     AttachStdin: debug,
     AttachStdout: debug,
     AttachStderr: debug,
     Tty: false,
     OpenStdin: true,
+    Labels: {
+      'syncing': ''
+    },
     HostConfig: {
-      Binds: [].concat(config.volumes, `${config.storageDir}:/repo`)
+      Binds: cfg.volumes
     },
     name: `${PREFIX}-${name}`,
   }
+  let ct
   try {
-    await bringUp(opts)
-    ctx.status = 200
+    ct = await bringUp(opts)
   } catch (e) {
-    console.error('bringUp', e)
-    ctx.status = 500
-    ctx.body = e
+    logger.debug(`Syncing ${name}: `, e.json.message)
+    ctx.status = e.statusCode
+    ctx.body = e.json
   }
+  if (!debug) {
+    ct.wait()
+      .then(() => ct.remove({ v: true }))
+      .catch(e => logger.error(JSON.stringify(e)))
+  }
+  ctx.status = 200
+  ctx.body = {}
 })
 
 .get('/containers', (ctx) => {
