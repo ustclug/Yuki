@@ -6,26 +6,19 @@ import mongoose from 'mongoose'
 
 const schema = new mongoose.Schema({
   _id: String,
-  storageDir: {
-    required: true,
-    type: String,
-  },
   interval: {
     required: true,
     type: String,
   },
   image: {
-    required: true,
+    default: 'ustclug/mirror:latest',
     type: String,
     // Format: image:tag
     match: /^[^:]+:[^:]+$/,
   },
-  logDir: String,
   command: [String],
   envs: [String],
   volumes: [String],
-  rm: Boolean,
-  debug: Boolean,
   user: String,
 }, { id: false })
 
