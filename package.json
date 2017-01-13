@@ -24,7 +24,8 @@
     "koa-static": "^3.0.0",
     "mongoose": "^4.7.6",
     "node-fetch": "^1.6.3",
-    "node-schedule": "^1.2.0"
+    "node-schedule": "^1.2.0",
+    "winston": "^2.3.0"
   },
   "preferGlobal": true,
   "bin": {
