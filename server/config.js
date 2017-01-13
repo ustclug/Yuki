@@ -7,13 +7,13 @@ if (!process.env.NODE_ENV) {
 }
 
 module.exports = {
-  'dbuser': 'mirror',
-  'dbpasswd': 'averylongpass',
-  'dbhost': '127.0.0.1',
-  'dbname': 'mirror',
+  'dbUser': 'mirror',
+  'dbPasswd': 'averylongpass',
+  'dbHost': '127.0.0.1',
+  'dbName': 'mirror',
+  'dbPort': 27017,
   'isProd': process.env.NODE_ENV.startsWith('prod'),
   'isDev': process.env.NODE_ENV.startsWith('dev'),
   'isTest': process.env.NODE_ENV.startsWith('test'),
-  'apiport': 9999,
+  'apiPort': 9999,
 }
-
