@@ -3,10 +3,10 @@
 'use strict'
 
 const config = require('./config')
-const port = config.apiport
+const port = config.apiPort
 
 if (config.isTest) {
-  module.exports = require('./app.js').listen(port).address()
+  require('./app.js').listen(port)
 } else {
   const action = process.argv[2]
   switch (action) {
