@@ -1,37 +1,41 @@
 [{
     "name": "archlinux",
     "interval": "* 1 * 2 3 4",
-    "image": "ubuntu:latest",
-    "command": ["sleep", "5"],
+    "image": "ustcmirror/test:latest",
+    "args": ["sleep", "5"],
     "envs": ["RSYNC_USER=asdh"],
-    "volumes": ["/arch:/srv/repo/arch"],
-    "user": "mirror:mirror"
+    "volumes": [],
+    "storageDir": "/arch",
+    "user": "1009:1000"
 },
 {
     "name": "ubuntu",
     "interval": "* 1 * 2 3 4",
-    "image": "ustclug/alpine:latest",
-    "command": ["sh"],
+    "image": "ustcmirror/test:latest",
+    "args": ["sh"],
     "envs": ["RSYNC_PASS=asdh"],
-    "volumes": ["/ubuntu:/srv/repo/ubuntu"],
+    "volumes": [],
+    "storageDir": "/ubuntu",
     "user": "1000:1001"
 },
 {
     "name": "gmt",
     "interval": "* 1 * 2 3 4",
-    "image": "debian:latest",
-    "command": ["sleep", "5"],
+    "image": "ustcmirror/test:latest",
+    "args": ["sleep", "5"],
     "envs": ["RSYNC_PASS=asdh"],
-    "volumes": ["/gmt:/srv/repo/gmt"],
+    "volumes": [],
+    "storageDir": "/gmt",
     "user": "1000:1001"
 },
 {
     "name": "pypi",
     "interval": "* 1 * 2 3 4",
-    "image": "ustclug/alpine:latest",
-    "command": ["sleep", "5"],
+    "image": "ustcmirror/test:latest",
+    "args": ["sleep", "5"],
     "envs": ["RSYNC_PASS=asdh"],
-    "volumes": ["/pypi:/srv/repo/pypi"],
+    "volumes": [],
+    "storageDir": "/pypi",
     "user": ""
 }
 ]

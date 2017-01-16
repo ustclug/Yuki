@@ -43,8 +43,8 @@ test.serial('Get repository', t => {
     })
     .then(res => {
       t.is(res.name, 'pypi')
-      t.is(res.image, 'ustclug/alpine:latest')
-      t.true(res.volumes[0].startsWith('/pypi:'))
+      t.is(res.image, 'ustcmirror/test:latest')
+      t.true(res.storageDir === '/pypi')
       t.is(res.user, '')
       t.is(res.envs[0], 'RSYNC_PASS=asdh')
     })
@@ -52,8 +52,8 @@ test.serial('Get repository', t => {
 
 test.serial('Update repository', t => {
   return request(`${API}/repositories/pypi`, {
-    image: 'alpine:edge',
-    command: ['echo', '1'],
+    image: 'ustcmirror/rsync:latest',
+    args: ['echo', '1'],
     volumes: ['/pypi:/srv/repo/newpypi'],
     user: 'mirror'
   }, 'PUT')
@@ -68,18 +68,19 @@ test.serial('Update repository', t => {
     .then(res => {
       t.is(res.name, 'pypi')
       t.is(res.user, 'mirror')
-      t.is(res.image, 'alpine:edge')
-      t.is(res.command[0], 'echo')
-      t.is(res.command[1], '1')
+      t.is(res.image, 'ustcmirror/rsync:latest')
+      t.is(res.args[0], 'echo')
+      t.is(res.args[1], '1')
       t.true(res.volumes[0].endsWith('newpypi'))
     })
 })
 
 test('New repository', t => {
   return request(`${API}/repositories/bioc`, {
-    image: 'mongo:latest',
+    image: 'ustcmirror/test:latest',
     interval: '* * * * *',
-    command: ['rsync', 'somewhere'],
+    storageDir: '/bioc',
+    args: ['rsync', 'somewhere'],
     user: 'mirror'
   })
     .then(res => {
@@ -93,8 +94,9 @@ test('New repository', t => {
     .then(res => {
       t.is(res.name, 'bioc')
       t.is(res.user, 'mirror')
-      t.is(res.image, 'mongo:latest')
-      t.is(res.command[0], 'rsync')
+      t.is(res.image, 'ustcmirror/test:latest')
+      t.is(res.args[0], 'rsync')
+      t.is(res.storageDir, '/bioc')
     })
 })
 
@@ -107,4 +109,21 @@ test('Remove repository', t => {
     .then(res => {
       t.is(res.status, 404)
     })
+})
+
+test('Start a container', t => {
+  return request(`${API}/repositories/archlinux/sync`, null, 'POST')
+    .then(res => {
+      t.is(res.status, 204)
+      return res.json()
+    })
+    .then(() => {
+      return request(`${API}/containers/archlinux/wait`, null, 'POST')
+    })
+    .then(res => {
+      t.is(res.status, 200)
+      return res.json()
+    })
+    .then(data => t.is(data.StatusCode, 0))
+
 })
