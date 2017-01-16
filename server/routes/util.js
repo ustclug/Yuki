@@ -46,7 +46,7 @@ async function bringUp(config) {
   } catch (err) {
     if (err.statusCode === 404) {
       await docker.pull(config.Image)
-      await bringUp(config)
+      return bringUp(config)
     } else {
       throw err
     }

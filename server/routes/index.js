@@ -100,7 +100,6 @@ routerProxy.get('/repositories', (ctx) => {
       runValidators: true
     })
     .then(() => {
-      ctx.body = {}
       ctx.status = 204
     })
     .catch(err => {
@@ -119,7 +118,7 @@ routerProxy.get('/repositories', (ctx) => {
       })
   })
 
-.get('/repositories/:name/sync', async (ctx) => {
+.post('/repositories/:name/sync', async (ctx) => {
   const name = ctx.params.name
   const cfg = await Repo.findById(name)
   if (cfg === null) {
@@ -132,42 +131,124 @@ routerProxy.get('/repositories', (ctx) => {
     Cmd: cfg.command,
     User: cfg.user || '',
     Env: cfg.envs,
-    AttachStdin: debug,
-    AttachStdout: debug,
-    AttachStderr: debug,
+    AttachStdin: false,
+    AttachStdout: false,
+    AttachStderr: false,
     Tty: false,
     OpenStdin: true,
     Labels: {
       'syncing': ''
     },
     HostConfig: {
-      Binds: cfg.volumes
+      Binds: cfg.volumes,
+      NetworkMode: 'host',
+      RestartPolicy: {
+        Name: 'on-failure',
+        MaximumRetryCount: 2
+      },
     },
     name: `${PREFIX}-${name}`,
   }
+  opts.Env.push(`REPO=${name}`)
+  if (debug) opts.Env.push(`DEBUG=${debug}`)
+
   let ct
   try {
     ct = await bringUp(opts)
   } catch (e) {
-    logger.debug(`Syncing ${name}: `, e.json.message)
-    ctx.status = e.statusCode
-    ctx.body = e.json
+    ctx.throw(e)
   }
   if (!debug) {
     ct.wait()
       .then(() => ct.remove({ v: true }))
-      .catch(e => logger.error(JSON.stringify(e)))
+      .catch(ctx.throw)
   }
-  ctx.status = 200
-  ctx.body = {}
+  ctx.status = 204
 })
 
 .get('/containers', (ctx) => {
   return docker.listContainers({ all: true })
     .then((cts) => {
-      ctx.body = cts.filter(info => info.Names[0].startsWith(`/${PREFIX}-`))
+      ctx.body = cts.filter(info => typeof info.Labels['syncing'] !== 'undefined')
     })
 })
+.delete('/containers/:repo', (ctx) => {
+  const name = `${PREFIX}-${ctx.params.repo}`
+  const ct = docker.getContainer(name)
+  return ct.remove({ v: true })
+    .then(() => ctx.status = 204)
+    .catch(ctx.throw)
+})
+.post('/containers/:repo/wait', (ctx) => {
+  const name = `${PREFIX}-${ctx.params.repo}`
+  const ct = docker.getContainer(name)
+  return ct.wait()
+    .then((res) => {
+      ctx.status = 200
+      ctx.body = res
+    })
+    .catch(err => {
+      ctx.status = err.statusCode
+      ctx.message = err.reason
+      ctx.body = err.json
+    })
+})
+.post('/containers/:repo/start', (ctx) => {
+  const name = `${PREFIX}-${ctx.params.repo}`
+  const ct = docker.getContainer(name)
+  return ct.start()
+    .then(() => ctx.status = 204)
+    .catch(err => {
+      ctx.status = err.statusCode
+      ctx.message = err.reason
+      ctx.body = err.json
+    })
+})
+.post('/containers/:repo/stop', (ctx) => {
+  const name = `${PREFIX}-${ctx.params.repo}`
+  const ct = docker.getContainer(name)
+  return ct.stop()
+    .then(() => ctx.status = 204)
+    .catch(err => {
+      ctx.status = err.statusCode
+      ctx.message = err.reason
+      ctx.body = err.json
+    })
+})
+.post('/containers/:repo/restart', (ctx) => {
+  const name = `${PREFIX}-${ctx.params.repo}`
+  const ct = docker.getContainer(name)
+  return ct.restart()
+    .then(() => ctx.status = 204)
+    .catch(err => {
+      ctx.status = err.statusCode
+      ctx.message = err.reason
+      ctx.body = err.json
+    })
+})
+.post('/containers/:repo/pause', (ctx) => {
+  const name = `${PREFIX}-${ctx.params.repo}`
+  const ct = docker.getContainer(name)
+  return ct.pause()
+    .then(() => ctx.status = 204)
+    .catch(err => {
+      ctx.status = err.statusCode
+      ctx.message = err.reason
+      ctx.body = err.json
+    })
+})
+.post('/containers/:repo/unpause', (ctx) => {
+  const name = `${PREFIX}-${ctx.params.repo}`
+  const ct = docker.getContainer(name)
+  return ct.unpause()
+    .then(() => ctx.status = 204)
+    .catch(err => {
+      ctx.status = err.statusCode
+      ctx.message = err.reason
+      ctx.body = err.json
+    })
+})
+
 .get('/containers/:repo/inspect', (ctx) => {
   const name = `${PREFIX}-${ctx.params.repo}`
   const ct = docker.getContainer(name)
@@ -183,7 +264,6 @@ routerProxy.get('/repositories', (ctx) => {
 .get('/containers/:repo/logs', (ctx) => {
   const name = `${PREFIX}-${ctx.params.repo}`
   const ct = docker.getContainer(name)
-
   return ct.logs({
     stdout: true,
     stderr: true,
@@ -191,10 +271,14 @@ routerProxy.get('/repositories', (ctx) => {
   })
     .then((stream) => {
       ctx.body = stream
-    }, (err) => {
+    })
+    .catch(err => {
       ctx.status = err.statusCode
-      ctx.message = err.reason
-      ctx.body = err.json
+      //ctx.message = err.reason
+      // FIXME: Inconsistent behaviour because of docker-modem
+      // err.json is null
+      //ctx.body = err.json
+      setErrMsg(ctx, err.reason)
     })
 })
 
