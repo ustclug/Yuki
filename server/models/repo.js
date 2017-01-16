@@ -6,19 +6,25 @@ import mongoose from 'mongoose'
 
 const schema = new mongoose.Schema({
   _id: String,
+  // crontab
   interval: {
     required: true,
     type: String,
   },
   image: {
-    default: 'ustclug/mirror:latest',
+    required: true,
     type: String,
     // Format: image:tag
     match: /^[^:]+:[^:]+$/,
   },
-  command: [String],
+  storageDir: {
+    type: String,
+    required: true
+  },
+  args: [String],
   envs: [String],
   volumes: [String],
+  bindIp: String,
   user: String,
 }, { id: false })
 
