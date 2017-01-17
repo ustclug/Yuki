@@ -4,7 +4,7 @@
 
 import Docker from 'dockode'
 import Promise from 'bluebird'
-import config from '../config'
+import config from './config'
 
 let docker = null
 const daemon = new Map()
