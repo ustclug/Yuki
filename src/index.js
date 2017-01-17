@@ -3,7 +3,7 @@
 'use strict'
 
 const config = require('./config')
-const port = config.apiPort
+const port = config.API_PORT
 
 if (config.isTest) {
   require('./server.js').listen(port)
