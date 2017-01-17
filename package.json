@@ -6,9 +6,9 @@
   "repository": "https://github.com/knight42/Yuki",
   "scripts": {
     "test": "NODE_ENV=test ava --no-cache",
-    "dev": "babel -wd dist server",
-    "build": "NODE_ENV=production babel -d dist server",
-    "build:test": "babel -d dist server",
+    "dev": "babel -wd dist src",
+    "build": "NODE_ENV=production babel -d dist src",
+    "build:test": "babel -d dist src",
     "yukid": "NODE_ENV=production dist/index.js daemon",
     "yukid:dev": "NODE_ENV=dev dist/index.js daemon",
     "yukid:test": "NODE_ENV=test dist/index.js daemon"
@@ -16,13 +16,14 @@
   "author": "knight_42 <anonymousknight96@gmail.com>",
   "license": "MIT",
   "dependencies": {
+    "babel-preset-env": "^1.1.8",
     "bluebird": "^3.4.7",
     "dockode": "^1.0.1",
+    "eslint": "^3.13.1",
     "koa": "^2.0.0",
     "koa-bodyparser": "^3.2.0",
     "koa-router": "^7.1.0",
-    "koa-static": "^3.0.0",
-    "mongoose": "^4.7.6",
+    "mongoose": "^4.7.7",
     "node-fetch": "^1.6.3",
     "node-schedule": "^1.2.0",
     "winston": "^2.3.0"
@@ -37,6 +38,7 @@
   },
   "devDependencies": {
     "ava": "^0.17.0",
+    "koa-static": "^3.0.0",
     "babel-cli": "^6.18.0",
     "babel-plugin-add-module-exports": "^0.2.1",
     "babel-plugin-transform-runtime": "^6.15.0",

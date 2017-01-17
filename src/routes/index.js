@@ -193,62 +193,6 @@ routerProxy.get('/repositories', (ctx) => {
       ctx.body = err.json
     })
 })
-.post('/containers/:repo/start', (ctx) => {
-  const name = `${PREFIX}-${ctx.params.repo}`
-  const ct = docker.getContainer(name)
-  return ct.start()
-    .then(() => ctx.status = 204)
-    .catch(err => {
-      ctx.status = err.statusCode
-      ctx.message = err.reason
-      ctx.body = err.json
-    })
-})
-.post('/containers/:repo/stop', (ctx) => {
-  const name = `${PREFIX}-${ctx.params.repo}`
-  const ct = docker.getContainer(name)
-  return ct.stop()
-    .then(() => ctx.status = 204)
-    .catch(err => {
-      ctx.status = err.statusCode
-      ctx.message = err.reason
-      ctx.body = err.json
-    })
-})
-.post('/containers/:repo/restart', (ctx) => {
-  const name = `${PREFIX}-${ctx.params.repo}`
-  const ct = docker.getContainer(name)
-  return ct.restart()
-    .then(() => ctx.status = 204)
-    .catch(err => {
-      ctx.status = err.statusCode
-      ctx.message = err.reason
-      ctx.body = err.json
-    })
-})
-.post('/containers/:repo/pause', (ctx) => {
-  const name = `${PREFIX}-${ctx.params.repo}`
-  const ct = docker.getContainer(name)
-  return ct.pause()
-    .then(() => ctx.status = 204)
-    .catch(err => {
-      ctx.status = err.statusCode
-      ctx.message = err.reason
-      ctx.body = err.json
-    })
-})
-.post('/containers/:repo/unpause', (ctx) => {
-  const name = `${PREFIX}-${ctx.params.repo}`
-  const ct = docker.getContainer(name)
-  return ct.unpause()
-    .then(() => ctx.status = 204)
-    .catch(err => {
-      ctx.status = err.statusCode
-      ctx.message = err.reason
-      ctx.body = err.json
-    })
-})
-
 .get('/containers/:repo/inspect', (ctx) => {
   const name = `${PREFIX}-${ctx.params.repo}`
   const ct = docker.getContainer(name)
@@ -280,6 +224,20 @@ routerProxy.get('/repositories', (ctx) => {
       //ctx.body = err.json
       setErrMsg(ctx, err.reason)
     })
+});
+
+['start', 'stop', 'restart', 'pause', 'unpause'].forEach(action => {
+  router.post(`/containers/:repo/${action}`, ctx => {
+    const name = `${PREFIX}-${ctx.params.repo}`
+    const ct = docker.getContainer(name)
+    return ct[action]()
+      .then(() => ctx.status = 204)
+      .catch(err => {
+        ctx.status = err.statusCode
+        ctx.message = err.reason
+        ctx.body = err.json
+      })
+  })
 })
 
 export default router.routes()
