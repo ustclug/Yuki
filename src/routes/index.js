@@ -2,28 +2,18 @@
 
 'use strict'
 
-import mongoose from 'mongoose'
 import koarouter from 'koa-router'
 import bodyParser from 'koa-bodyparser'
-import Promise from 'bluebird'
-import docker from './docker'
+import docker from '../docker'
 import models from '../models'
 import config from '../config'
 import logger from '../logger'
 import { bringUp } from './util'
 
-mongoose.Promise = Promise
-const PREFIX = 'syncing'
+const PREFIX = config.CT_NAME_PREFIX
+const LABEL = config.CT_LABEL
 const Repo = models.Repository
 const router = koarouter({ prefix: '/api/v1' })
-
-const uri = config.isTest ?
-  `mongodb://${config.dbHost}/test` :
-  `mongodb://${config.dbUser}:${config.dbPasswd}@${config.dbHost}:${config.dbPort}/${config.dbName}`
-
-mongoose.connect(uri, {
-  promiseLibrary: Promise,
-})
 
 const routerProxy = { router, url: '/' }
 
@@ -126,6 +116,7 @@ routerProxy.get('/repositories', (ctx) => {
     return
   }
   const debug = !!ctx.query.debug // dirty hack, convert to boolean
+  cfg.volumes.push(`${cfg.storageDir}:/data`)
   const opts = {
     Image: cfg.image,
     Cmd: cfg.command,
@@ -137,7 +128,7 @@ routerProxy.get('/repositories', (ctx) => {
     Tty: false,
     OpenStdin: true,
     Labels: {
-      'syncing': ''
+      [LABEL]: ''
     },
     HostConfig: {
       Binds: cfg.volumes,
@@ -160,7 +151,7 @@ routerProxy.get('/repositories', (ctx) => {
   }
   if (!debug) {
     ct.wait()
-      .then(() => ct.remove({ v: true }))
+      .then(() => ct.remove({ v: true, force: true }))
       .catch(ctx.throw)
   }
   ctx.status = 204
@@ -169,7 +160,7 @@ routerProxy.get('/repositories', (ctx) => {
 .get('/containers', (ctx) => {
   return docker.listContainers({ all: true })
     .then((cts) => {
-      ctx.body = cts.filter(info => typeof info.Labels['syncing'] !== 'undefined')
+      ctx.body = cts.filter(info => typeof info.Labels[LABEL] !== 'undefined')
     })
 })
 .delete('/containers/:repo', (ctx) => {

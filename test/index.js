@@ -4,7 +4,7 @@
 
 require('../dist')
 
-import {apiPort} from '../dist/config'
+import {API_PORT} from '../dist/config'
 import test from 'ava'
 import models from '../dist/models'
 import data from './mock.json'
@@ -19,7 +19,7 @@ test.before(async t => {
   await Repo.create(data)
 })
 
-const API = `http://localhost:${apiPort}/api/v1`
+const API = `http://localhost:${API_PORT}/api/v1`
 
 test('List repositories', t => {
   return request(`${API}/repositories`)
