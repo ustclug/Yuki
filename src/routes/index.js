@@ -2,6 +2,7 @@
 
 'use strict'
 
+import stream from 'stream'
 import koarouter from 'koa-router'
 import bodyParser from 'koa-bodyparser'
 import docker from '../docker'
@@ -65,10 +66,11 @@ routerProxy.get('/repositories', (ctx) => {
           ctx.body = data
         } else {
           ctx.status = 404
+          setErrMsg(ctx, `No such repository: ${ctx.params.name}`)
         }
       })
       .catch(err => {
-        logger.error('Get repo:', err)
+        logger.error(`Get repo ${name}: %s`, err)
         ctx.status = 500
         setErrMsg(ctx, err)
       })
@@ -93,7 +95,7 @@ routerProxy.get('/repositories', (ctx) => {
       ctx.status = 204
     })
     .catch(err => {
-      logger.error('updating', err)
+      logger.error(`Updating ${ctx.params.name}: %s`, err)
       ctx.status = 500
       setErrMsg(ctx, err)
     })
@@ -102,7 +104,7 @@ routerProxy.get('/repositories', (ctx) => {
     return Repo.findByIdAndRemove(ctx.params.name)
       .then(() => ctx.status = 204)
       .catch(err => {
-        logger.error('deleting', err)
+        logger.error(`Deleting ${ctx.params.name}: %s`, err)
         ctx.status = 500
         setErrMsg(ctx, err)
       })
@@ -120,7 +122,7 @@ routerProxy.get('/repositories', (ctx) => {
   const opts = {
     Image: cfg.image,
     Cmd: cfg.command,
-    User: cfg.user || '',
+    User: cfg.user || config.OWNER,
     Env: cfg.envs,
     AttachStdin: false,
     AttachStdout: false,
@@ -147,12 +149,15 @@ routerProxy.get('/repositories', (ctx) => {
   try {
     ct = await bringUp(opts)
   } catch (e) {
-    ctx.throw(e)
+    logger.error(`bringUp ${name}: %s`, e)
+    return ctx.status = 500
   }
   if (!debug) {
     ct.wait()
       .then(() => ct.remove({ v: true, force: true }))
-      .catch(ctx.throw)
+      .catch(e => {
+        logger.error(`Remove ${name}: %s`, e)
+      })
   }
   ctx.status = 204
 })
@@ -168,7 +173,11 @@ routerProxy.get('/repositories', (ctx) => {
   const ct = docker.getContainer(name)
   return ct.remove({ v: true })
     .then(() => ctx.status = 204)
-    .catch(ctx.throw)
+    .catch(err => {
+      logger.error('Delete repo: %s', err)
+      ctx.body = err.json
+      ctx.status = err.statusCode
+    })
 })
 .post('/containers/:repo/wait', (ctx) => {
   const name = `${PREFIX}-${ctx.params.repo}`
@@ -198,23 +207,40 @@ routerProxy.get('/repositories', (ctx) => {
 })
 .get('/containers/:repo/logs', (ctx) => {
   const name = `${PREFIX}-${ctx.params.repo}`
+  const follow = !!ctx.query.follow
+
   const ct = docker.getContainer(name)
-  return ct.logs({
+  const opts = {
     stdout: true,
     stderr: true,
-    follow: false,
-  })
-    .then((stream) => {
-      ctx.body = stream
-    })
-    .catch(err => {
-      ctx.status = err.statusCode
-      //ctx.message = err.reason
-      // FIXME: Inconsistent behaviour because of docker-modem
-      // err.json is null
-      //ctx.body = err.json
-      setErrMsg(ctx, err.reason)
-    })
+    follow
+  }
+  if (!follow) {
+    return ct.logs(opts)
+      .then(data => {
+        ctx.body = data
+      })
+      .catch(err => {
+        ctx.status = err.statusCode
+        //ctx.message = err.reason
+        // FIXME: Inconsistent behaviour because of docker-modem
+        // err.json is null
+        //ctx.body = err.json
+        setErrMsg(ctx, err.reason)
+      })
+  } else {
+    return ct.logs(opts)
+      .then(s => {
+        const logStream = new stream.PassThrough()
+        s.on('end', () => logStream.end())
+        ct.modem.demuxStream(s, logStream, logStream)
+        ctx.body = logStream
+      })
+      .catch(err => {
+        ctx.status = err.statusCode
+        setErrMsg(ctx, err.reason)
+      })
+  }
 });
 
 ['start', 'stop', 'restart', 'pause', 'unpause'].forEach(action => {
