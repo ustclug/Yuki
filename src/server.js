@@ -7,8 +7,10 @@ import routes from './routes'
 import mongoose from 'mongoose'
 import docker from './docker'
 import config from './config'
+import logger from './logger'
 
 const app = new Koa()
+module.exports = app
 
 app.use(routes)
 app.on('error', (err) => {
@@ -19,10 +21,17 @@ const uri = config.isTest ?
   `mongodb://${config.DB_HOST}/test` :
   `mongodb://${config.DB_USER}:${config.DB_PASSWD}@\
 ${config.DB_HOST}:${config.DB_PORT}/${config.DB_NAME}`
+
 mongoose.Promise = Promise
 
+logger.info('Connecting to MongoDB')
 mongoose.connect(uri, {
   promiseLibrary: Promise,
+})
+
+const server = app.listen(config.API_PORT, () => {
+  const addr = server.address()
+  console.log(`listening on ${addr.address}:${addr.port}`)
 })
 
 // cleanup
@@ -39,7 +48,7 @@ if (config.isProd) {
     }
   })
   .then(cts => {
-    console.log('Cleaning exited containers')
+    logger.info('Cleaning exited containers')
     cts.forEach(info => {
       const ct = docker.getContainer(info.Id)
       ct.remove({ v: true })
@@ -47,5 +56,3 @@ if (config.isProd) {
     })
   })
 }
-
-module.exports = app
