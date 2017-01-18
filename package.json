@@ -1,7 +1,7 @@
 {
   "name": "Yuki",
   "version": "0.1.0",
-  "description": "",
+  "description": "Aimed to provide effortless management of docker containers on USTC Mirrors",
   "main": "dist/index.js",
   "repository": "https://github.com/knight42/Yuki",
   "scripts": {
@@ -16,11 +16,9 @@
   "author": "knight_42 <anonymousknight96@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "babel-preset-env": "^1.1.8",
     "bluebird": "^3.4.7",
     "commander": "^2.9.0",
     "dockode": "^1.0.1",
-    "eslint": "^3.13.1",
     "koa": "^2.0.0",
     "koa-bodyparser": "^3.2.0",
     "koa-router": "^7.1.0",
@@ -39,16 +37,16 @@
   },
   "devDependencies": {
     "ava": "^0.17.0",
-    "koa-static": "^3.0.0",
     "babel-cli": "^6.18.0",
     "babel-plugin-add-module-exports": "^0.2.1",
     "babel-plugin-transform-runtime": "^6.15.0",
-    "babel-preset-babili": "0.0.9",
+    "babel-preset-babili": "^0.0.10",
     "babel-preset-env": "^1.1.6",
     "babel-register": "^6.18.0",
-    "eslint": "^3.13.0",
+    "eslint": "^3.13.1",
     "eslint-config-vue": "^2.0.1",
-    "eslint-plugin-vue": "^1.0.0"
+    "eslint-plugin-vue": "^1.0.0",
+    "koa-static": "^3.0.0"
   },
   "babel": {
     "presets": [
