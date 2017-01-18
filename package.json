@@ -18,6 +18,7 @@
   "dependencies": {
     "babel-preset-env": "^1.1.8",
     "bluebird": "^3.4.7",
+    "commander": "^2.9.0",
     "dockode": "^1.0.1",
     "eslint": "^3.13.1",
     "koa": "^2.0.0",
