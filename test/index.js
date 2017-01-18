@@ -36,67 +36,64 @@ test('List repositories', t => {
 })
 
 test.serial('Get repository', t => {
-  return request(`${API}/repositories/pypi`)
+  return request(`${API}/repositories/archlinux`)
     .then(res => {
       t.true(res.ok)
       return res.json()
     })
     .then(res => {
-      t.is(res.name, 'pypi')
+      t.is(res.name, 'archlinux')
       t.is(res.image, 'ustcmirror/test:latest')
-      t.true(res.storageDir === '/pypi')
-      t.is(res.user, '')
-      t.is(res.envs[0], 'RSYNC_PASS=asdh')
+      t.true(res.storageDir === '/srv/repo/archlinux')
+      t.is(res.envs[0], 'RSYNC_USER=asdh')
     })
 })
 
 test.serial('Update repository', t => {
-  return request(`${API}/repositories/pypi`, {
+  return request(`${API}/repositories/bioc`, {
     image: 'ustcmirror/rsync:latest',
     args: ['echo', '1'],
-    volumes: ['/pypi:/srv/repo/newpypi'],
+    volumes: ['/pypi:/srv/repo/BIOC'],
     user: 'mirror'
   }, 'PUT')
     .then(res => {
       t.true(res.ok)
-      return request(`${API}/repositories/pypi`)
+      return request(`${API}/repositories/bioc`)
     })
     .then(res => {
       t.true(res.ok)
       return res.json()
     })
     .then(res => {
-      t.is(res.name, 'pypi')
+      t.is(res.name, 'bioc')
       t.is(res.user, 'mirror')
       t.is(res.image, 'ustcmirror/rsync:latest')
       t.is(res.args[0], 'echo')
       t.is(res.args[1], '1')
-      t.true(res.volumes[0].endsWith('newpypi'))
+      t.true(res.volumes[0].endsWith('BIOC'))
     })
 })
 
 test('New repository', t => {
-  return request(`${API}/repositories/bioc`, {
+  return request(`${API}/repositories/vim`, {
     image: 'ustcmirror/test:latest',
-    interval: '* * * * *',
-    storageDir: '/bioc',
-    args: ['rsync', 'somewhere'],
-    user: 'mirror'
+    interval: '* 5 * * *',
+    storageDir: '/srv/repo/vim',
+    args: ['echo', 'vim'],
   })
     .then(res => {
       t.is(res.status, 201)
-      return request(`${API}/repositories/bioc`)
+      return request(`${API}/repositories/vim`)
     })
     .then(res => {
       t.is(res.status, 200)
       return res.json()
     })
     .then(res => {
-      t.is(res.name, 'bioc')
-      t.is(res.user, 'mirror')
+      t.is(res.name, 'vim')
       t.is(res.image, 'ustcmirror/test:latest')
-      t.is(res.args[0], 'rsync')
-      t.is(res.storageDir, '/bioc')
+      t.is(res.args[0], 'echo')
+      t.is(res.storageDir, '/srv/repo/vim')
     })
 })
 

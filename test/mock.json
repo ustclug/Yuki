@@ -1,41 +1,48 @@
 [{
     "name": "archlinux",
-    "interval": "* 1 * 2 3 4",
+    "interval": "1 1 * * *",
     "image": "ustcmirror/test:latest",
-    "args": ["sleep", "5"],
-    "envs": ["RSYNC_USER=asdh"],
-    "volumes": [],
-    "storageDir": "/arch",
-    "user": "1009:1000"
+    "args": ["echo", "archlinux"],
+    "envs": ["RSYNC_USER=asdh", "RSYNC_HOST=rsync.mirrors.ustc.edu.cn", "RSYNC_PATH=archlinux", "RSYNC_EXCLUDE=--exclude .~tmp~/"],
+    "storageDir": "/srv/repo/archlinux"
 },
 {
-    "name": "ubuntu",
-    "interval": "* 1 * 2 3 4",
+    "name": "kde",
+    "interval": "*/2 * * * *",
     "image": "ustcmirror/test:latest",
-    "args": ["sh"],
-    "envs": ["RSYNC_PASS=asdh"],
-    "volumes": [],
-    "storageDir": "/ubuntu",
-    "user": "1000:1001"
+    "args": ["echo", "kde"],
+    "envs": ["RSYNC_USER=asdh", "RSYNC_HOST=rsync.mirrors.ustc.edu.cn", "RSYNC_PATH=kde", "RSYNC_EXCLUDE=--exclude .~tmp~/ --exclude nonexistent"],
+    "storageDir": "/srv/repo/kde"
 },
 {
     "name": "gmt",
-    "interval": "* 1 * 2 3 4",
+    "interval": "48 2 * * *",
     "image": "ustcmirror/test:latest",
-    "args": ["sleep", "5"],
-    "envs": ["RSYNC_PASS=asdh"],
-    "volumes": [],
-    "storageDir": "/gmt",
-    "user": "1000:1001"
+    "args": ["echo", "gmt"],
+    "storageDir": "/srv/repo/gmt"
 },
 {
-    "name": "pypi",
-    "interval": "* 1 * 2 3 4",
+    "name": "bioc",
+    "interval": "48 2 * * *",
     "image": "ustcmirror/test:latest",
-    "args": ["sleep", "5"],
-    "envs": ["RSYNC_PASS=asdh"],
-    "volumes": [],
-    "storageDir": "/pypi",
-    "user": ""
+    "args": ["echo", "bioc"],
+    "envs": ["RSYNC_USER=asdh", "RSYNC_HOST=rsync.mirrors.ustc.edu.cn", "RSYNC_PATH=bioc", "RSYNC_EXCLUDE=--exclude .~tmp~/"],
+    "storageDir": "/srv/repo/bioc"
+},
+{
+    "name": "ubuntu",
+    "interval": "10 1 * * *",
+    "image": "ustcmirror/test:latest",
+    "args": ["echo", "ubuntu"],
+    "envs": ["LFTPSYNC_EXCLUDE=-X .~tmp~/", "LFTPSYNC_HOST=mirrors.ustc.edu.cn"],
+    "storageDir": "/srv/repo/ubuntu"
+},
+{
+    "name": "brew.git",
+    "interval": "1 2 * * *",
+    "image": "ustcmirror/test:latest",
+    "args": ["echo", "gmt"],
+    "envs": ["GITSYNC_URL=https://github.com/Homebrew/brew.git", "GITSYNC_BITMAP=true"],
+    "storageDir": "/srv/repo/gmt"
 }
 ]
