@@ -2,10 +2,16 @@
 
 'use strict'
 
-import docker from '../docker'
-import logger from '../logger'
+import docker from './docker'
+import models from './models'
+import config from './config'
+import logger from './logger'
 import readline from 'readline'
 import {Transform} from 'stream'
+
+const Repo = models.Repository
+const PREFIX = config.CT_NAME_PREFIX
+const LABEL = config.CT_LABEL
 
 // All Transform streams are also Duplex Streams
 function progresBar(stream) {
@@ -39,14 +45,14 @@ function progresBar(stream) {
   }).setEncoding('utf8')
 }
 
-async function bringUp(config) {
+async function bringUp(cfg) {
   let ct
   try {
-    ct = await docker.createContainer(config)
+    ct = await docker.createContainer(cfg)
   } catch (err) {
     if (err.statusCode === 404) {
-      await docker.pull(config.Image)
-      return bringUp(config)
+      await docker.pull(cfg.Image)
+      return bringUp(cfg)
     } else {
       throw err
     }
@@ -55,4 +61,47 @@ async function bringUp(config) {
   return ct
 }
 
-export {bringUp}
+async function queryOpts({ name, debug = false }) {
+  const cfg = await Repo.findById(name)
+  if (cfg === null) {
+    return null
+  }
+  cfg.volumes.push(`${cfg.storageDir}:/data`)
+  const opts = {
+    Image: cfg.image,
+    Cmd: cfg.command,
+    User: cfg.user || config.OWNER,
+    Env: cfg.envs,
+    AttachStdin: false,
+    AttachStdout: false,
+    AttachStderr: false,
+    Tty: false,
+    OpenStdin: true,
+    Labels: {
+      [LABEL]: ''
+    },
+    HostConfig: {
+      Binds: cfg.volumes,
+      NetworkMode: 'host',
+      RestartPolicy: {
+        Name: 'on-failure',
+        MaximumRetryCount: 2
+      },
+    },
+    name: `${PREFIX}-${name}`,
+  }
+  opts.Env.push(`REPO=${name}`)
+  if (debug) opts.Env.push('DEBUG=true')
+  return opts
+}
+
+function autoRemove(ct) {
+  return ct.wait()
+    .then(() => ct.remove({ v: true, force: true }))
+}
+
+export default {
+  bringUp,
+  autoRemove,
+  queryOpts
+}
