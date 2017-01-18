@@ -2,7 +2,7 @@
 
 'use strict'
 
-import docker from './docker'
+import docker from '../docker'
 import logger from '../logger'
 import readline from 'readline'
 import {Transform} from 'stream'
