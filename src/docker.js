@@ -9,12 +9,12 @@ import config from './config'
 let docker = null
 const daemon = new Map()
 daemon.set('tcp', {
-  host: '127.0.0.1',
-  port: 2375,
+  host: config.DOCKERD_HOST,
+  port: config.DOCKERD_PORT,
   promiseLibrary: Promise
 })
 daemon.set('socket', {
-  socketPath: '/var/run/docker.sock',
+  socketPath: config.DOCKERD_SOCKET,
   promiseLibrary: Promise
 })
 
