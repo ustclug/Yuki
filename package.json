@@ -83,6 +83,9 @@
     ],
     "babel": "inherit",
     "failFast": true,
-    "verbose": true
+    "verbose": true,
+    "files": [
+      "test/*.js"
+    ]
   }
 }
