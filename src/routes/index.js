@@ -9,7 +9,7 @@ import docker from '../docker'
 import models from '../models'
 import config from '../config'
 import logger from '../logger'
-import { bringUp } from './util'
+import { bringUp, queryOpts, autoRemove } from '../util'
 
 const PREFIX = config.CT_NAME_PREFIX
 const LABEL = config.CT_LABEL
@@ -112,38 +112,13 @@ routerProxy.get('/repositories', (ctx) => {
 
 .post('/repositories/:name/sync', async (ctx) => {
   const name = ctx.params.name
-  const cfg = await Repo.findById(name)
-  if (cfg === null) {
+  const debug = !!ctx.query.debug // dirty hack, convert to boolean
+  const opts = await queryOpts({ name, debug })
+  if (opts === null) {
     ctx.status = 404
+    setErrMsg(ctx, `no such repository: ${name}`)
     return
   }
-  const debug = !!ctx.query.debug // dirty hack, convert to boolean
-  cfg.volumes.push(`${cfg.storageDir}:/data`)
-  const opts = {
-    Image: cfg.image,
-    Cmd: cfg.command,
-    User: cfg.user || config.OWNER,
-    Env: cfg.envs,
-    AttachStdin: false,
-    AttachStdout: false,
-    AttachStderr: false,
-    Tty: false,
-    OpenStdin: true,
-    Labels: {
-      [LABEL]: ''
-    },
-    HostConfig: {
-      Binds: cfg.volumes,
-      NetworkMode: 'host',
-      RestartPolicy: {
-        Name: 'on-failure',
-        MaximumRetryCount: 2
-      },
-    },
-    name: `${PREFIX}-${name}`,
-  }
-  opts.Env.push(`REPO=${name}`)
-  if (debug) opts.Env.push(`DEBUG=${debug}`)
 
   let ct
   try {
@@ -152,13 +127,11 @@ routerProxy.get('/repositories', (ctx) => {
     logger.error(`bringUp ${name}: %s`, e)
     return ctx.status = 500
   }
-  if (!debug) {
-    ct.wait()
-      .then(() => ct.remove({ v: true, force: true }))
-      .catch(e => {
-        logger.error(`Remove ${name}: %s`, e)
-      })
-  }
+
+  if (!debug)
+    autoRemove(ct)
+    .catch(e => logger.error(`Removing ${name}: %s`, e))
+
   ctx.status = 204
 })
 
