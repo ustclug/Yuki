@@ -8,6 +8,8 @@ import mongoose from 'mongoose'
 import docker from './docker'
 import config from './config'
 import logger from './logger'
+import models from './models'
+import schedule from './scheduler'
 
 const app = new Koa()
 module.exports = app
@@ -17,21 +19,25 @@ app.on('error', (err) => {
   console.error('Uncaught error: ', err)
 })
 
-const uri = config.isTest ?
-  `mongodb://${config.DB_HOST}/test` :
-  `mongodb://${config.DB_USER}:${config.DB_PASSWD}@\
-${config.DB_HOST}:${config.DB_PORT}/${config.DB_NAME}`
-
+const dbopts = {
+  user: config.DB_USER,
+  pass: config.DB_PASSWD,
+  promiseLibrary: Promise,
+}
 mongoose.Promise = Promise
 
 logger.info('Connecting to MongoDB')
-mongoose.connect(uri, {
-  promiseLibrary: Promise,
-})
+if (config.isTest) {
+  mongoose.connect('127.0.0.1', 'test')
+} else {
+  mongoose.connect('127.0.0.1', config.DB_NAME, config.DB_PORT, dbopts)
+}
+
+const Repo = models.Repository
 
 const server = app.listen(config.API_PORT, () => {
   const addr = server.address()
-  console.log(`listening on ${addr.address}:${addr.port}`)
+  logger.info(`listening on ${addr.address}:${addr.port}`)
 })
 
 // cleanup
@@ -53,6 +59,15 @@ if (config.isProd) {
       const ct = docker.getContainer(info.Id)
       ct.remove({ v: true })
         .catch(console.error)
+    })
+  })
+}
+
+if (!config.isTest) {
+  Repo.find({}, { interval: true, name: true })
+  .then(docs => {
+    docs.forEach(doc => {
+      schedule.addJob(doc.name, doc.interval)
     })
   })
 }
