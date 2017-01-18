@@ -2,21 +2,73 @@
 
 'use strict'
 
-const config = require('./config')
-const port = config.API_PORT
-const request = require('./request')
+import { API_PORT } from './config'
+import request from './request'
+import meta from '../package.json'
+import program from 'commander'
 
-const repo = process.argv[3]
-if (typeof repo === 'undefined') {
-  console.error('Repo name is needed')
-  process.exit(1)
-}
-request(`http://127.0.0.1:${port}/api/v1/repositories/${repo}/sync`)
-  .then((res) => {
-    if (res.ok) {
-      console.log('syncing ' + this.repo)
-    } else {
-      throw new Error('Server return ' + res.status)
-    }
+const API = `http://127.0.0.1:${API_PORT}/api/v1`
+
+program
+  .version(meta.version)
+
+program
+  .command('list')
+  .description('list all repositories')
+  .action(() => {
+    request(`${API}/repositories`)
+    .then(res => {
+      if (res.ok) {
+        return res.json()
+      } else {
+        throw (new Error(`${res.status} - unknown error`))
+      }
+    })
+    .then(console.log)
+    .catch(console.error)
   })
-  .catch(console.error)
+
+program
+  .command('sync [repo]')
+  .description('sync')
+  .option('-v, --verbose', 'debug mode')
+  .action((repo, options) => {
+    if (typeof repo === 'undefined') {
+      return console.error('Need to specify repo')
+    }
+
+    const url = (options.verbose) ?
+      `${API}/repositories/${repo}/sync?debug=true` :
+      `${API}/repositories/${repo}/sync`
+
+    request(url, null, 'POST')
+    .then(res => {
+      if (res.ok) {
+        return res.json()
+      } else {
+        throw (new Error(`${res.status} - unknown error`))
+      }
+    })
+    .then(console.log)
+  })
+
+program
+  .command('logs [repo]')
+  .description('disp status')
+  .option('-f, --follow', 'follow log output')
+  .action((repo, options) => {
+    if (typeof repo === 'undefined') {
+      return console.error('Need to specify repo')
+    }
+
+    const url = options.follow ?
+      `${API}/containers/${repo}/logs?follow=true` :
+      `${API}/containers/${repo}/logs`
+
+    request(url)
+    .then(res => {
+      res.body.pipe(process.stdout)
+    })
+  })
+
+program.parse(process.argv)
