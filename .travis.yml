@@ -12,7 +12,7 @@ services:
 
 before_script:
   - set -e
-  - docker run -id -e MONGO_USER=mirror -e MONGO_PASS=averylongpass -e MONGO_DB=mirror -p 127.0.0.1:27017:27017 --name mongo knight42/mongodb:latest
+  - docker run -id -e MONGO_USER=mirror -e MONGO_PASS=averylongpass -e MONGO_DB=mirror -p 127.0.0.1:27017:27017 --name mongo ustcmirror/mongodb:3.4
   - npm run build:test
 
 script: npm test
