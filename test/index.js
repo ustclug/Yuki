@@ -10,6 +10,7 @@ import models from '../dist/models'
 import data from './mock.json'
 import mongoose from 'mongoose'
 import request from '../dist/request'
+import { isListening } from '../build/Release/addon.node'
 
 const Repo = models.Repository
 
@@ -20,6 +21,12 @@ test.before(async t => {
 })
 
 const API = `http://localhost:${API_PORT}/api/v1`
+
+test('Native addon: isListening', t => {
+  t.true(isListening('127.0.0.1', API_PORT))
+  t.true(isListening('localhost', API_PORT))
+  t.false(isListening('localhost', 4))
+})
 
 test('List repositories', t => {
   return request(`${API}/repositories`)
