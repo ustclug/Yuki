@@ -5,8 +5,15 @@
 import Docker from 'dockode'
 import Promise from 'bluebird'
 import config from './config'
+import logger from './logger'
 
-let docker = null
+let isListening
+try {
+  isListening = require('../build/Release/addon.node').isListening;
+} catch (e) {
+  isListening = require('../build/Debug/addon.node').isListening;
+}
+
 const daemon = new Map()
 daemon.set('tcp', {
   host: config.DOCKERD_HOST,
@@ -18,21 +25,23 @@ daemon.set('socket', {
   promiseLibrary: Promise
 })
 
+let docker = null
 if (!config.isProd) {
-  for (const type of ['tcp', 'socket']) {
-    try {
-      docker = new Docker(daemon.get(type))
-      break
-    } catch (e) {
-      // ignore
-    }
+  // Check synchronously if the socket can be connected
+  // with native addon
+  if (isListening(config.DOCKERD_HOST, config.DOCKERD_PORT)) {
+    logger.debug('dockerd: TCP socket connected')
+    docker = new Docker(daemon.get('tcp'))
+  } else if (isListening(config.DOCKERD_SOCKET)) {
+    logger.debug('dockerd: UNIX local socket connected')
+    docker = new Docker(daemon.get('socket'))
   }
 } else {
   docker = new Docker(daemon.get('socket'))
 }
 
 if (docker === null) {
-  console.error('Unable to connect to docker daemon')
+  logger.error('Unable to connect to docker daemon')
   process.exit(1)
 }
 

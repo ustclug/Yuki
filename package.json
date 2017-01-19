@@ -7,8 +7,8 @@
   "scripts": {
     "test": "NODE_ENV=test ava --no-cache",
     "dev": "babel -wd dist src",
-    "build": "NODE_ENV=production babel -d dist src",
-    "build:test": "babel -d dist src",
+    "build": "NODE_ENV=production babel -d dist src && node-gyp rebuild",
+    "build:test": "babel -d dist src && node-gyp rebuild",
     "yukid": "NODE_ENV=production dist/index.js daemon",
     "yukid:dev": "NODE_ENV=dev dist/index.js daemon",
     "yukid:test": "NODE_ENV=test dist/index.js daemon"
@@ -46,7 +46,9 @@
     "eslint": "^3.13.1",
     "eslint-config-vue": "^2.0.1",
     "eslint-plugin-vue": "^1.0.0",
-    "koa-static": "^3.0.0"
+    "koa-static": "^3.0.0",
+    "nan": "^2.5.0",
+    "node-gyp": "^3.5.0"
   },
   "babel": {
     "presets": [
