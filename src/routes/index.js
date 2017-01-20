@@ -42,7 +42,7 @@ if (config.isDev) {
 })
 
 routerProxy.get('/repositories', (ctx) => {
-  return Repo.find({}, { id: false })
+  return Repo.find({})
     .then(data => ctx.body = data)
 })
 
@@ -55,14 +55,9 @@ routerProxy.get('/repositories', (ctx) => {
   }
 }))
   .get((ctx) => {
-    return Repo.findById(ctx.params.name)
+    return Repo.findById(ctx.params.name, { _id: false })
       .then((data) => {
         if (data !== null) {
-          // dirty workaround to get rid of _id
-          // cannot exclude _id in query
-          // since name is a virtual key which depends on _id
-          data = data.toJSON()
-          delete data['_id']
           ctx.body = data
         } else {
           ctx.status = 404

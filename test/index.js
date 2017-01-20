@@ -49,9 +49,9 @@ test.serial('Get repository', t => {
       return res.json()
     })
     .then(res => {
-      t.is(res.name, 'archlinux')
       t.is(res.image, 'ustcmirror/test:latest')
-      t.true(res.storageDir === '/srv/repo/archlinux')
+      t.is(res.interval, '1 1 * * *')
+      t.is(res.storageDir, '/srv/repo/archlinux')
       t.is(res.envs[0], 'RSYNC_USER=asdh')
     })
 })
@@ -72,7 +72,7 @@ test.serial('Update repository', t => {
       return res.json()
     })
     .then(res => {
-      t.is(res.name, 'bioc')
+      t.is(res.interval, '48 2 * * *')
       t.is(res.user, 'mirror')
       t.is(res.image, 'ustcmirror/rsync:latest')
       t.is(res.args[0], 'echo')
@@ -97,7 +97,7 @@ test('New repository', t => {
       return res.json()
     })
     .then(res => {
-      t.is(res.name, 'vim')
+      t.is(res.interval, '* 5 * * *')
       t.is(res.image, 'ustcmirror/test:latest')
       t.is(res.args[0], 'echo')
       t.is(res.storageDir, '/srv/repo/vim')
