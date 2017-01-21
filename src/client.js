@@ -49,18 +49,14 @@ program
 
     request(url, null, 'POST')
     .then(res => {
-      if (res.ok) {
-        return res.json()
-      } else {
-        throw (new Error(`${res.status} - unknown error`))
-      }
+      res.body.pipe(res.ok ? process.stdout : process.stderr)
     })
-    .then(console.log)
+    .catch(console.error)
   })
 
 program
   .command('logs [repo]')
-  .description('disp status')
+  .description('capture container logs')
   .option('-f, --follow', 'follow log output')
   .action((repo, options) => {
     if (typeof repo === 'undefined') {
@@ -73,8 +69,43 @@ program
 
     request(url)
     .then(res => {
-      res.body.pipe(process.stdout)
+      res.body.pipe(res.ok ? process.stdout : process.stderr)
     })
+    .catch(console.error)
+  })
+
+program
+  .command('rmct [repo]')
+  .description('manually remove container')
+  .action((repo) => {
+    if (typeof repo === 'undefined') {
+      return console.error('Need to specify repo')
+    }
+
+    const url = `${API}/containers/${repo}`
+
+    request(url, null, 'DELETE')
+    .then(res => {
+      res.body.pipe(res.ok ? process.stdout : process.stderr)
+    })
+    .catch(console.error)
+  })
+
+program
+  .command('rmrepo [repo]')
+  .description('manually remove repository')
+  .action((repo) => {
+    if (typeof repo === 'undefined') {
+      return console.error('Need to specify repo')
+    }
+
+    const url = `${API}/repositories/${repo}`
+
+    request(url, null, 'DELETE')
+    .then(res => {
+      res.body.pipe(res.ok ? process.stdout : process.stderr)
+    })
+    .catch(console.error)
   })
 
 program.parse(process.argv)
