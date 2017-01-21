@@ -26,17 +26,14 @@ daemon.set('socket', {
 })
 
 let docker = null
-if (!config.isProd) {
+if (!config.isProd &&
+    isListening(config.DOCKERD_HOST, config.DOCKERD_PORT)) {
   // Check synchronously if the socket can be connected
   // with native addon
-  if (isListening(config.DOCKERD_HOST, config.DOCKERD_PORT)) {
-    logger.debug('dockerd: TCP socket connected')
-    docker = new Docker(daemon.get('tcp'))
-  } else if (isListening(config.DOCKERD_SOCKET)) {
-    logger.debug('dockerd: UNIX local socket connected')
-    docker = new Docker(daemon.get('socket'))
-  }
-} else {
+  logger.debug('dockerd: TCP socket connected')
+  docker = new Docker(daemon.get('tcp'))
+} else if (isListening(config.DOCKERD_SOCKET)) {
+  logger.debug('dockerd: UNIX local socket connected')
   docker = new Docker(daemon.get('socket'))
 }
 
