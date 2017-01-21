@@ -1,3 +1,17 @@
+/*
+ * The reason why this addon is needed is that I need to determine
+ * which socket can be connected to before I perform any operations,
+ * otherwise I' ll get a runtime error, and the APIs provided by node.js
+ * are all asynchronous, I cannot export a docker client which I am sure
+ * that it has connected to a being listened socket.
+ *
+ * I perfer connecting to TCP socket in development so that I can
+ * capture the packets to inspect the json that is passed to the docker daemon.
+ *
+ * As a result, I decided to check TCP socket first and fallback to the default
+ * UNIX local socket in deveplopment environment.
+ */
+
 #include <cstdlib>
 #include <cstring>
 #include <string>
