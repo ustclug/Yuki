@@ -21,10 +21,16 @@ program
       if (res.ok) {
         return res.json()
       } else {
-        throw (new Error(`${res.status} - unknown error`))
+        res.body.pipe(process.stderr)
       }
     })
-    .then(console.log)
+    .then(repos => {
+      for (const repo of repos) {
+        console.log(`${repo.name}:`)
+        console.log(`\timage: ${repo.image}`)
+        console.log(`\tinterval: ${repo.interval}`)
+      }
+    })
     .catch(console.error)
   })
 
