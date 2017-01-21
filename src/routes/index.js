@@ -120,14 +120,34 @@ routerProxy.get('/repositories', (ctx) => {
     ct = await bringUp(opts)
   } catch (e) {
     logger.error(`bringUp ${name}: %s`, e)
-    return ctx.status = 500
+    ctx.body = e.json
+    return ctx.status = e.statusCode
   }
 
-  if (!debug)
+  if (!debug) {
     autoRemove(ct)
     .catch(e => logger.error(`Removing ${name}: %s`, e))
+    ctx.status = 204
+  } else {
+    return ct.logs({
+      stdout: true,
+      stderr: true,
+      follow: true
+    })
+      .then(s => {
+        const logStream = new stream.PassThrough()
+        s.on('end', () => {
+          logStream.end()
+        })
+        ct.modem.demuxStream(s, logStream, logStream)
+        ctx.body = logStream
+      })
+      .catch(err => {
+        ctx.status = err.statusCode
+        setErrMsg(ctx, err.reason)
+      })
+  }
 
-  ctx.status = 204
 })
 
 .get('/containers', (ctx) => {
