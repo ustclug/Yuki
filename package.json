@@ -1,9 +1,9 @@
 {
   "name": "Yuki",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "Aimed to provide effortless management of docker containers on USTC Mirrors",
   "main": "dist/index.js",
-  "repository": "https://github.com/knight42/Yuki",
+  "repository": "https://github.com/ustclug/ustcmirror",
   "scripts": {
     "test": "NODE_ENV=test ava --no-cache",
     "dev": "babel -wd dist src",
