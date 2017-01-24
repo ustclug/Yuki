@@ -6,13 +6,7 @@ import Docker from 'dockode'
 import Promise from 'bluebird'
 import config from './config'
 import logger from './logger'
-
-let isListening
-try {
-  isListening = require('../build/Release/addon.node').isListening;
-} catch (e) {
-  isListening = require('../build/Debug/addon.node').isListening;
-}
+import { isListening } from '../build/Release/addon.node'
 
 const daemon = new Map()
 daemon.set('tcp', {

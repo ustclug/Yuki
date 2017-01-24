@@ -4,13 +4,7 @@
 
 import winston from 'winston'
 import { isDev } from './config'
-
-let getLocalTime
-try {
-  getLocalTime = require('../build/Release/addon.node').getLocalTime;
-} catch (e) {
-  getLocalTime = require('../build/Debug/addon.node').getLocalTime;
-}
+import { getLocalTime } from '../build/Release/addon.node'
 
 export default new (winston.Logger)({
   transports: [
