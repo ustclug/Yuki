@@ -2,12 +2,13 @@
 
 'use strict'
 
-import { API_PORT } from './config'
-import request from './request'
-import meta from '../package.json'
+import url from 'url'
 import program from 'commander'
+import { API_URL } from './config'
+import meta from '../package.json'
+import request from './request'
 
-const API = `http://127.0.0.1:${API_PORT}/api/v1`
+const API = url.resolve(API_URL, 'api/v1')
 
 program
   .version(meta.version)
@@ -107,5 +108,13 @@ program
     })
     .catch(console.error)
   })
+
+program
+  .command('export [file]')
+  .description('export configuration')
+
+program
+  .command('import [file]')
+  .description('import configuration')
 
 program.parse(process.argv)
