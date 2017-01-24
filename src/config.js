@@ -33,22 +33,28 @@ const defaultCfg = {
 module.exports = defaultCfg
 
 const fs = require('fs')
-const fp = '/etc/ustcmirror/daemon.json'
+const path = require('path')
+const fps = ['/etc/ustcmirror/config', path.join(process.env['HOME'], '.ustcmirror/config')]
 
-let exist
-try {
-  fs.statSync(fp)
-  exist = true
-} catch (e) {
-  exist = false
+for (const fp of fps) {
+  let exist
+  try {
+    fs.statSync(fp)
+    exist = true
+  } catch (e) {
+    exist = false
+  }
+  // Throw error if JSON is invalid
+  const cfg = exist ? require(fp) : {}
+  Object.assign(defaultCfg, cfg)
 }
 
-// Throw error if JSON is invalid
-const userCfg = exist ? require(fp) : {}
-
-Object.assign(defaultCfg, userCfg)
 
 if (!defaultCfg.isTest && !defaultCfg.BIND_ADDR) {
-  console.error(`Need to specify <BIND_ADDR> in ${fp}`)
+  console.error('Need to specify <BIND_ADDR> in configuration')
   process.exit(1)
+}
+
+if (defaultCfg.isDev) {
+  console.log(defaultCfg)
 }
