@@ -1,13 +1,13 @@
 #!/usr/bin/node
 
-//;(function() {
 'use strict'
 
+import path from 'path'
 import schedule from 'node-schedule'
 import logger from './logger'
-import { bringUp, queryOpts, autoRemove } from './util'
-
-//const sche = new schedule()
+import { Repository as Repo } from './models'
+import CONFIG from './config'
+import { bringUp, queryOpts, autoRemove, dirExists, makeDir } from './util'
 
 class Scheduler {
   constructor() {
@@ -20,22 +20,46 @@ class Scheduler {
     }
     const opts = await queryOpts({ name, debug: false })
     if (opts === null) {
-      logger.warn(`no such repository: ${name}`)
-      return
+      logger.warn(`scheduler: could not get options of ${name} from db`)
+      return false
+    }
+    if (!dirExists(opts.storageDir)) {
+      logger.warn(`scheduler: no such directory: ${opts.storageDir}`)
+      return false
     }
 
     schedule.scheduleJob(name, spec, async () => {
+      const opts = await queryOpts({ name, debug: false })
+      if (opts === null) {
+        logger.error(`Job ${name}: could not get options from db`)
+        return
+      }
+      if (!dirExists(opts.storageDir)) {
+        logger.warn(`Job ${name}: no such directory: ${opts.storageDir}`)
+        return
+      }
+
+      const logdir = path.join(CONFIG.LOGDIR_ROOT, name)
+      try {
+        makeDir(logdir)
+      } catch (e) {
+        logger.error(`Job ${name}: ${e.message}`)
+        return
+      }
+
       let ct
       try {
         ct = await bringUp(opts)
       } catch (e) {
-        logger.error(`bringUp ${name}: %s`, e)
-        return
+        return logger.error(`bringUp ${name}: %s`, e)
       }
+      logger.debug(`Syncing ${name}`)
       autoRemove(ct)
         .catch(e => logger.error(`Removing ${name}: %s`, e))
     })
+
     logger.info(`Scheduled ${name}`)
+    return true
   }
 
   cancelJob(name) {
@@ -53,6 +77,10 @@ class Scheduler {
 
   resume() {
     if (!this._paused) return
+    Repo.find({}, { interval: true })
+    .forEach(r => {
+      schedule.scheduledJobs[r._id].reschedule(r.interval)
+    })
     this._paused = false
   }
 
