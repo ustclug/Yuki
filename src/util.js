@@ -2,16 +2,17 @@
 
 'use strict'
 
+import fs from 'fs'
+import path from 'path'
 import docker from './docker'
 import models from './models'
-import config from './config'
-import logger from './logger'
+import CONFIG from './config'
 import readline from 'readline'
 import {Transform} from 'stream'
 
 const Repo = models.Repository
-const PREFIX = config.CT_NAME_PREFIX
-const LABEL = config.CT_LABEL
+const PREFIX = CONFIG.CT_NAME_PREFIX
+const LABEL = CONFIG.CT_LABEL
 
 // All Transform streams are also Duplex Streams
 function progresBar(stream) {
@@ -66,11 +67,12 @@ async function queryOpts({ name, debug = false }) {
   if (cfg === null) {
     return null
   }
-  cfg.volumes.push(`${cfg.storageDir}:/data`)
+  const logdir = path.join(CONFIG.LOGDIR_ROOT, name)
+  cfg.volumes.push(`${cfg.storageDir}:/data`, `${logdir}:/log`)
   const opts = {
     Image: cfg.image,
     Cmd: cfg.command,
-    User: cfg.user || config.OWNER,
+    User: cfg.user || CONFIG.OWNER,
     Env: cfg.envs,
     AttachStdin: false,
     AttachStdout: false,
@@ -91,17 +93,46 @@ async function queryOpts({ name, debug = false }) {
     name: `${PREFIX}-${name}`,
   }
   opts.Env.push(`REPO=${name}`)
-  if (debug) opts.Env.push('DEBUG=true')
+  if (debug) {
+    opts.Env.push('DEBUG=true')
+  }
+  if (cfg.autoLogRot) {
+    opts.Env.push('AUTO_LOGROTATE=true', `ROTATE_CYCLE=${cfg.rotateCycle}`)
+  }
   return opts
 }
 
 function autoRemove(ct) {
   return ct.wait()
-    .then(() => ct.remove({ v: true, force: true }))
+  // FIXME
+  // res: {
+  // "StatusCode": 0
+  // }
+    .then((res) => ct.remove({ v: true, force: true }))
+}
+
+function dirExists(path) {
+  if (CONFIG.isTest) return true
+
+  let stat
+  try {
+    stat = fs.statSync(path)
+  } catch (e) {
+    return false
+  }
+  return stat.isDirectory()
+}
+
+function makeDir(path) {
+  if (!dirExists(path)) {
+    fs.mkdirSync(path)
+  }
 }
 
 export default {
   bringUp,
   autoRemove,
+  dirExists,
+  makeDir,
   queryOpts
 }
