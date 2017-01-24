@@ -14,6 +14,7 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <ctime>
 #include <string>
 
 #include <unistd.h>
@@ -98,10 +99,25 @@ NAN_METHOD(IsListening)
     info.GetReturnValue().Set(ret);
 }
 
+NAN_METHOD(GetLocalTime)
+{
+    time_t timer;
+    char buffer[26];
+    struct tm* tm_info;
+
+    time(&timer);
+    tm_info = localtime(&timer);
+
+    strftime(buffer, 26, "%Y-%m-%d %H:%M:%S", tm_info);
+    info.GetReturnValue().Set(Nan::New(buffer).ToLocalChecked());
+}
+
 NAN_MODULE_INIT(Init)
 {
   Nan::Set(target, Nan::New("isListening").ToLocalChecked(),
            Nan::GetFunction(Nan::New<FunctionTemplate>(IsListening)).ToLocalChecked());
+  Nan::Set(target, Nan::New("getLocalTime").ToLocalChecked(),
+           Nan::GetFunction(Nan::New<FunctionTemplate>(GetLocalTime)).ToLocalChecked());
 }
 
 NODE_MODULE(addon, Init);
