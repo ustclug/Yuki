@@ -123,11 +123,60 @@ routerProxy.get('/repositories', (ctx) => {
 .post('/repositories/:name/sync', async (ctx) => {
   const name = ctx.params.name
   const debug = !!ctx.query.debug // dirty hack, convert to boolean
-  const opts = await queryOpts({ name, debug })
-  if (opts === null) {
-    ctx.status = 404
+
+  const cfg = await Repo.findById(name)
+  if (cfg === null) {
     setErrMsg(ctx, `no such repository: ${name}`)
-    return
+    return ctx.status = 404
+  }
+
+  if (!dirExists(cfg.storageDir)) {
+    setErrMsg(ctx, `no such directory: ${cfg.storageDir}`)
+    logger.warn(`Sync ${name}: no such directory: ${cfg.storageDir}`)
+    return ctx.status = 404
+  }
+
+  const logdir = path.join(CONFIG.LOGDIR_ROOT, name)
+  try {
+    makeDir(logdir)
+  } catch (e) {
+    setErrMsg(ctx, e.message)
+    logger.error(`Sync ${name}: ${e.message}`)
+    return ctx.status = 404
+  }
+
+  cfg.volumes.push(`${cfg.storageDir}:/data`, `${logdir}:/log`)
+
+  const opts = {
+    Image: cfg.image,
+    Cmd: cfg.command,
+    User: cfg.user || CONFIG.OWNER,
+    Env: cfg.envs,
+    AttachStdin: false,
+    AttachStdout: false,
+    AttachStderr: false,
+    Tty: false,
+    OpenStdin: true,
+    Labels: {
+      [LABEL]: ''
+    },
+    HostConfig: {
+      Binds: cfg.volumes,
+      NetworkMode: 'host',
+      RestartPolicy: {
+        Name: 'on-failure',
+        MaximumRetryCount: 2
+      },
+    },
+    name: `${PREFIX}-${name}`,
+  }
+
+  opts.Env.push(`REPO=${name}`)
+  if (cfg.autoLogRot) {
+    opts.Env.push('AUTO_LOGROTATE=true', `ROTATE_CYCLE=${cfg.rotateCycle}`)
+  }
+  if (debug) {
+    opts.Env.push('DEBUG=true')
   }
 
   let ct
