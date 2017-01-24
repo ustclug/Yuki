@@ -2,17 +2,19 @@
 
 'use strict'
 
+import path from 'path'
 import stream from 'stream'
 import koarouter from 'koa-router'
 import bodyParser from 'koa-bodyparser'
 import docker from '../docker'
 import models from '../models'
-import config from '../config'
+import CONFIG from '../config'
 import logger from '../logger'
-import { bringUp, queryOpts, autoRemove } from '../util'
+import schedule from '../scheduler'
+import { bringUp, autoRemove, dirExists, makeDir } from '../util'
 
-const PREFIX = config.CT_NAME_PREFIX
-const LABEL = config.CT_LABEL
+const PREFIX = CONFIG.CT_NAME_PREFIX
+const LABEL = CONFIG.CT_LABEL
 const Repo = models.Repository
 const router = koarouter({ prefix: '/api/v1' })
 
@@ -22,7 +24,7 @@ function setErrMsg(ctx, msg) {
   ctx.body = { message: msg }
 }
 
-if (config.isDev) {
+if (CONFIG.isDev) {
   router.use('/', async (ctx, next) => {
     logger.debug(ctx.request.method, ctx.request.url)
     await next()
@@ -73,20 +75,29 @@ routerProxy.get('/repositories', (ctx) => {
   .post((ctx) => {
     const body = ctx.request.body
     body.name = ctx.params.name
+    if (!dirExists(body.storageDir)) {
+      setErrMsg(ctx, `no such directory: ${body.storageDir}`)
+      logger.warn(`Create ${body.name}: no such directory: ${body.storageDir}`)
+      return ctx.status = 400
+    }
     return Repo.create(body)
       .then((repo) => {
         ctx.status = 201
         ctx.body = {}
+        schedule.addJob(repo.name, repo.interval)
       }, (err) => {
         ctx.status = 400
         setErrMsg(ctx, err.errmsg)
       })
   })
   .put((ctx) => {
-    return Repo.findByIdAndUpdate(ctx.params.name, ctx.request.body, {
+    const name = ctx.params.name
+    return Repo.findByIdAndUpdate(name, ctx.request.body, {
       runValidators: true
     })
-    .then(() => {
+    .then((repo) => {
+      // would automatically cancel the existing job
+      schedule.addJob(repo._id /* name */, repo.interval)
       ctx.status = 204
     })
     .catch(err => {
@@ -96,8 +107,12 @@ routerProxy.get('/repositories', (ctx) => {
     })
   })
   .delete((ctx) => {
-    return Repo.findByIdAndRemove(ctx.params.name)
-      .then(() => ctx.status = 204)
+    const name = ctx.params.name
+    return Repo.findByIdAndRemove(name)
+      .then(() => {
+        schedule.cancelJob(name)
+        ctx.status = 204
+      })
       .catch(err => {
         logger.error(`Deleting ${ctx.params.name}: %s`, err)
         ctx.status = 500
