@@ -11,7 +11,7 @@ import models from '../models'
 import CONFIG from '../config'
 import logger from '../logger'
 import schedule from '../scheduler'
-import { bringUp, autoRemove, dirExists, makeDir } from '../util'
+import { bringUp, autoRemove, dirExists, makeDir, queryOpts } from '../util'
 
 const PREFIX = CONFIG.CT_NAME_PREFIX
 const LABEL = CONFIG.CT_LABEL
@@ -145,39 +145,7 @@ routerProxy.get('/repositories', (ctx) => {
     return ctx.status = 404
   }
 
-  cfg.volumes.push(`${cfg.storageDir}:/data`, `${logdir}:/log`)
-
-  const opts = {
-    Image: cfg.image,
-    Cmd: cfg.command,
-    User: cfg.user || CONFIG.OWNER,
-    Env: cfg.envs,
-    AttachStdin: false,
-    AttachStdout: false,
-    AttachStderr: false,
-    Tty: false,
-    OpenStdin: true,
-    Labels: {
-      [LABEL]: ''
-    },
-    HostConfig: {
-      Binds: cfg.volumes,
-      NetworkMode: 'host',
-      RestartPolicy: {
-        Name: 'on-failure',
-        MaximumRetryCount: 2
-      },
-    },
-    name: `${PREFIX}-${name}`,
-  }
-
-  opts.Env.push(`REPO=${name}`)
-  if (cfg.autoLogRot) {
-    opts.Env.push('AUTO_LOGROTATE=true', `ROTATE_CYCLE=${cfg.rotateCycle}`)
-  }
-  if (debug) {
-    opts.Env.push('DEBUG=true')
-  }
+  const opts = await queryOpts({ name, debug })
 
   let ct
   try {
