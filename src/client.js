@@ -2,8 +2,11 @@
 
 'use strict'
 
+import fs from 'fs'
 import url from 'url'
+import path from 'path'
 import program from 'commander'
+import { getLocalTime } from '../build/Release/addon.node'
 import { API_URL } from './config'
 import meta from '../package.json'
 import request from './request'
@@ -14,7 +17,82 @@ program
   .version(meta.version)
 
 program
-  .command('list')
+  .command('login <username>')
+  .description('log in to remote registry')
+  .action((username) => {
+    request(`${API}/auth`, { username })
+    .then(async (res) => {
+      const content = await res.json()
+      if (res.ok) {
+        console.log('Login succeeded!')
+        const fp = path.join(process.env['HOME'], '.ustcmirror', 'config.json')
+        let modified = false
+        let userCfg
+        try {
+          userCfg = require(fp)
+        } catch (e) {
+          if (e.code !== 'ENOENT') {
+            throw e
+          }
+          userCfg = {}
+        }
+        if (typeof userCfg.auths === 'undefined') {
+          userCfg['auths'] =  {
+            [API_URL]: {
+              auth: content.token
+            }
+          }
+          modified = true
+        } else if (typeof userCfg.auths[API_URL] === 'undefined') {
+          userCfg.auths[API_URL] = {
+            auth: content.token
+          }
+          modified = true
+        } else if (userCfg.auths[API_URL].auth !== content.token) {
+          userCfg.auths[API_URL].auth = content.token
+          modified = true
+        }
+        if (modified) {
+          return new Promise((ful, rej) => {
+            fs.writeFile(fp, JSON.stringify(userCfg, null, 4), err => {
+              if (err) return rej(err)
+              ful()
+            })
+          })
+        }
+      } else {
+        console.log(`Failed to login: ${content.message}`)
+      }
+    })
+    .catch(console.error)
+  })
+
+program
+  .command('logout')
+  .description('log out from remote registry')
+  .action(() => {
+    const fp = path.join(process.env['HOME'], '.ustcmirror', 'config.json')
+    let userCfg = null
+    try {
+      userCfg = require(fp)
+    } catch (e) {
+      if (e.code !== 'ENOENT') {
+        throw e
+      }
+      return
+    }
+    if (typeof userCfg.auths === 'object' &&
+        typeof userCfg.auths[API_URL] === 'object') {
+      delete userCfg.auths[API_URL]
+    }
+    fs.writeFile(fp, JSON.stringify(userCfg, null, 4), err => {
+      if (err) {
+        return console.error(err)
+      }
+      console.log(`Remove token for ${API_URL}`)
+    })
+  })
+
   .description('list all repositories')
   .action(() => {
     request(`${API}/repositories`)
