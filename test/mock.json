@@ -4,22 +4,22 @@
     "image": "ustcmirror/test:latest",
     "args": ["echo", "archlinux"],
     "envs": ["RSYNC_USER=asdh", "RSYNC_HOST=rsync.mirrors.ustc.edu.cn", "RSYNC_PATH=archlinux", "RSYNC_EXCLUDE=--exclude .~tmp~/"],
-    "storageDir": "/srv/repo/archlinux"
+    "storageDir": "/tmp/repos/archlinux"
 },
 {
     "name": "kde",
-    "interval": "*/2 * * * *",
+    "interval": "2 * * * *",
     "image": "ustcmirror/test:latest",
     "args": ["echo", "kde"],
     "envs": ["RSYNC_USER=asdh", "RSYNC_HOST=rsync.mirrors.ustc.edu.cn", "RSYNC_PATH=kde", "RSYNC_EXCLUDE=--exclude .~tmp~/ --exclude nonexistent"],
-    "storageDir": "/srv/repo/kde"
+    "storageDir": "/tmp/repos/kde"
 },
 {
     "name": "gmt",
     "interval": "48 2 * * *",
     "image": "ustcmirror/test:latest",
     "args": ["echo", "gmt"],
-    "storageDir": "/srv/repo/gmt"
+    "storageDir": "/tmp/repos/gmt"
 },
 {
     "name": "bioc",
@@ -27,7 +27,7 @@
     "image": "ustcmirror/test:latest",
     "args": ["echo", "bioc"],
     "envs": ["RSYNC_USER=asdh", "RSYNC_HOST=rsync.mirrors.ustc.edu.cn", "RSYNC_PATH=bioc", "RSYNC_EXCLUDE=--exclude .~tmp~/"],
-    "storageDir": "/srv/repo/bioc"
+    "storageDir": "/tmp/repos/bioc"
 },
 {
     "name": "ubuntu",
@@ -35,7 +35,7 @@
     "image": "ustcmirror/test:latest",
     "args": ["echo", "ubuntu"],
     "envs": ["LFTPSYNC_EXCLUDE=-X .~tmp~/", "LFTPSYNC_HOST=mirrors.ustc.edu.cn"],
-    "storageDir": "/srv/repo/ubuntu"
+    "storageDir": "/tmp/repos/ubuntu"
 },
 {
     "name": "brew.git",
@@ -43,6 +43,6 @@
     "image": "ustcmirror/test:latest",
     "args": ["echo", "gmt"],
     "envs": ["GITSYNC_URL=https://github.com/Homebrew/brew.git", "GITSYNC_BITMAP=true"],
-    "storageDir": "/srv/repo/gmt"
+    "storageDir": "/tmp/repos/gmt"
 }
 ]

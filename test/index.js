@@ -10,7 +10,7 @@ import models from '../dist/models'
 import data from './mock.json'
 import mongoose from 'mongoose'
 import request from '../dist/request'
-import { isListening } from '../build/Release/addon.node'
+import { isListening, getLocalTime } from '../build/Release/addon.node'
 
 const Repo = models.Repository
 
@@ -22,10 +22,16 @@ test.before(async t => {
 
 const API = `http://localhost:${API_PORT}/api/v1`
 
-test('Native addon: isListening', t => {
+test('Addon: isListening()', t => {
   t.true(isListening('127.0.0.1', API_PORT))
   t.true(isListening('localhost', API_PORT))
   t.false(isListening('localhost', 4))
+})
+
+test('Addon: getLocalTime()', t => {
+  t.truthy(getLocalTime())
+  t.truthy(getLocalTime(1485346154))
+  t.throws(getLocalTime.bind(null, 1, 2))
 })
 
 test('List repositories', t => {
@@ -51,7 +57,7 @@ test.serial('Get repository', t => {
     .then(res => {
       t.is(res.image, 'ustcmirror/test:latest')
       t.is(res.interval, '1 1 * * *')
-      t.is(res.storageDir, '/srv/repo/archlinux')
+      t.is(res.storageDir, '/tmp/repos/archlinux')
       t.is(res.envs[0], 'RSYNC_USER=asdh')
     })
 })
@@ -60,7 +66,7 @@ test.serial('Update repository', t => {
   return request(`${API}/repositories/bioc`, {
     image: 'ustcmirror/rsync:latest',
     args: ['echo', '1'],
-    volumes: ['/pypi:/srv/repo/BIOC'],
+    volumes: ['/pypi:/tmp/repos/BIOC'],
     user: 'mirror'
   }, 'PUT')
     .then(res => {
@@ -85,7 +91,7 @@ test('New repository', t => {
   return request(`${API}/repositories/vim`, {
     image: 'ustcmirror/test:latest',
     interval: '* 5 * * *',
-    storageDir: '/srv/repo/vim',
+    storageDir: '/tmp/repos/vim',
     args: ['echo', 'vim'],
   })
     .then(res => {
@@ -100,7 +106,7 @@ test('New repository', t => {
       t.is(res.interval, '* 5 * * *')
       t.is(res.image, 'ustcmirror/test:latest')
       t.is(res.args[0], 'echo')
-      t.is(res.storageDir, '/srv/repo/vim')
+      t.is(res.storageDir, '/tmp/repos/vim')
     })
 })
 
