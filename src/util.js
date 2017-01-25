@@ -68,7 +68,9 @@ async function queryOpts({ name, debug = false }) {
     return null
   }
   const logdir = path.join(CONFIG.LOGDIR_ROOT, name)
-  cfg.volumes.push(`${cfg.storageDir}:/data`, `${logdir}:/log`)
+  if (!CONFIG.isTest) {
+    cfg.volumes.push(`${cfg.storageDir}:/data`, `${logdir}:/log`)
+  }
   const opts = {
     Image: cfg.image,
     Cmd: cfg.command,
@@ -92,12 +94,12 @@ async function queryOpts({ name, debug = false }) {
     },
     name: `${PREFIX}-${name}`,
   }
-  opts.Env.push(`REPO=${name}`)
+  opts.Env.push(`REPO=${name}`, `BIND_ADDRESS=${CONFIG.BIND_ADDR}`)
   if (debug) {
     opts.Env.push('DEBUG=true')
   }
-  if (cfg.autoLogRot) {
-    opts.Env.push('AUTO_LOGROTATE=true', `ROTATE_CYCLE=${cfg.rotateCycle}`)
+  if (cfg.autoRotLog) {
+    opts.Env.push('AUTO_ROTATE_LOG=true', `ROTATE_CYCLE=${cfg.rotateCycle}`)
   }
   return opts
 }
