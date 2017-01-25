@@ -1,17 +1,3 @@
-/*
- * The reason why this addon is needed is that I need to determine
- * which socket can be connected to before I perform any operations,
- * otherwise I' ll get a runtime error, and the APIs provided by node.js
- * are all asynchronous, I cannot export a docker client which I am sure
- * that it has connected to a being listened socket.
- *
- * I perfer connecting to TCP socket in development so that I can
- * capture the packets to inspect the json that is passed to the docker daemon.
- *
- * As a result, I decided to check TCP socket first and fallback to the default
- * UNIX local socket in deveplopment environment.
- */
-
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
@@ -79,6 +65,19 @@ bool checkSocket(const string &host, u16 port) {
     return true;
 }
 
+/*
+ * The reason why this method is needed is that I need to determine
+ * which socket can be connected to before I perform any operations,
+ * otherwise I' ll get a runtime error, and the APIs provided by node.js
+ * are all asynchronous, I cannot export a docker client which I am sure
+ * that it has connected to a being listened socket.
+ *
+ * I perfer connecting to TCP socket in development so that I can
+ * capture the packets to inspect the json that is passed to the docker daemon.
+ *
+ * As a result, I decided to check TCP socket first and fallback to the default
+ * UNIX local socket in deveplopment environment.
+ */
 NAN_METHOD(IsListening)
 {
 // Usage:
@@ -105,7 +104,14 @@ NAN_METHOD(GetLocalTime)
     char buffer[26];
     struct tm* tm_info;
 
-    time(&timer);
+    i32 len = info.Length();
+    if (len > 1) {
+        return Nan::ThrowError("Wrong number of arguments");
+    } else if (len == 1) {
+        timer = info[0]->Uint32Value();
+    } else {
+        time(&timer);
+    }
     tm_info = localtime(&timer);
 
     strftime(buffer, 26, "%Y-%m-%d %H:%M:%S", tm_info);
