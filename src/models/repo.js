@@ -21,7 +21,7 @@ const schema = new mongoose.Schema({
     type: String,
     required: true
   },
-  autoLogRot: {
+  autoRotLog: {
     type: Boolean,
     default: true
   },
