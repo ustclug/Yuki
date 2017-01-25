@@ -23,8 +23,9 @@ class Scheduler {
       logger.warn(`scheduler: could not get options of ${name} from db`)
       return false
     }
-    if (!dirExists(opts.storageDir)) {
-      logger.warn(`scheduler: no such directory: ${opts.storageDir}`)
+    const cfg = await Repo.findById(name, 'storageDir')
+    if (!dirExists(cfg.storageDir)) {
+      logger.warn(`scheduler: no such directory: ${cfg.storageDir}`)
       return false
     }
 
@@ -34,8 +35,9 @@ class Scheduler {
         logger.error(`Job ${name}: could not get options from db`)
         return
       }
-      if (!dirExists(opts.storageDir)) {
-        logger.warn(`Job ${name}: no such directory: ${opts.storageDir}`)
+      const cfg = await Repo.findById(name, 'storageDir')
+      if (!dirExists(cfg.storageDir)) {
+        logger.warn(`Job ${name}: no such directory: ${cfg.storageDir}`)
         return
       }
 
