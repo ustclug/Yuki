@@ -5,6 +5,7 @@ Yuki
 [![Build Status](https://travis-ci.org/ustclug/ustcmirror.svg?branch=master)](https://travis-ci.org/ustclug/ustcmirror)
 
 - [Introduction](#introduction)
+- [Installation](#installation)
 - [Configuration](#configuration)
     - [Server side](#server-side)
     - [Client side](#client-side)
@@ -12,6 +13,37 @@ Yuki
 # Introduction
 
 Aimed to provide effortless management of docker containers on USTC Mirrors
+
+# Installation
+
+```
+git clone https://github.com/ustclug/ustcmirror && cd ustcmirror
+npm i
+npm run build
+npm link
+```
+
+Specify the ip address to be bound in either `/etc/ustcmirror/config.json` or `~/.ustcmirror/config.json`:
+
+```
+$ cat ~/.ustcmirror/config.json
+{
+    "BIND_ADDR": "1.2.3.4",
+    "LOGDIR_ROOT": "/home/knight/logs"
+}
+```
+
+Run the daemon in debug mode:
+
+```
+npm run yukid:dev
+```
+
+Play with the CLI:
+
+```
+ustcmirror -h
+```
 
 # Configuration
 
