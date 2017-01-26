@@ -20,14 +20,14 @@ const defaultCfg = {
   BIND_ADDR: '',
   CT_LABEL: 'syncing',
   CT_NAME_PREFIX: 'syncing',
-  LOGDIR_ROOT: '/home/mirror/log',
+  LOGDIR_ROOT: '/var/log/ustcmirror',
   OWNER: `${process.getuid()}:${process.getgid()}`,
   isProd: process.env.NODE_ENV.startsWith('prod'),
   isDev: process.env.NODE_ENV.startsWith('dev'),
   isTest: process.env.NODE_ENV.startsWith('test'),
 
   // For client
-  API_URL: 'http://localhost:9999/',
+  API_ROOT: '',
 }
 
 module.exports = defaultCfg
