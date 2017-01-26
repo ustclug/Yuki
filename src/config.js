@@ -36,15 +36,15 @@ const fps = ['/etc/ustcmirror/config', path.join(process.env['HOME'], '.ustcmirr
 defaultCfg.API_ROOT = `http://localhost:${defaultCfg.API_PORT}/`
 
 for (const fp of fps) {
-  let exist
+  let cfg
   try {
-    fs.statSync(fp)
-    exist = true
+    cfg = require(fp)
   } catch (e) {
-    exist = false
+    if (e.code !== 'MODULE_NOT_FOUND') {
+      throw e
+    }
+    continue
   }
-  // Throw error if JSON is invalid
-  const cfg = exist ? require(fp) : {}
   Object.assign(defaultCfg, cfg)
 }
 
@@ -54,6 +54,15 @@ if (!defaultCfg.isTest && !defaultCfg.BIND_ADDR) {
   process.exit(1)
 }
 
-if (defaultCfg.isDev) {
-  console.log(defaultCfg)
+if (!defaultCfg.API_ROOT.startsWith('http://')) {
+  defaultCfg.API_ROOT = `http://${defaultCfg.API_ROOT}`
 }
+
+// should be lower case
+defaultCfg['TOKEN_NAME'] = 'x-mirror-token'
+
+if (defaultCfg.isDev) {
+  console.log('Configuration:', JSON.stringify(defaultCfg, null, 4))
+}
+
+module.exports = defaultCfg
