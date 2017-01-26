@@ -5,13 +5,34 @@
 import fs from 'fs'
 import url from 'url'
 import path from 'path'
+import { createHash } from 'crypto'
 import program from 'commander'
 import { getLocalTime } from '../build/Release/addon.node'
-import { API_URL } from './config'
+import { API_ROOT, TOKEN_NAME } from './config'
 import meta from '../package.json'
 import request from './request'
 
-const API = url.resolve(API_URL, 'api/v1')
+const AUTH_RECORD = path.join(process.env['HOME'], '.ustcmirror', 'auth.json')
+let auths
+try {
+  auths = require(AUTH_RECORD)
+} catch (e) {
+  if (e.code !== 'MODULE_NOT_FOUND') {
+    throw e
+  }
+  auths = {}
+}
+
+url.join = function(...eles) {
+  return eles.reduce((sum, ele) => url.resolve(sum, ele), '')
+}
+
+const req = function(path, data, method, apiroot = API_ROOT) {
+  const api = url.join(apiroot, 'api/v1/', path)
+  return request(api, data, method, {
+    headers: { [TOKEN_NAME]: auths[apiroot] || '' }
+  })
+}
 
 program
   .version(meta.version)
@@ -76,7 +97,7 @@ program
   .command('repos')
   .description('list all repositories')
   .action(() => {
-    request(`${API}/repositories`)
+    req('repositories')
     .then(res => {
       if (res.ok) {
         return res.json()
@@ -96,10 +117,21 @@ program
   })
 
 program
+  .command('rmrepo <repo>')
+  .description('manually remove repository')
+  .action((repo) => {
+    req(`repositories/${repo}`, null, 'DELETE')
+    .then(res => {
+      res.body.pipe(res.ok ? process.stdout : process.stderr)
+    })
+    .catch(console.error)
+  })
+
+program
   .command('containers')
   .description('list all containers')
   .action(() => {
-    request(`${API}/containers`)
+    req('containers')
     .then(res => {
       if (res.ok) {
         return res.json()
@@ -125,16 +157,19 @@ program
   .option('-v, --verbose', 'debug mode')
   .action((repo, options) => {
     const url = (options.verbose) ?
-      `${API}/repositories/${repo}/sync?debug=true` :
-      `${API}/repositories/${repo}/sync`
+      `repositories/${repo}/sync?debug=true` :
+      `repositories/${repo}/sync`
 
-    request(url, null, 'POST')
-    .then(res => {
-      res.body.pipe(res.ok ? process.stdout : process.stderr)
-      if (options.verbose) {
+    req(url, null, 'POST')
+    .then(async res => {
+      if (res.ok) {
+        res.body.pipe(process.stdout)
         res.body.on('end', () => {
           console.log('!!! Please manually remove the container !!!')
         })
+      } else {
+        const data = await res.json()
+        console.error(data)
       }
     })
     .catch(console.error)
@@ -146,10 +181,10 @@ program
   .option('-f, --follow', 'follow log output')
   .action((repo, options) => {
     const url = options.follow ?
-      `${API}/containers/${repo}/logs?follow=true` :
-      `${API}/containers/${repo}/logs`
+      `containers/${repo}/logs?follow=true` :
+      `containers/${repo}/logs`
 
-    request(url)
+    req(url)
     .then(res => {
       res.body.pipe(res.ok ? process.stdout : process.stderr)
     })
@@ -160,22 +195,7 @@ program
   .command('rmct <repo>')
   .description('manually remove container')
   .action((repo) => {
-    const url = `${API}/containers/${repo}`
-
-    request(url, null, 'DELETE')
-    .then(res => {
-      res.body.pipe(res.ok ? process.stdout : process.stderr)
-    })
-    .catch(console.error)
-  })
-
-program
-  .command('rmrepo <repo>')
-  .description('manually remove repository')
-  .action((repo) => {
-    const url = `${API}/repositories/${repo}`
-
-    request(url, null, 'DELETE')
+    req(`containers/${repo}`, null, 'DELETE')
     .then(res => {
       res.body.pipe(res.ok ? process.stdout : process.stderr)
     })
@@ -189,5 +209,9 @@ program
 program
   .command('import <file>')
   .description('import configuration')
+
+program
+  .command('*')
+  .action(() => program.outputHelp())
 
 program.parse(process.argv)
