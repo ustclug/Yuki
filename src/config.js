@@ -30,11 +30,10 @@ const defaultCfg = {
   API_ROOT: '',
 }
 
-module.exports = defaultCfg
-
-const fs = require('fs')
 const path = require('path')
 const fps = ['/etc/ustcmirror/config', path.join(process.env['HOME'], '.ustcmirror/config')]
+
+defaultCfg.API_ROOT = `http://localhost:${defaultCfg.API_PORT}/`
 
 for (const fp of fps) {
   let exist
