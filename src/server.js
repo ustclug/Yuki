@@ -6,7 +6,7 @@ import Koa from 'koa'
 import routes from './routes'
 import mongoose from 'mongoose'
 import docker from './docker'
-import config from './config'
+import CONFIG from './config'
 import logger from './logger'
 import models from './models'
 import schedule from './scheduler'
@@ -20,28 +20,27 @@ app.on('error', (err) => {
 })
 
 const dbopts = {
-  user: config.DB_USER,
-  pass: config.DB_PASSWD,
+  user: CONFIG.DB_USER,
+  pass: CONFIG.DB_PASSWD,
   promiseLibrary: Promise,
 }
 mongoose.Promise = Promise
 
-logger.info('Connecting to MongoDB')
-if (config.isTest) {
+if (CONFIG.isTest) {
   mongoose.connect('127.0.0.1', 'test')
 } else {
-  mongoose.connect('127.0.0.1', config.DB_NAME, config.DB_PORT, dbopts)
+  mongoose.connect('127.0.0.1', CONFIG.DB_NAME, CONFIG.DB_PORT, dbopts)
 }
+logger.info('Connected to MongoDB')
 
 const Repo = models.Repository
 
-const server = app.listen(config.API_PORT, () => {
+const server = app.listen(CONFIG.API_PORT, () => {
   const addr = server.address()
   logger.info(`listening on ${addr.address}:${addr.port}`)
 })
 
-// cleanup
-if (config.isProd) {
+if (!CONFIG.isTest) {
   docker.listContainers({
     all: true,
     filters: {
@@ -61,10 +60,7 @@ if (config.isProd) {
         .catch(console.error)
     })
   })
-}
-
-if (!config.isTest) {
-  Repo.find({}, { interval: true, name: true })
+  .then(() => Repo.find({}, { interval: true, name: true }))
   .then(docs => {
     docs.forEach(doc => {
       schedule.addJob(doc.name, doc.interval)
