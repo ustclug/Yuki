@@ -17,44 +17,22 @@ program
   .version(meta.version)
 
 program
-  .command('login <username>')
+  .command('login <username> <password>')
   .description('log in to remote registry')
-  .action((username) => {
-    request(`${API}/auth`, { username })
+  .action((username, password) => {
+    password = createHash('md5').update(password).digest('hex')
+    req('auth', { username, password })
     .then(async (res) => {
       const content = await res.json()
       if (res.ok) {
         console.log('Login succeeded!')
-        const fp = path.join(process.env['HOME'], '.ustcmirror', 'config.json')
-        let modified = false
-        let userCfg
-        try {
-          userCfg = require(fp)
-        } catch (e) {
-          if (e.code !== 'ENOENT') {
-            throw e
-          }
-          userCfg = {}
-        }
-        if (typeof userCfg.auths === 'undefined') {
-          userCfg['auths'] =  {
-            [API_URL]: {
-              auth: content.token
-            }
-          }
-          modified = true
-        } else if (typeof userCfg.auths[API_URL] === 'undefined') {
-          userCfg.auths[API_URL] = {
-            auth: content.token
-          }
-          modified = true
-        } else if (userCfg.auths[API_URL].auth !== content.token) {
-          userCfg.auths[API_URL].auth = content.token
-          modified = true
-        }
-        if (modified) {
+
+        if (typeof auths[API_ROOT] === 'undefined' ||
+            auths[API_ROOT] !== content.token)
+        {
+          auths[API_ROOT] = content.token
           return new Promise((ful, rej) => {
-            fs.writeFile(fp, JSON.stringify(userCfg, null, 4), err => {
+            fs.writeFile(AUTH_RECORD, JSON.stringify(auths, null, 4), err => {
               if (err) return rej(err)
               ful()
             })
@@ -71,25 +49,26 @@ program
   .command('logout')
   .description('log out from remote registry')
   .action(() => {
-    const fp = path.join(process.env['HOME'], '.ustcmirror', 'config.json')
-    let userCfg = null
-    try {
-      userCfg = require(fp)
-    } catch (e) {
-      if (e.code !== 'ENOENT') {
-        throw e
-      }
-      return
+    if (typeof auths[API_ROOT] === 'string') {
+      delete auths[API_ROOT]
+      fs.writeFile(AUTH_RECORD, JSON.stringify(auths, null, 4), err => {
+        if (err) {
+          return console.error(err)
+        }
+        console.log(`Remove token for ${API_ROOT}`)
+      })
+    } else {
+      console.error(`Not logged in to ${API_ROOT}`)
     }
-    if (typeof userCfg.auths === 'object' &&
-        typeof userCfg.auths[API_URL] === 'object') {
-      delete userCfg.auths[API_URL]
-    }
-    fs.writeFile(fp, JSON.stringify(userCfg, null, 4), err => {
-      if (err) {
-        return console.error(err)
-      }
-      console.log(`Remove token for ${API_URL}`)
+  })
+
+program
+  .command('rmuser <name>')
+  .description('remove user')
+  .action((name, options) => {
+    req(`users/${name}`, null, 'DELETE')
+    .then(res => {
+      res.body.pipe(res.ok ? process.stdout : process.stderr)
     })
   })
 
