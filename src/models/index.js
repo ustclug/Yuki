@@ -2,7 +2,7 @@
 
 'use strict'
 import Repo from './repo'
-import User from './token'
+import User from './user'
 
 export default {
   Repository: Repo,
