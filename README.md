@@ -5,6 +5,8 @@ Yuki
 [![Build Status](https://travis-ci.org/ustclug/ustcmirror.svg?branch=master)](https://travis-ci.org/ustclug/ustcmirror)
 
 - [Introduction](#introduction)
+- [Dependencies](#dependencies)
+- [How it works](#how-it-works)
 - [Installation](#installation)
 - [Configuration](#configuration)
     - [Server side](#server-side)
@@ -12,7 +14,23 @@ Yuki
 
 # Introduction
 
-Aimed to provide effortless management of docker containers on USTC Mirrors
+Aims to provide effortless management of docker containers on USTC Mirrors
+
+# Dependencies
+
+* Node.js > 6
+* Docker
+* MongoDB
+
+# How it works
+
+```
+docker run -i --rm --user "$OWNER" --net=host \
+       -v "$storageDir:/data" -v "$LOGDIR_ROOT/$repo_name:/log" \
+       -e BIND_ADDRESS=$BIND_ADDRESS [-e other env vars] \
+       --label "$CT_LABEL" --name "${CT_NAME_PREFIX}-${repo_name}" \
+       ustcmirror/<sync_method>:latest
+```
 
 # Installation
 
@@ -64,7 +82,7 @@ User-specific configuration: `~/.ustcmirror/config.(js|json)`
 | `DOCKERD_PORT` | Defaults to `2375`. |
 | `DOCKERD_HOST` | Defaults to `127.0.0.1`. |
 | `DOCKERD_SOCKET` | Defaults to `/var/run/docker.sock`. |
-| `BIND_ADDR` | Defaults to empty. |
+| `BIND_ADDRESS` | Defaults to empty. |
 | `CT_LABEL` | Defaults to `syncing`. |
 | `CT_NAME_PREFIX` | Defaults to `syncing`. |
 | `LOGDIR_ROOT` | Defaults to `/var/log/ustcmirror`. |
