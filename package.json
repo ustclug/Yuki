@@ -7,6 +7,8 @@
   "scripts": {
     "test": "NODE_ENV=test ava --no-cache",
     "dev": "babel -wd dist src",
+    "lint": "eslint src",
+    "install": "node-gyp rebuild",
     "build": "NODE_ENV=production babel -d dist src && node-gyp rebuild",
     "build:test": "babel -d dist src && node-gyp rebuild",
     "yukid": "NODE_ENV=production dist/index.js daemon",
@@ -16,16 +18,18 @@
   "author": "knight_42 <anonymousknight96@gmail.com>",
   "license": "MIT",
   "dependencies": {
+    "argparse": "^1.0.9",
     "bluebird": "^3.4.7",
     "commander": "^2.9.0",
     "dockode": "^1.0.1",
     "koa": "^2.0.0",
     "koa-bodyparser": "^3.2.0",
     "koa-router": "^7.1.0",
-    "mongoose": "^4.7.7",
+    "mongoose": "^4.8.1",
+    "nan": "^2.5.1",
     "node-fetch": "^1.6.3",
     "node-schedule": "^1.2.0",
-    "winston": "^2.3.0"
+    "winston": "^2.3.1"
   },
   "preferGlobal": true,
   "bin": {
@@ -37,18 +41,16 @@
   },
   "devDependencies": {
     "ava": "^0.17.0",
-    "babel-cli": "^6.18.0",
-    "babel-plugin-add-module-exports": "^0.2.1",
-    "babel-plugin-transform-runtime": "^6.15.0",
+    "babel-cli": "^6.22.2",
+    "babel-plugin-transform-runtime": "^6.22.0",
     "babel-preset-babili": "^0.0.10",
     "babel-preset-env": "^1.1.6",
-    "babel-register": "^6.18.0",
-    "eslint": "^3.13.1",
-    "eslint-config-vue": "^2.0.1",
+    "babel-register": "^6.22.0",
+    "eslint": "^3.14.1",
+    "eslint-config-vue": "^2.0.2",
+    "eslint-plugin-import": "^2.2.0",
     "eslint-plugin-vue": "^1.0.0",
-    "koa-static": "^3.0.0",
-    "nan": "^2.5.0",
-    "node-gyp": "^3.5.0"
+    "koa-static": "^3.0.0"
   },
   "babel": {
     "presets": [
