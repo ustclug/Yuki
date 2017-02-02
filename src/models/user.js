@@ -11,6 +11,10 @@ const schema = new mongoose.Schema({
     required: true,
     type: String
   },
+  admin: {
+    type: Boolean,
+    default: false
+  },
   token: {
     min: 40,
     max: 40,
