@@ -16,6 +16,8 @@ export default async function(ctx, next) {
     ctx.state.authorized = false
   } else {
     ctx.state.authorized = true
+    ctx.state.isAdmin = user.admin
+    ctx.state.username = user.name
   }
   return next()
 }
