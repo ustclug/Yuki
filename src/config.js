@@ -17,7 +17,7 @@ const defaultCfg = {
   DOCKERD_PORT: 2375,
   DOCKERD_HOST: '127.0.0.1',
   DOCKERD_SOCKET: '/var/run/docker.sock',
-  BIND_ADDR: '',
+  BIND_ADDRESS: '',
   CT_LABEL: 'syncing',
   CT_NAME_PREFIX: 'syncing',
   LOGDIR_ROOT: '/var/log/ustcmirror',
