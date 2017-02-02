@@ -35,10 +35,7 @@ docker run -i --rm --user "$OWNER" --net=host \
 # Installation
 
 ```
-git clone https://github.com/ustclug/ustcmirror && cd ustcmirror
-npm i
-npm run build
-npm link
+npm i -g ustcmirror
 ```
 
 Specify the ip address to be bound in either `/etc/ustcmirror/config.json` or `~/.ustcmirror/config.json`:
@@ -46,7 +43,7 @@ Specify the ip address to be bound in either `/etc/ustcmirror/config.json` or `~
 ```
 $ cat ~/.ustcmirror/config.json
 {
-    "BIND_ADDR": "1.2.3.4",
+    "BIND_ADDRESS": "1.2.3.4",
     "LOGDIR_ROOT": "/home/knight/logs"
 }
 ```
@@ -86,10 +83,11 @@ User-specific configuration: `~/.ustcmirror/config.(js|json)`
 | `CT_LABEL` | Defaults to `syncing`. |
 | `CT_NAME_PREFIX` | Defaults to `syncing`. |
 | `LOGDIR_ROOT` | Defaults to `/var/log/ustcmirror`. |
+| `IMAGES_UPGRADE_INTERVAL` | Defaults to `1 * * * *`. |
 | `OWNER` | Defaults to `${process.getuid()}:${process.getgid()}` |
 
 ### Client side
 
 | Parameter | Description |
 |-----------|-------------|
-| `API_ROOT` | Defaults to `http://localhost:${API_PORT}`. |
+| `API_ROOT` | Defaults to `http://localhost:${API_PORT}/`. |
