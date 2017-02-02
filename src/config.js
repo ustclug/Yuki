@@ -61,9 +61,18 @@ if (!(defaultCfg.isTest ||
 if (!defaultCfg.API_ROOT.startsWith('http://')) {
   defaultCfg.API_ROOT = `http://${defaultCfg.API_ROOT}`
 }
+if (!defaultCfg.API_ROOT.endsWith('/')) {
+  defaultCfg.API_ROOT += '/'
+}
 
 // should be lower case
 defaultCfg['TOKEN_NAME'] = 'x-mirror-token'
+
+defaultCfg._images = [
+  'ustcmirror/gitsync:latest',
+  'ustcmirror/rsync:latest',
+  'ustcmirror/lftpsync:latest',
+]
 
 if (defaultCfg.isDev) {
   console.log('Configuration:', JSON.stringify(defaultCfg, null, 4))
