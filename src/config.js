@@ -21,6 +21,7 @@ const defaultCfg = {
   CT_LABEL: 'syncing',
   CT_NAME_PREFIX: 'syncing',
   LOGDIR_ROOT: '/var/log/ustcmirror',
+  IMAGES_UPGRADE_INTERVAL: '1 * * * *',
   OWNER: `${process.getuid()}:${process.getgid()}`,
   isProd: process.env.NODE_ENV.startsWith('prod'),
   isDev: process.env.NODE_ENV.startsWith('dev'),
