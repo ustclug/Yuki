@@ -58,7 +58,7 @@ if (!(defaultCfg.isTest ||
   process.exit(1)
 }
 
-if (!defaultCfg.API_ROOT.startsWith('http://')) {
+if (!defaultCfg.API_ROOT.startsWith('http')) {
   defaultCfg.API_ROOT = `http://${defaultCfg.API_ROOT}`
 }
 if (!defaultCfg.API_ROOT.endsWith('/')) {
