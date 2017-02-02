@@ -11,7 +11,7 @@ import { Repository as Repo, User} from '../models'
 import CONFIG from '../config'
 import logger from '../logger'
 import schedule from '../scheduler'
-import verify from './auth'
+import auth from './auth'
 import { bringUp, autoRemove, dirExists, makeDir, queryOpts } from '../util'
 
 const PREFIX = CONFIG.CT_NAME_PREFIX
@@ -24,13 +24,22 @@ function setErrMsg(ctx, msg) {
   ctx.body = { message: msg }
 }
 
-function isAuthorized(ctx) {
+function isAuthorized(ctx, next) {
   if (!ctx.state.authorized) {
-    ctx.status = 401
     ctx.body = { message: 'unauthorized access' }
-    return false
+    logger.warn(`Unauthorized: ${ctx.method} ${ctx.request.url}`)
+    return ctx.status = 401
   }
-  return true
+  return next()
+}
+
+function isAdmin(ctx, next) {
+  if (!ctx.state.isAdmin) {
+    ctx.body = { message: 'Operation not permitted. Please concat administrator' }
+    logger.warn(`Not permitted: ${ctx.state.username} ${ctx.method} ${ctx.request.url}`)
+    return ctx.status = 401
+  }
+  return next()
 }
 
 if (CONFIG.isDev) {
@@ -41,27 +50,41 @@ if (CONFIG.isDev) {
 }
 
 ['get', 'put', 'post', 'delete', 'use'].forEach(m => {
-  routerProxy[m] = function(url, cb) {
-    if (typeof cb === 'undefined') {
-      cb = url
-    } else {
+  routerProxy[m] = function(url, ...cb) {
+    if (typeof url === 'string') {
       this.url = url
+      this.router[m].call(this.router, url, ...cb)
+    } else {
+      this.router[m].call(this.router, this.url, url, ...cb)
     }
-    this.router[m](this.url, cb)
     return this
   }
 })
 
-router.use(verify)
-
-routerProxy.use('/auth', bodyParser({
+const JSONParser = bodyParser({
   onerror: function(err, ctx) {
     if (err) {
       ctx.status = 400
       setErrMsg(ctx, 'invalid json')
     }
   }
-}))
+})
+
+router.use(auth)
+
+routerProxy.use('/auth', JSONParser)
+  .get(isAuthorized, (ctx) => {
+    if (ctx.state.username) {
+      ctx.body = {
+        name: ctx.state.username,
+        admin: ctx.state.isAdmin
+      }
+    } else {
+      logger.warn('Auth: impossible empty username')
+      setErrMsg(ctx, 'unable to find matched user')
+      ctx.status = 404
+    }
+  })
   .post(async (ctx) => {
     const name = ctx.request.body.username
     const pwHash = ctx.request.body.password
@@ -82,26 +105,20 @@ routerProxy.use('/auth', bodyParser({
   })
 
 routerProxy.get('/repositories', (ctx) => {
-  return Repo.find({})
+  return Repo.find()
     .then(data => ctx.body = data)
 })
 
-.use('/repositories/:name', bodyParser({
-  onerror: function(err, ctx) {
-    if (err) {
-      ctx.status = 400
-      setErrMsg(ctx, 'invalid json')
-    }
-  }
-}))
+.use('/repositories/:name', JSONParser)
   .get((ctx) => {
-    return Repo.findById(ctx.params.name, { _id: false })
+    const name = ctx.params.name
+    return Repo.findById(name)
       .then((data) => {
         if (data !== null) {
           ctx.body = data
         } else {
           ctx.status = 404
-          setErrMsg(ctx, `No such repository: ${ctx.params.name}`)
+          setErrMsg(ctx, `no such repository: ${ctx.params.name}`)
         }
       })
       .catch(err => {
@@ -110,9 +127,7 @@ routerProxy.get('/repositories', (ctx) => {
         setErrMsg(ctx, err)
       })
   })
-  .post((ctx) => {
-    if (!isAuthorized(ctx)) return;
-
+  .post(isAuthorized, (ctx) => {
     const body = ctx.request.body
     body.name = ctx.params.name
     if (!dirExists(body.storageDir)) {
@@ -131,9 +146,7 @@ routerProxy.get('/repositories', (ctx) => {
         setErrMsg(ctx, err.errmsg)
       })
   })
-  .put((ctx) => {
-    if (!isAuthorized(ctx)) return;
-
+  .put(isAuthorized, (ctx) => {
     const name = ctx.params.name
     return Repo.findByIdAndUpdate(name, ctx.request.body, {
       runValidators: true
@@ -149,9 +162,7 @@ routerProxy.get('/repositories', (ctx) => {
       setErrMsg(ctx, err.errmsg)
     })
   })
-  .delete((ctx) => {
-    if (!isAuthorized(ctx)) return;
-
+  .delete(isAuthorized, (ctx) => {
     const name = ctx.params.name
     return Repo.findByIdAndRemove(name)
       .then(() => {
@@ -165,9 +176,7 @@ routerProxy.get('/repositories', (ctx) => {
       })
   })
 
-.post('/repositories/:name/sync', async (ctx) => {
-  if (!isAuthorized(ctx)) return;
-
+.post('/repositories/:name/sync', isAuthorized, async (ctx) => {
   const name = ctx.params.name
   const debug = !!ctx.query.debug // dirty hack, convert to boolean
 
@@ -235,9 +244,7 @@ routerProxy.get('/repositories', (ctx) => {
       ctx.body = cts.filter(info => typeof info.Labels[LABEL] !== 'undefined')
     })
 })
-.delete('/containers/:repo', (ctx) => {
-  if (!isAuthorized(ctx)) return;
-
+.delete('/containers/:repo', isAuthorized, (ctx) => {
   const name = `${PREFIX}-${ctx.params.repo}`
   const ct = docker.getContainer(name)
   return ct.remove({ v: true })
@@ -262,9 +269,7 @@ routerProxy.get('/repositories', (ctx) => {
       ctx.body = err.json
     })
 })
-.get('/containers/:repo/inspect', (ctx) => {
-  if (!isAuthorized(ctx)) return;
-
+.get('/containers/:repo/inspect', isAuthorized, (ctx) => {
   const name = `${PREFIX}-${ctx.params.repo}`
   const ct = docker.getContainer(name)
   return ct.inspect()
@@ -276,9 +281,7 @@ routerProxy.get('/repositories', (ctx) => {
       ctx.body = err.json
     })
 })
-.get('/containers/:repo/logs', (ctx) => {
-  if (!isAuthorized(ctx)) return;
-
+.get('/containers/:repo/logs', isAuthorized, (ctx) => {
   const name = `${PREFIX}-${ctx.params.repo}`
   const follow = !!ctx.query.follow
 
@@ -317,9 +320,7 @@ routerProxy.get('/repositories', (ctx) => {
 });
 
 ['start', 'stop', 'restart', 'pause', 'unpause'].forEach(action => {
-  router.post(`/containers/:repo/${action}`, ctx => {
-    if (!isAuthorized(ctx)) return;
-
+  router.post(`/containers/:repo/${action}`, isAuthorized, ctx => {
     const name = `${PREFIX}-${ctx.params.repo}`
     const ct = docker.getContainer(name)
     return ct[action]()
@@ -332,36 +333,98 @@ routerProxy.get('/repositories', (ctx) => {
   })
 })
 
-routerProxy.use('/users/:name', (ctx, next) => {
-  if (!isAuthorized(ctx)) return;
-  return next()
+routerProxy.get('/users', isAuthorized, async (ctx) => {
+  let users = null
+  if (ctx.state.isAdmin) {
+    // only hide password
+    users = await User.find({}, { password: false })
+  } else {
+    // only return username
+    users = await User.find({}, { name: true })
+  }
+  return ctx.body = users
 })
-  .post(ctx => {
-    const name = `${ctx.params.name}`
-    return User.create({
-      name,
-    })
-    .then(() => {
-      ctx.status = 201
-      ctx.body = {}
-    }, err => {
-      ctx.status = 400
-      setErrMsg(ctx, err.errmsg)
-      logger.error(`Creating user ${ctx.params.name}: %s`, err)
-    })
+.put('/users/:name', isAuthorized, JSONParser, ctx => {
+  const name = ctx.params.name
+  if (!ctx.state.isAdmin && name !== ctx.state.username) {
+    setErrMsg(ctx, 'operation not permitted')
+    logger.warn(`${ctx.state.username} ${ctx.method} ${ctx.params.name}`)
+    return ctx.status = 401
+  }
+  return User.findByIdAndUpdate(name, ctx.request.body, {
+    runValidators: true
   })
-  .delete(ctx => {
-    const name = `${ctx.params.name}`
-    return User.findByIdAndRemove(name)
-    .then(() => {
-      ctx.status = 204
-      ctx.body = {}
-    }, err => {
-      logger.error(`Removing user ${ctx.params.name}: %s`, err)
-      ctx.status = 500
-      setErrMsg(ctx, err.errmsg)
-    })
+  .then((data) => {
+    if (data === null) {
+      setErrMsg(ctx, `no such user: ${name}`)
+      return ctx.status = 404
+    }
+    ctx.status = 204
+  })
+  .catch(err => {
+    logger.error(`Updating user ${name}: %s`, err)
+    ctx.status = 500
+    setErrMsg(ctx, err.errmsg)
+  })
+})
 
+.use('/users/:name', isAuthorized, isAdmin, JSONParser)
+.get(async ctx => {
+  const name = ctx.params.name
+  const user = await User.findById(name, { password: false })
+  if (user === null) {
+    ctx.status = 404
+    setErrMsg(ctx, `no such user ${name}`)
+  } else {
+    ctx.body = user
+  }
+})
+.post(ctx => {
+  const body = ctx.request.body
+  const newUser = {
+    name: ctx.params.name,
+    password: body.password,
+    admin: !!body.admin
+  }
+  return User.create(newUser)
+  .then(() => {
+    ctx.status = 201
+    ctx.body = {}
+  }, err => {
+    logger.error(`Creating user ${ctx.params.name}: %s`, err)
+    ctx.status = 400
+    setErrMsg(ctx, err.errmsg)
   })
+})
+.delete(ctx => {
+  const name = ctx.params.name
+  return User.findByIdAndRemove(name)
+  .then(() => {
+    ctx.status = 204
+  }, err => {
+    logger.error(`Removing user ${ctx.params.name}: %s`, err)
+    ctx.status = 500
+    setErrMsg(ctx, err.errmsg)
+  })
+
+})
+
+routerProxy.use('/config', isAuthorized)
+.get((ctx) => {
+  return Repo.find()
+    .sort({ _id: 1 }).exec()
+    .then(docs => {
+      ctx.body = docs
+    })
+    .catch(console.error)
+})
+.post(isAdmin, JSONParser, (ctx) => {
+  const repos = ctx.request.body
+  return Repo.create(repos)
+    .then(() => {
+      ctx.status = 200
+    })
+    .catch(console.error)
+})
 
 export default router.routes()
