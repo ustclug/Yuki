@@ -64,6 +64,10 @@ class Scheduler {
     return true
   }
 
+  addCusJob(name, spec, cb) {
+    return schedule.scheduleJob(name, spec, cb)
+  }
+
   cancelJob(name) {
     return schedule.cancelJob(name)
   }
