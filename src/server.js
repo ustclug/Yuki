@@ -66,4 +66,12 @@ if (!CONFIG.isTest) {
       schedule.addJob(doc.name, doc.interval)
     })
   })
+
+  schedule.addCusJob('upgradeImages', CONFIG.IMAGES_UPGRADE_INTERVAL, () => {
+    CONFIG._images.forEach(tag => {
+      docker.pull(tag)
+      .catch(console.error)
+    })
+  })
+  logger.info('Scheduled images upgrade')
 }
