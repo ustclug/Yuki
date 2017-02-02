@@ -34,6 +34,10 @@ const req = function(path, data, method, apiroot = API_ROOT) {
   })
 }
 
+const md5hash = function(text) {
+  return createHash('md5').update(text).digest('hex')
+}
+
 program
   .version(meta.version)
 
@@ -41,7 +45,7 @@ program
   .command('login <username> <password>')
   .description('log in to remote registry')
   .action((username, password) => {
-    password = createHash('md5').update(password).digest('hex')
+    password = md5hash(password)
     req('auth', { username, password })
     .then(async (res) => {
       const content = await res.json()
@@ -84,7 +88,90 @@ program
   })
 
 program
-  .command('rmuser <name>')
+  .command('whoami')
+  .description('print current user')
+  .action(() => {
+    req('auth')
+    .then(async (res) => {
+      const data = await res.json()
+      if (res.ok) {
+        console.log(`name: ${data.name}`)
+        console.log(`admin: ${data.admin}`)
+      } else {
+        console.error(data.message)
+      }
+    })
+  })
+
+program
+  .command('user-list [name]')
+  .description('list user(s)')
+  .action((name) => {
+    const u = name ? `users/${name}` : 'users'
+    req(u)
+    .then(async (res) => {
+      const data = await res.json()
+      const output = (user) => {
+        const token = user.token === undefined ? 'secret' : user.token
+        const admin = user.admin === undefined ? 'secret' : user.admin
+        console.log(`${user.name}:`)
+        console.log(`\tToken: ${token}`)
+        console.log(`\tAdministrator: ${admin}`)
+      }
+      if (res.ok) {
+        Array.isArray(data) ? data.forEach(output) : output(data)
+      } else {
+        console.error(data.message)
+      }
+    })
+    .catch(console.error)
+  })
+
+program
+  .command('user-add')
+  .option('-n --name <name>', 'username')
+  .option('-p --pass <password>', 'password')
+  .option('-r --role <role>', 'role of user [admin,normal]', /^(admin|normal)$/i, 'normal')
+  .description('create user')
+  .action((options) => {
+    if (!options.name || !options.pass) {
+      console.error('Please tell me the username and password')
+      return
+    }
+    req(`users/${options.name}`, {
+      password: md5hash(options.pass),
+      admin: options.role === 'admin'
+    })
+    .then(res => {
+      res.body.pipe(res.ok ? process.stdout : process.stderr)
+    })
+  })
+
+program
+  .command('user-update <name>')
+  .option('-p --pass <password>', 'password')
+  .option('-r --role <role>', 'role of user [admin,normal]', /^(admin|normal)$/i)
+  .description('update user profile')
+  .action((name, options) => {
+    if (typeof options.role === 'undefined' &&
+        typeof options.pass === 'undefined') {
+      return console.error('Nothing changes')
+    }
+    const payload = {}
+    if (options.role) {
+      payload.admin = options.role === 'admin'
+    }
+    if (options.pass) {
+      payload.password = md5hash(options.pass)
+    }
+    req(`users/${name}`, payload, 'PUT')
+    .then(res => {
+      res.body.pipe(res.ok ? process.stdout : process.stderr)
+    })
+  })
+
+program
+  .command('user-rm <name>')
   .description('remove user')
   .action((name, options) => {
     req(`users/${name}`, null, 'DELETE')
@@ -94,30 +181,34 @@ program
   })
 
 program
-  .command('repos')
-  .description('list all repositories')
-  .action(() => {
-    req('repositories')
-    .then(res => {
+  .command('repo-list [repo]')
+  .description('list repository(s)')
+  .action((repo) => {
+    const u = repo ? `repositories/${repo}` : 'repositories'
+    req(u)
+    .then(async res => {
       if (res.ok) {
-        return res.json()
+        const data = await res.json()
+
+        let repos = null
+        if (!Array.isArray(data)) repos = [data]
+        else repos = data
+
+        for (const repo of repos) {
+          console.log(`${repo.name}:`)
+          console.log(`\timage: ${repo.image}`)
+          console.log(`\tinterval: ${repo.interval}`)
+        }
+
       } else {
         res.body.pipe(process.stderr)
-        return []
-      }
-    })
-    .then(repos => {
-      for (const repo of repos) {
-        console.log(`${repo.name}:`)
-        console.log(`\timage: ${repo.image}`)
-        console.log(`\tinterval: ${repo.interval}`)
       }
     })
     .catch(console.error)
   })
 
 program
-  .command('rmrepo <repo>')
+  .command('repo-rm <repo>')
   .description('manually remove repository')
   .action((repo) => {
     req(`repositories/${repo}`, null, 'DELETE')
@@ -128,55 +219,39 @@ program
   })
 
 program
-  .command('containers')
+  .command('ct-list')
   .description('list all containers')
   .action(() => {
     req('containers')
-    .then(res => {
+    .then(async (res) => {
       if (res.ok) {
-        return res.json()
+        const data = await res.json()
+        for (const ct of data) {
+          console.log(`${ct.Names[0]}:`)
+          console.log(`\tCreated: ${getLocalTime(ct.Created)}`)
+          console.log(`\tState: ${ct.State}`)
+          console.log(`\tStatus: ${ct.Status}`)
+        }
       } else {
         res.body.pipe(process.stderr)
-        return []
-      }
-    })
-    .then(cts => {
-      for (const ct of cts) {
-        console.log(`${ct.Names[0]}:`)
-        console.log(`\tCreated: ${getLocalTime(ct.Created)}`)
-        console.log(`\tState: ${ct.State}`)
-        console.log(`\tStatus: ${ct.Status}`)
       }
     })
     .catch(console.error)
   })
 
 program
-  .command('sync <repo>')
-  .description('sync')
-  .option('-v, --verbose', 'debug mode')
-  .action((repo, options) => {
-    const url = (options.verbose) ?
-      `repositories/${repo}/sync?debug=true` :
-      `repositories/${repo}/sync`
-
-    req(url, null, 'POST')
-    .then(async res => {
-      if (res.ok) {
-        res.body.pipe(process.stdout)
-        res.body.on('end', () => {
-          console.log('!!! Please manually remove the container !!!')
-        })
-      } else {
-        const data = await res.json()
-        console.error(data)
-      }
+  .command('ct-rm <repo>')
+  .description('manually remove container')
+  .action((repo) => {
+    req(`containers/${repo}`, null, 'DELETE')
+    .then(res => {
+      res.body.pipe(res.ok ? process.stdout : process.stderr)
     })
     .catch(console.error)
   })
 
 program
-  .command('logs <repo>')
+  .command('ct-logs <repo>')
   .description('capture container logs')
   .option('-f, --follow', 'follow log output')
   .action((repo, options) => {
@@ -192,23 +267,56 @@ program
   })
 
 program
-  .command('rmct <repo>')
-  .description('manually remove container')
-  .action((repo) => {
-    req(`containers/${repo}`, null, 'DELETE')
-    .then(res => {
-      res.body.pipe(res.ok ? process.stdout : process.stderr)
-    })
-    .catch(console.error)
+  .command('sync <repo>')
+  .description('sync')
+  .option('-v, --verbose', 'debug mode')
+  .action((repo, options) => {
+    const url = (options.verbose) ?
+      `repositories/${repo}/sync?debug=true` :
+      `repositories/${repo}/sync`
+
+    req(url, null, 'POST')
+      .then(async res => {
+        if (res.ok) {
+          res.body.pipe(process.stdout)
+          res.body.on('end', () => {
+            console.log('!!! Please manually remove the container !!!')
+          })
+        } else {
+          const data = await res.json()
+          console.error(data.message)
+        }
+      })
+      .catch(console.error)
   })
 
 program
   .command('export [file]')
   .description('export configuration')
+  .action((file) => {
+    file = path.resolve(process.cwd(), file ? file : 'repositories.json')
+    const fout = fs.createWriteStream(file)
+    req('config')
+    .then(async (res) => {
+      if (res.ok) {
+        res.body.pipe(fout)
+      } else {
+        res.body.pipe(process.stderr)
+      }
+    })
+  })
 
 program
   .command('import <file>')
   .description('import configuration')
+  .action((file) => {
+    file = path.resolve(file)
+    const data = require(file)
+    req('config', data)
+    .then(res => {
+      res.body.pipe(res.ok ? process.stdout : process.stderr)
+    })
+  })
 
 program
   .command('*')
