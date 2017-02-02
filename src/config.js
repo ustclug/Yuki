@@ -50,8 +50,11 @@ for (const fp of fps) {
 }
 
 
-if (!defaultCfg.isTest && !defaultCfg.BIND_ADDR) {
-  console.error('Need to specify <BIND_ADDR> in configuration')
+if (!(defaultCfg.isTest ||
+    process.argv[2] !== 'daemon' ||
+    defaultCfg.BIND_ADDRESS))
+{
+  console.error('Need to specify <BIND_ADDRESS> in configuration')
   process.exit(1)
 }
 
