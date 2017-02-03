@@ -23,6 +23,16 @@ try {
   auths = {}
 }
 
+(function(fp) {
+  const d = path.dirname(fp)
+  try {
+    fs.statSync(d)
+    return
+  } catch (e) {
+    fs.mkdirSync(d)
+  }
+})(AUTH_RECORD)
+
 url.join = function(...eles) {
   return eles.reduce((sum, ele) => url.resolve(sum, ele), '')
 }
@@ -306,11 +316,11 @@ program
   .command('export [file]')
   .description('export configuration')
   .action((file) => {
-    file = path.resolve(process.cwd(), file ? file : 'repositories.json')
-    const fout = fs.createWriteStream(file)
     req('config')
     .then(async (res) => {
       if (res.ok) {
+        file = path.resolve(process.cwd(), file ? file : 'repositories.json')
+        const fout = fs.createWriteStream(file)
         res.body.pipe(fout)
       } else {
         res.body.pipe(process.stderr)
