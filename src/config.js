@@ -6,6 +6,13 @@ if (!process.env.NODE_ENV) {
   process.env.NODE_ENV = 'production'
 }
 
+function merge(target, src, prefix = '') {
+  Object.keys(target).forEach(k => {
+    if (typeof src[`${prefix}${k}`] !== 'undefined')
+      target[k] = src[`${prefix}${k}`]
+  })
+}
+
 const defaultCfg = {
   // For server
   DB_USER: '',
@@ -23,18 +30,14 @@ const defaultCfg = {
   LOGDIR_ROOT: '/var/log/ustcmirror',
   IMAGES_UPGRADE_INTERVAL: '1 * * * *',
   OWNER: `${process.getuid()}:${process.getgid()}`,
-  isProd: process.env.NODE_ENV.startsWith('prod'),
-  isDev: process.env.NODE_ENV.startsWith('dev'),
-  isTest: process.env.NODE_ENV.startsWith('test'),
 
   // For client
   API_ROOT: '',
 }
 
+defaultCfg.API_ROOT = `http://localhost:${defaultCfg.API_PORT}/`
 const path = require('path')
 const fps = ['/etc/ustcmirror/config', path.join(process.env['HOME'], '.ustcmirror/config')]
-
-defaultCfg.API_ROOT = `http://localhost:${defaultCfg.API_PORT}/`
 
 for (const fp of fps) {
   let cfg
@@ -46,9 +49,14 @@ for (const fp of fps) {
     }
     continue
   }
-  Object.assign(defaultCfg, cfg)
+  merge(defaultCfg, cfg)
 }
 
+merge(defaultCfg, process.env, 'YUKI_')
+
+defaultCfg.isDev = process.env.NODE_ENV.startsWith('dev')
+defaultCfg.isProd = process.env.NODE_ENV.startsWith('prod')
+defaultCfg.isTest = process.env.NODE_ENV.startsWith('test')
 
 if (!(defaultCfg.isTest ||
     process.argv[2] !== 'daemon' ||
