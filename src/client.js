@@ -301,9 +301,11 @@ program
       .then(async res => {
         if (res.ok) {
           res.body.pipe(process.stdout)
-          res.body.on('end', () => {
-            console.log('!!! Please manually remove the container !!!')
-          })
+          if (options.verbose) {
+            res.body.on('end', () => {
+              console.log('!!! Please manually remove the container !!!')
+            })
+          }
         } else {
           const data = await res.json()
           console.error(data.message)
