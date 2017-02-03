@@ -97,9 +97,30 @@ program
       if (res.ok) {
         console.log(`name: ${data.name}`)
         console.log(`admin: ${data.admin}`)
+        console.log(`registry: ${API_ROOT}`)
       } else {
         console.error(data.message)
       }
+    })
+  })
+
+program
+  .command('user-add')
+  .option('-n --name <name>', 'username')
+  .option('-p --pass <password>', 'password')
+  .option('-r --role <role>', 'role of user [admin,normal]', /^(admin|normal)$/i, 'normal')
+  .description('create user')
+  .action((options) => {
+    if (!options.name || !options.pass) {
+      console.error('Please tell me the username and password')
+      return
+    }
+    req(`users/${options.name}`, {
+      password: md5hash(options.pass),
+      admin: options.role === 'admin'
+    })
+    .then(res => {
+      res.body.pipe(res.ok ? process.stdout : process.stderr)
     })
   })
 
@@ -125,26 +146,6 @@ program
       }
     })
     .catch(console.error)
-  })
-
-program
-  .command('user-add')
-  .option('-n --name <name>', 'username')
-  .option('-p --pass <password>', 'password')
-  .option('-r --role <role>', 'role of user [admin,normal]', /^(admin|normal)$/i, 'normal')
-  .description('create user')
-  .action((options) => {
-    if (!options.name || !options.pass) {
-      console.error('Please tell me the username and password')
-      return
-    }
-    req(`users/${options.name}`, {
-      password: md5hash(options.pass),
-      admin: options.role === 'admin'
-    })
-    .then(res => {
-      res.body.pipe(res.ok ? process.stdout : process.stderr)
-    })
   })
 
 program
@@ -260,6 +261,17 @@ program
       `containers/${repo}/logs`
 
     req(url)
+    .then(res => {
+      res.body.pipe(res.ok ? process.stdout : process.stderr)
+    })
+    .catch(console.error)
+  })
+
+program
+  .command('images-update')
+  .description('update ustcmirror images')
+  .action(() => {
+    req('images/update', null, 'POST')
     .then(res => {
       res.body.pipe(res.ok ? process.stdout : process.stderr)
     })
