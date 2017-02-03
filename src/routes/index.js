@@ -6,6 +6,7 @@ import path from 'path'
 import stream from 'stream'
 import koarouter from 'koa-router'
 import bodyParser from 'koa-bodyparser'
+import Promise from 'bluebird'
 import docker from '../docker'
 import { Repository as Repo, User} from '../models'
 import CONFIG from '../config'
@@ -326,11 +327,25 @@ routerProxy.get('/repositories', (ctx) => {
     return ct[action]()
       .then(() => ctx.status = 204)
       .catch(err => {
+        logger.error(`${action} container: %s`, err)
         ctx.status = err.statusCode
         ctx.message = err.reason
         ctx.body = err.json
       })
   })
+})
+
+routerProxy.post('/images/update', isAuthorized, async (ctx) => {
+  return Promise.all(CONFIG._images.map(tag => docker.pull(tag)))
+    .then((data) => {
+      ctx.status = 200
+    })
+    .catch(err => {
+      logger.error('Update images: %s', err)
+      ctx.status = err.statusCode
+      ctx.message = err.reason
+      ctx.body = err.json
+    })
 })
 
 routerProxy.get('/users', isAuthorized, async (ctx) => {
