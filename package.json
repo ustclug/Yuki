@@ -1,6 +1,6 @@
 {
-  "name": "Yuki",
-  "version": "0.0.1",
+  "name": "ustcmirror",
+  "version": "0.1.0",
   "description": "Aims to provide effortless management of docker containers on USTC Mirrors",
   "main": "dist/index.js",
   "repository": "https://github.com/ustclug/ustcmirror",
@@ -18,6 +18,7 @@
   "author": "knight_42 <anonymousknight96@gmail.com>",
   "license": "MIT",
   "dependencies": {
+    "babel-runtime": "^6.22.0",
     "bluebird": "^3.4.7",
     "commander": "^2.9.0",
     "dockode": "^1.0.1",
@@ -39,10 +40,11 @@
     "node": ">=6"
   },
   "devDependencies": {
-    "ava": "^0.17.0",
+    "ava": "^0.18.0",
     "babel-cli": "^6.22.2",
     "babel-eslint": "^7.1.1",
     "babel-plugin-transform-runtime": "^6.22.0",
+    "babel-plugin-add-module-exports": "^0.2.1",
     "babel-preset-babili": "^0.0.10",
     "babel-preset-env": "^1.1.6",
     "babel-register": "^6.22.0",
