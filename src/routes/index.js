@@ -285,11 +285,13 @@ routerProxy.get('/repositories', (ctx) => {
 .get('/containers/:repo/logs', isAuthorized, (ctx) => {
   const name = `${PREFIX}-${ctx.params.repo}`
   const follow = !!ctx.query.follow
+  const tail = ctx.query.tail || 'all'
 
   const ct = docker.getContainer(name)
   const opts = {
     stdout: true,
     stderr: true,
+    tail,
     follow
   }
   if (!follow) {

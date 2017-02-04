@@ -273,7 +273,7 @@ program
   .command('ct-logs <repo>')
   .description('capture container logs')
   .option('-f, --follow', 'follow log output')
-  .option('-t, --tail <num>', 'specify lines of logs at the end', /^(all|\d+)$/, 'all')
+  .option('--tail <num>', 'specify lines of logs at the end', /^(all|\d+)$/, 'all')
   .action((repo, opts) => {
     const tail = opts.tail
     let url = `containers/${repo}/logs?tail=${tail}`
