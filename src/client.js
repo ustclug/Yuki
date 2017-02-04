@@ -37,7 +37,10 @@ url.join = function(...eles) {
   return eles.reduce((sum, ele) => url.resolve(sum, ele), '')
 }
 
-const req = function(path, data, method, apiroot = API_ROOT) {
+const req = function(apiroot, path, data, method) {
+  if (!apiroot.startsWith('http')) apiroot = `http://${apiroot}`
+  if (!apiroot.endsWith('/')) apiroot += '/'
+
   const api = url.join(apiroot, 'api/v1/', path)
   return request(api, data, method, {
     headers: { [TOKEN_NAME]: auths[apiroot] || '' }
@@ -50,13 +53,14 @@ const md5hash = function(text) {
 
 program
   .version(meta.version)
+  .option('--apiroot <url>', `base url of remote registry (default ${API_ROOT})`, API_ROOT)
 
 program
   .command('login <username> <password>')
   .description('log in to remote registry')
-  .action((username, password) => {
+  .action((username, password, opts) => {
     password = md5hash(password)
-    req('auth', { username, password })
+    req(opts.parent.apiroot, 'auth', { username, password })
     .then(async (res) => {
       const content = await res.json()
       if (res.ok) {
@@ -100,8 +104,8 @@ program
 program
   .command('whoami')
   .description('print current user')
-  .action(() => {
-    req('auth')
+  .action((opts) => {
+    req(opts.parent.apiroot, 'auth')
     .then(async (res) => {
       const data = await res.json()
       if (res.ok) {
@@ -112,6 +116,7 @@ program
         console.error(data.message)
       }
     })
+    .catch(console.error)
   })
 
 program
@@ -120,26 +125,27 @@ program
   .option('-p --pass <password>', 'password')
   .option('-r --role <role>', 'role of user [admin,normal]', /^(admin|normal)$/i, 'normal')
   .description('create user')
-  .action((options) => {
-    if (!options.name || !options.pass) {
+  .action((opts) => {
+    if (!opts.name || !opts.pass) {
       console.error('Please tell me the username and password')
       return
     }
-    req(`users/${options.name}`, {
-      password: md5hash(options.pass),
-      admin: options.role === 'admin'
+    req(opts.parent.apiroot, `users/${opts.name}`, {
+      password: md5hash(opts.pass),
+      admin: opts.role === 'admin'
     })
     .then(res => {
       res.body.pipe(res.ok ? process.stdout : process.stderr)
     })
+    .catch(console.error)
   })
 
 program
   .command('user-list [name]')
   .description('list user(s)')
-  .action((name) => {
+  .action((name, opts) => {
     const u = name ? `users/${name}` : 'users'
-    req(u)
+    req(opts.parent.apiroot, u)
     .then(async (res) => {
       const data = await res.json()
       const output = (user) => {
@@ -163,40 +169,42 @@ program
   .option('-p --pass <password>', 'password')
   .option('-r --role <role>', 'role of user [admin,normal]', /^(admin|normal)$/i)
   .description('update user profile')
-  .action((name, options) => {
-    if (typeof options.role === 'undefined' &&
-        typeof options.pass === 'undefined') {
+  .action((name, opts) => {
+    if (typeof opts.role === 'undefined' &&
+        typeof opts.pass === 'undefined') {
       return console.error('Nothing changes')
     }
     const payload = {}
-    if (options.role) {
-      payload.admin = options.role === 'admin'
+    if (opts.role) {
+      payload.admin = opts.role === 'admin'
     }
-    if (options.pass) {
-      payload.password = md5hash(options.pass)
+    if (opts.pass) {
+      payload.password = md5hash(opts.pass)
     }
-    req(`users/${name}`, payload, 'PUT')
+    req(opts.parent.apiroot, `users/${name}`, payload, 'PUT')
     .then(res => {
       res.body.pipe(res.ok ? process.stdout : process.stderr)
     })
+    .catch(console.error)
   })
 
 program
   .command('user-rm <name>')
   .description('remove user')
-  .action((name, options) => {
-    req(`users/${name}`, null, 'DELETE')
+  .action((name, opts) => {
+    req(opts.parent.apiroot, `users/${name}`, null, 'DELETE')
     .then(res => {
       res.body.pipe(res.ok ? process.stdout : process.stderr)
     })
+    .catch(console.error)
   })
 
 program
   .command('repo-list [repo]')
   .description('list repository(s)')
-  .action((repo) => {
+  .action((repo, opts) => {
     const u = repo ? `repositories/${repo}` : 'repositories'
-    req(u)
+    req(opts.parent.apiroot, u)
     .then(async res => {
       if (res.ok) {
         const data = await res.json()
@@ -221,8 +229,8 @@ program
 program
   .command('repo-rm <repo>')
   .description('manually remove repository')
-  .action((repo) => {
-    req(`repositories/${repo}`, null, 'DELETE')
+  .action((repo, opts) => {
+    req(opts.parent.apiroot, `repositories/${repo}`, null, 'DELETE')
     .then(res => {
       res.body.pipe(res.ok ? process.stdout : process.stderr)
     })
@@ -232,8 +240,8 @@ program
 program
   .command('ct-list')
   .description('list all containers')
-  .action(() => {
-    req('containers')
+  .action((opts) => {
+    req(opts.parent.apiroot, 'containers')
     .then(async (res) => {
       if (res.ok) {
         const data = await res.json()
@@ -253,8 +261,8 @@ program
 program
   .command('ct-rm <repo>')
   .description('manually remove container')
-  .action((repo) => {
-    req(`containers/${repo}`, null, 'DELETE')
+  .action((repo, opts) => {
+    req(opts.parent.apiroot, `containers/${repo}`, null, 'DELETE')
     .then(res => {
       res.body.pipe(res.ok ? process.stdout : process.stderr)
     })
@@ -265,12 +273,13 @@ program
   .command('ct-logs <repo>')
   .description('capture container logs')
   .option('-f, --follow', 'follow log output')
-  .action((repo, options) => {
-    const url = options.follow ?
-      `containers/${repo}/logs?follow=true` :
-      `containers/${repo}/logs`
+  .option('-t, --tail <num>', 'specify lines of logs at the end', /^(all|\d+)$/, 'all')
+  .action((repo, opts) => {
+    const tail = opts.tail
+    let url = `containers/${repo}/logs?tail=${tail}`
+    if (opts.follow) url += '&follow=true'
 
-    req(url)
+    req(opts.parent.apiroot, url)
     .then(res => {
       res.body.pipe(res.ok ? process.stdout : process.stderr)
     })
@@ -280,8 +289,8 @@ program
 program
   .command('images-update')
   .description('update ustcmirror images')
-  .action(() => {
-    req('images/update', null, 'POST')
+  .action((opts) => {
+    req(opts.parent.apiroot, 'images/update', null, 'POST')
     .then(res => {
       res.body.pipe(res.ok ? process.stdout : process.stderr)
     })
@@ -292,16 +301,16 @@ program
   .command('sync <repo>')
   .description('sync')
   .option('-v, --verbose', 'debug mode')
-  .action((repo, options) => {
-    const url = (options.verbose) ?
+  .action((repo, opts) => {
+    const url = (opts.verbose) ?
       `repositories/${repo}/sync?debug=true` :
       `repositories/${repo}/sync`
 
-    req(url, null, 'POST')
+    req(opts.parent.apiroot, url, null, 'POST')
       .then(async res => {
         if (res.ok) {
           res.body.pipe(process.stdout)
-          if (options.verbose) {
+          if (opts.verbose) {
             res.body.on('end', () => {
               console.log('!!! Please manually remove the container !!!')
             })
@@ -317,8 +326,8 @@ program
 program
   .command('export [file]')
   .description('export configuration')
-  .action((file) => {
-    req('config')
+  .action((file, opts) => {
+    req(opts.parent.apiroot, 'config')
     .then(async (res) => {
       if (res.ok) {
         file = path.resolve(process.cwd(), file ? file : 'repositories.json')
@@ -328,18 +337,20 @@ program
         res.body.pipe(process.stderr)
       }
     })
+    .catch(console.error)
   })
 
 program
   .command('import <file>')
   .description('import configuration')
-  .action((file) => {
+  .action((file, opts) => {
     file = path.resolve(file)
     const data = require(file)
-    req('config', data)
+    req(opts.parent.apiroot, 'config', data)
     .then(res => {
       res.body.pipe(res.ok ? process.stdout : process.stderr)
     })
+    .catch(console.error)
   })
 
 program
@@ -347,3 +358,7 @@ program
   .action(() => program.outputHelp())
 
 program.parse(process.argv)
+
+if (process.argv.length === 2) {
+  program.outputHelp()
+}
