@@ -74,6 +74,7 @@ const JSONParser = bodyParser({
 router.use(auth)
 
 routerProxy
+  // Return username and admin according to token
   .get('/auth', isAuthorized, (ctx) => {
     if (ctx.state.username) {
       ctx.body = {
@@ -86,6 +87,7 @@ routerProxy
       ctx.status = 404
     }
   })
+  // Create new user
   .post(JSONParser, async (ctx) => {
     const name = ctx.request.body.username
     const pwHash = ctx.request.body.password
@@ -349,10 +351,12 @@ routerProxy.get('/users', isAuthorized, async (ctx) => {
 })
 .put('/users/:name', isAuthorized, JSONParser, ctx => {
   const name = ctx.params.name
-  if (!ctx.state.isAdmin && name !== ctx.state.username) {
-    setErrMsg(ctx, 'operation not permitted')
-    logger.warn(`${ctx.state.username} ${ctx.method} ${ctx.params.name}`)
-    return ctx.status = 401
+  if (!ctx.state.isAdmin) {
+    if (name !== ctx.state.username || ctx.request.body.admin) {
+      setErrMsg(ctx, 'operation not permitted')
+      logger.warn(`${ctx.state.username} tried to update ${ctx.params.name}`)
+      return ctx.status = 401
+    }
   }
   return User.findByIdAndUpdate(name, ctx.request.body, {
     runValidators: true
@@ -371,7 +375,7 @@ routerProxy.get('/users', isAuthorized, async (ctx) => {
   })
 })
 
-.use('/users/:name', isAuthorized, isAdmin, JSONParser)
+.use('/users/:name', isAuthorized, isAdmin)
 .get(async ctx => {
   const name = ctx.params.name
   const user = await User.findById(name, { password: false })
@@ -382,7 +386,7 @@ routerProxy.get('/users', isAuthorized, async (ctx) => {
     ctx.body = user
   }
 })
-.post(ctx => {
+.post(JSONParser, ctx => {
   const body = ctx.request.body
   const newUser = {
     name: ctx.params.name,
