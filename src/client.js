@@ -37,18 +37,22 @@ url.join = function(...eles) {
   return eles.reduce((sum, ele) => url.resolve(sum, ele), '')
 }
 
-const req = function(apiroot, path, data, method) {
-  if (!apiroot.startsWith('http')) apiroot = `http://${apiroot}`
-  if (!apiroot.endsWith('/')) apiroot += '/'
+const md5hash = function(text) {
+  return createHash('md5').update(text).digest('hex')
+}
 
+const normalizeUrl = (u) => {
+  if (!u.startsWith('http')) u = `http://${u}`
+  if (!u.endsWith('/')) u += '/'
+  return u
+}
+
+const req = function(apiroot, path, data, method) {
+  apiroot = normalizeUrl(apiroot)
   const api = url.join(apiroot, 'api/v1/', path)
   return request(api, data, method, {
     headers: { [TOKEN_NAME]: auths[apiroot] || '' }
   })
-}
-
-const md5hash = function(text) {
-  return createHash('md5').update(text).digest('hex')
 }
 
 program
@@ -60,16 +64,17 @@ program
   .description('log in to remote registry')
   .action((username, password, opts) => {
     password = md5hash(password)
-    req(opts.parent.apiroot, 'auth', { username, password })
+    const apiroot = normalizeUrl(opts.parent.apiroot)
+    req(apiroot, 'auth', { username, password })
     .then(async (res) => {
       const content = await res.json()
       if (res.ok) {
         console.log('Login succeeded!')
 
-        if (typeof auths[API_ROOT] === 'undefined' ||
-            auths[API_ROOT] !== content.token)
+        if (typeof auths[apiroot] === 'undefined' ||
+            auths[apiroot] !== content.token)
         {
-          auths[API_ROOT] = content.token
+          auths[apiroot] = content.token
           return new Promise((ful, rej) => {
             fs.writeFile(AUTH_RECORD, JSON.stringify(auths, null, 4), err => {
               if (err) return rej(err)
@@ -87,17 +92,18 @@ program
 program
   .command('logout')
   .description('log out from remote registry')
-  .action(() => {
-    if (typeof auths[API_ROOT] === 'string') {
-      delete auths[API_ROOT]
+  .action((opts) => {
+    const apiroot = normalizeUrl(opts.parent.apiroot)
+    if (typeof auths[apiroot] === 'string') {
+      delete auths[apiroot]
       fs.writeFile(AUTH_RECORD, JSON.stringify(auths, null, 4), err => {
         if (err) {
           return console.error(err)
         }
-        console.log(`Remove token for ${API_ROOT}`)
+        console.log(`Remove token for ${apiroot}`)
       })
     } else {
-      console.error(`Not logged in to ${API_ROOT}`)
+      console.error(`Not logged in to ${apiroot}`)
     }
   })
 
@@ -105,13 +111,14 @@ program
   .command('whoami')
   .description('print current user')
   .action((opts) => {
+    const apiroot = normalizeUrl(opts.parent.apiroot)
     req(opts.parent.apiroot, 'auth')
     .then(async (res) => {
       const data = await res.json()
       if (res.ok) {
         console.log(`name: ${data.name}`)
         console.log(`admin: ${data.admin}`)
-        console.log(`registry: ${API_ROOT}`)
+        console.log(`registry: ${apiroot}`)
       } else {
         console.error(data.message)
       }
