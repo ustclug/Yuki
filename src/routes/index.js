@@ -73,8 +73,8 @@ const JSONParser = bodyParser({
 
 router.use(auth)
 
-routerProxy.use('/auth', JSONParser)
-  .get(isAuthorized, (ctx) => {
+routerProxy
+  .get('/auth', isAuthorized, (ctx) => {
     if (ctx.state.username) {
       ctx.body = {
         name: ctx.state.username,
@@ -86,7 +86,7 @@ routerProxy.use('/auth', JSONParser)
       ctx.status = 404
     }
   })
-  .post(async (ctx) => {
+  .post(JSONParser, async (ctx) => {
     const name = ctx.request.body.username
     const pwHash = ctx.request.body.password
     const token = await User.findOne({
@@ -294,35 +294,21 @@ routerProxy.get('/repositories', (ctx) => {
     tail,
     follow
   }
-  if (!follow) {
-    return ct.logs(opts)
-      .then(data => {
-        ctx.body = data
-      })
-      .catch(err => {
-        ctx.status = err.statusCode
-        //ctx.message = err.reason
-        // FIXME: Inconsistent behaviour because of docker-modem
-        // err.json is null
-        //ctx.body = err.json
-        setErrMsg(ctx, err.reason)
-      })
-  } else {
-    return ct.logs(opts)
-      .then(s => {
-        const logStream = new stream.PassThrough()
-        s.on('end', () => logStream.end())
-        ct.modem.demuxStream(s, logStream, logStream)
-        ctx.body = logStream
-      })
-      .catch(err => {
-        ctx.status = err.statusCode
-        setErrMsg(ctx, err.reason)
-      })
-  }
-});
+  return ct.logs(opts)
+    .then(s => {
+      const logStream = new stream.PassThrough()
+      s.on('end', () => logStream.end())
+      ct.modem.demuxStream(s, logStream, logStream)
+      ctx.body = logStream
+    })
+    .catch(err => {
+      ctx.status = err.statusCode
+      setErrMsg(ctx, err.reason)
+    })
+})
 
-['start', 'stop', 'restart', 'pause', 'unpause'].forEach(action => {
+const actions = ['start', 'stop', 'restart', 'pause', 'unpause']
+actions.forEach(action => {
   router.post(`/containers/:repo/${action}`, isAuthorized, ctx => {
     const name = `${PREFIX}-${ctx.params.repo}`
     const ct = docker.getContainer(name)
