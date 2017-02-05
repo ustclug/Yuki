@@ -13,7 +13,7 @@ services:
 before_script:
   - set -e
   - docker run -id -p 127.0.0.1:27017:27017 --name mongo mongo:3.4
-  - npm run build:test
+  - npm run build
 
 script:
   - npm test
