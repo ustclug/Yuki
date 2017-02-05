@@ -246,9 +246,17 @@ routerProxy.get('/repositories', (ctx) => {
 })
 
 .get('/containers', (ctx) => {
-  return docker.listContainers({ all: true })
-    .then((cts) => {
-      ctx.body = cts.filter(info => typeof info.Labels[LABEL] !== 'undefined')
+  return docker.listContainers({
+    all: true,
+    filters: {
+      label: {
+        [LABEL]: true,
+        'ustcmirror.images': true
+      }
+    }
+  })
+    .then((data) => {
+      ctx.body = data
     })
 })
 .delete('/containers/:repo', isAuthorized, (ctx) => {
@@ -368,6 +376,7 @@ routerProxy.get('/users', isAuthorized, async (ctx) => {
   .then((data) => {
     if (data === null) {
       setErrMsg(ctx, `no such user: ${name}`)
+      logger.warn(`${ctx.state.username} tried to update ${ctx.params.name}`)
       return ctx.status = 404
     }
     ctx.status = 204
@@ -404,14 +413,20 @@ routerProxy.get('/users', isAuthorized, async (ctx) => {
   }, err => {
     logger.error(`Creating user ${ctx.params.name}: %s`, err)
     ctx.status = 400
-    setErrMsg(ctx, err.errmsg)
+    setErrMsg(ctx, err.message)
   })
 })
 .delete(ctx => {
   const name = ctx.params.name
   return User.findByIdAndRemove(name)
-  .then(() => {
-    ctx.status = 204
+  .then((user) => {
+    if (user !== null) {
+      ctx.status = 204
+    } else {
+      ctx.status = 404
+      logger.warn(`${ctx.state.username} tried to delete ${ctx.params.name}`)
+      setErrMsg(ctx, `no such user: ${name}`)
+    }
   }, err => {
     logger.error(`Removing user ${ctx.params.name}: %s`, err)
     ctx.status = 500
