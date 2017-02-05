@@ -62,7 +62,7 @@ test('Addon: getLocalTime()', t => {
   t.throws(getLocalTime.bind(null, 1, 2))
 })
 
-test('List repositories', t => {
+test.serial('List repositories', t => {
   return request(`${API}/repositories`)
     .then(res => {
       t.true(res.ok)
@@ -76,17 +76,14 @@ test('List repositories', t => {
     })
 })
 
-test.serial('Get repository', t => {
-  return request(`${API}/repositories/archlinux`)
+test.serial('Remove repository', t => {
+  return request(`${API}/repositories/gmt`, null, 'DELETE')
     .then(res => {
-      t.true(res.ok)
-      return res.json()
+      t.is(res.status, 204)
+      return request(`${API}/repositories/gmt`)
     })
     .then(res => {
-      t.is(res.image, 'ustcmirror/test:latest')
-      t.is(res.interval, '1 1 * * *')
-      t.is(res.storageDir, '/tmp/repos/archlinux')
-      t.is(res.envs[0], 'RSYNC_USER=asdh')
+      t.is(res.status, 404)
     })
 })
 
@@ -115,7 +112,21 @@ test.serial('Update repository', t => {
     })
 })
 
-test('New repository', t => {
+test('Get repository', t => {
+  return request(`${API}/repositories/archlinux`)
+    .then(res => {
+      t.true(res.ok)
+      return res.json()
+    })
+    .then(res => {
+      t.is(res.image, 'ustcmirror/test:latest')
+      t.is(res.interval, '1 1 * * *')
+      t.is(res.storageDir, '/tmp/repos/archlinux')
+      t.is(res.envs[0], 'RSYNC_USER=asdh')
+    })
+})
+
+test('Create repository', t => {
   return request(`${API}/repositories/vim`, {
     image: 'ustcmirror/test:latest',
     interval: '* 5 * * *',
@@ -135,17 +146,6 @@ test('New repository', t => {
       t.is(res.image, 'ustcmirror/test:latest')
       t.is(res.args[0], 'echo')
       t.is(res.storageDir, '/tmp/repos/vim')
-    })
-})
-
-test('Remove repository', t => {
-  return request(`${API}/repositories/gmt`, null, 'DELETE')
-    .then(res => {
-      t.is(res.status, 204)
-      return request(`${API}/repositories/gmt`)
-    })
-    .then(res => {
-      t.is(res.status, 404)
     })
 })
 
