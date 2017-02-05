@@ -141,8 +141,11 @@ program
       password: md5hash(opts.pass),
       admin: opts.role === 'admin'
     })
-    .then(res => {
-      res.body.pipe(res.ok ? process.stdout : process.stderr)
+    .then(async res => {
+      const data = await res.json()
+      if (!res.ok) {
+        console.error(data.message)
+      }
     })
     .catch(console.error)
   })
@@ -189,8 +192,11 @@ program
       payload.password = md5hash(opts.pass)
     }
     req(opts.parent.apiroot, `users/${name}`, payload, 'PUT')
-    .then(res => {
-      res.body.pipe(res.ok ? process.stdout : process.stderr)
+    .then(async res => {
+      const data = await res.json()
+      if (!res.ok) {
+        console.error(data.message)
+      }
     })
     .catch(console.error)
   })
@@ -200,8 +206,11 @@ program
   .description('remove user')
   .action((name, opts) => {
     req(opts.parent.apiroot, `users/${name}`, null, 'DELETE')
-    .then(res => {
-      res.body.pipe(res.ok ? process.stdout : process.stderr)
+    .then(async res => {
+      const data = await res.json()
+      if (!res.ok) {
+        console.error(data.message)
+      }
     })
     .catch(console.error)
   })
@@ -238,8 +247,11 @@ program
   .description('manually remove repository')
   .action((repo, opts) => {
     req(opts.parent.apiroot, `repositories/${repo}`, null, 'DELETE')
-    .then(res => {
-      res.body.pipe(res.ok ? process.stdout : process.stderr)
+    .then(async res => {
+      const data = await res.json()
+      if (!res.ok) {
+        console.error(data.message)
+      }
     })
     .catch(console.error)
   })
@@ -250,8 +262,8 @@ program
   .action((opts) => {
     req(opts.parent.apiroot, 'containers')
     .then(async (res) => {
+      const data = await res.json()
       if (res.ok) {
-        const data = await res.json()
         for (const ct of data) {
           console.log(`${ct.Names[0]}:`)
           console.log(`\tCreated: ${getLocalTime(ct.Created)}`)
@@ -259,7 +271,7 @@ program
           console.log(`\tStatus: ${ct.Status}`)
         }
       } else {
-        res.body.pipe(process.stderr)
+        console.error(data.message)
       }
     })
     .catch(console.error)
@@ -270,8 +282,11 @@ program
   .description('manually remove container')
   .action((repo, opts) => {
     req(opts.parent.apiroot, `containers/${repo}`, null, 'DELETE')
-    .then(res => {
-      res.body.pipe(res.ok ? process.stdout : process.stderr)
+    .then(async res => {
+      const data = await res.json()
+      if (!res.ok) {
+        console.error(data.message)
+      }
     })
     .catch(console.error)
   })
@@ -333,8 +348,11 @@ program
 program
   .command('export [file]')
   .description('export configuration')
+  .option('--pretty', 'human-readable')
   .action((file, opts) => {
-    req(opts.parent.apiroot, 'config')
+    let u = 'config'
+    u += opts.pretty ? '?pretty=1' : ''
+    req(opts.parent.apiroot, u)
     .then(async (res) => {
       if (res.ok) {
         file = path.resolve(process.cwd(), file ? file : 'repositories.json')
