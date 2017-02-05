@@ -4,23 +4,51 @@
 
 require('../dist')
 
-import {API_PORT} from '../dist/config'
+import { API_PORT, TOKEN_NAME } from '../dist/config'
 import test from 'ava'
-import models from '../dist/models'
-import data from './mock.json'
+import { Repository as Repo, User } from '../dist/models'
+import DATA from './mock.json'
 import mongoose from 'mongoose'
 import request from '../dist/request'
 import { isListening, getLocalTime } from '../build/Release/addon.node'
 
-const Repo = models.Repository
-
 test.before(async t => {
   mongoose.createConnection('mongodb://127.0.0.1/test')
-  await Repo.remove({})
-  await Repo.create(data)
+  await Repo.remove()
+  await Repo.create(DATA)
+  await User.remove()
+  await User.create([{
+    name: 'yuki',
+    password: 'longpass',
+    admin: true,
+  }, {
+    name: 'kiana',
+    password: 'password',
+    admin: false,
+  }, {
+    name: 'bronya',
+    password: 'homu',
+    admin: false,
+  }])
 })
 
 const API = `http://localhost:${API_PORT}/api/v1`
+
+const adminToken = {
+  headers: {
+    [TOKEN_NAME]: '97e8bb1a932af6db0a33857d644280906c5a0395'
+  }
+}
+
+const normalToken = {
+  headers: {
+    [TOKEN_NAME]: 'e6960169400e8607f1826ea6260a32763a68f3bc'
+  }
+}
+
+const clone = function(obj) {
+  return Object.assign({}, obj)
+}
 
 test('Addon: isListening()', t => {
   t.true(isListening('127.0.0.1', API_PORT))
@@ -41,9 +69,9 @@ test('List repositories', t => {
       return res.json()
     })
     .then(res => {
-      t.is(res.length, data.length)
+      t.is(res.length, DATA.length)
       for (const r of res) {
-        t.true(typeof r.name !== 'undefined')
+        t.truthy(r.name)
       }
     })
 })
@@ -136,4 +164,88 @@ test('Start a container', t => {
     })
     .then(data => t.is(data.StatusCode, 0))
 
+})
+
+test('List users', async t => {
+  await request(`${API}/users`, null, 'GET', adminToken)
+    .then(res => {
+      t.true(res.ok)
+      return res.json()
+    })
+    .then(res => {
+      for (const r of res) {
+        t.truthy(r.name)
+        t.truthy(r.token)
+      }
+    })
+
+  await request(`${API}/users`, null, 'GET', normalToken)
+    .then(res => {
+      t.true(res.ok)
+      return res.json()
+    })
+    .then(res => {
+      for (const r of res) {
+        t.truthy(r.name)
+        t.falsy(r.token)
+      }
+    })
+})
+
+test.serial('Create user', async t => {
+  await request(`${API}/users/foo`, {
+    password: '3rd',
+    admin: false
+  }, 'POST', clone(adminToken))
+    .then(res => {
+      t.true(res.ok)
+    })
+
+  await request(`${API}/users/foo`, null, 'GET',
+                clone(adminToken))
+    .then(res => {
+      t.true(res.ok)
+      return res.json()
+    })
+    .then(data => {
+      t.true(data.name === 'foo')
+    })
+})
+
+test.serial('Remove user', async t => {
+  await request(`${API}/users/foo`, null, 'DELETE',
+                clone(adminToken))
+    .then(res => {
+      t.true(res.ok)
+      return res.json()
+    })
+
+  await request(`${API}/users/foo`, null, 'GET',
+                clone(adminToken))
+    .then(res => {
+      t.false(res.ok)
+    })
+})
+
+test('Update user profile', async t => {
+  await request(`${API}/users/kiana`, {
+    admin: true
+  }, 'PUT', clone(normalToken))
+    .then(res => {
+      t.false(res.ok)
+    })
+
+  await request(`${API}/users/kiana`, {
+    password: 'asdfqwer'
+  }, 'PUT', clone(normalToken))
+    .then(res => {
+      t.true(res.ok)
+    })
+
+  await request(`${API}/users/bronya`, {
+    admin: true
+  }, 'PUT', clone(adminToken))
+    .then(res => {
+      t.true(res.ok)
+    })
 })
