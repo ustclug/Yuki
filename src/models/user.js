@@ -6,7 +6,12 @@ import mongoose from 'mongoose'
 import { createHash } from 'crypto'
 
 const schema = new mongoose.Schema({
-  _id: String, // username,
+  // username
+  _id: {
+    required: true,
+    type: String,
+    match: /^[-\w]+$/
+  },
   password: {
     required: true,
     type: String
