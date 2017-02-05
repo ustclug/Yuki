@@ -7,6 +7,7 @@
   "scripts": {
     "test": "NODE_ENV=test ava --no-cache",
     "dev": "babel -wd dist src",
+    "pub": "npm run build && npm publish",
     "lint": "eslint src",
     "install": "node-gyp rebuild",
     "build": "NODE_ENV=production babel -d dist src && node-gyp rebuild",
