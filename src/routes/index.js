@@ -422,10 +422,15 @@ routerProxy.get('/users', isAuthorized, async (ctx) => {
 
 routerProxy.use('/config', isAuthorized)
 .get((ctx) => {
+  const pretty = !!ctx.query.pretty
   return Repo.find()
     .sort({ _id: 1 }).exec()
     .then(docs => {
-      ctx.body = docs
+      if (pretty) {
+        ctx.body = JSON.stringify(docs, null, 2)
+      } else {
+        ctx.body = docs
+      }
     })
     .catch(console.error)
 })
