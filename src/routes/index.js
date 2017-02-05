@@ -62,15 +62,19 @@ if (CONFIG.isDev) {
   }
 })
 
-const JSONParser = bodyParser({
+router.use(bodyParser({
   onerror: function(err, ctx) {
     if (err) {
       ctx.status = 400
       setErrMsg(ctx, 'invalid json')
     }
   }
+}), (ctx, next) => {
+  if (ctx.request.body) {
+    ctx.body = ctx.request.body
+  }
+  return next()
 })
-
 router.use(auth)
 
 routerProxy
@@ -88,9 +92,9 @@ routerProxy
     }
   })
   // Create new user
-  .post(JSONParser, async (ctx) => {
-    const name = ctx.request.body.username
-    const pwHash = ctx.request.body.password
+  .post(async (ctx) => {
+    const name = ctx.body.username
+    const pwHash = ctx.body.password
     const token = await User.findOne({
       _id: name,
       password: pwHash
@@ -112,7 +116,7 @@ routerProxy.get('/repositories', (ctx) => {
     .then(data => ctx.body = data)
 })
 
-.use('/repositories/:name', JSONParser)
+.use('/repositories/:name')
   .get((ctx) => {
     const name = ctx.params.name
     return Repo.findById(name)
@@ -131,7 +135,7 @@ routerProxy.get('/repositories', (ctx) => {
       })
   })
   .post(isAuthorized, (ctx) => {
-    const body = ctx.request.body
+    const body = ctx.body
     body.name = ctx.params.name
     if (!dirExists(body.storageDir)) {
       setErrMsg(ctx, `no such directory: ${body.storageDir}`)
@@ -151,7 +155,7 @@ routerProxy.get('/repositories', (ctx) => {
   })
   .put(isAuthorized, (ctx) => {
     const name = ctx.params.name
-    return Repo.findByIdAndUpdate(name, ctx.request.body, {
+    return Repo.findByIdAndUpdate(name, ctx.body, {
       runValidators: true
     })
     .then((repo) => {
@@ -349,16 +353,16 @@ routerProxy.get('/users', isAuthorized, async (ctx) => {
   }
   return ctx.body = users
 })
-.put('/users/:name', isAuthorized, JSONParser, ctx => {
+.put('/users/:name', isAuthorized, ctx => {
   const name = ctx.params.name
   if (!ctx.state.isAdmin) {
-    if (name !== ctx.state.username || ctx.request.body.admin) {
+    if (name !== ctx.state.username || ctx.body.admin) {
       setErrMsg(ctx, 'operation not permitted')
       logger.warn(`${ctx.state.username} tried to update ${ctx.params.name}`)
       return ctx.status = 401
     }
   }
-  return User.findByIdAndUpdate(name, ctx.request.body, {
+  return User.findByIdAndUpdate(name, ctx.body, {
     runValidators: true
   })
   .then((data) => {
@@ -386,8 +390,8 @@ routerProxy.get('/users', isAuthorized, async (ctx) => {
     ctx.body = user
   }
 })
-.post(JSONParser, ctx => {
-  const body = ctx.request.body
+.post(ctx => {
+  const body = ctx.body
   const newUser = {
     name: ctx.params.name,
     password: body.password,
@@ -425,8 +429,8 @@ routerProxy.use('/config', isAuthorized)
     })
     .catch(console.error)
 })
-.post(isAdmin, JSONParser, (ctx) => {
-  const repos = ctx.request.body
+.post(isAdmin, (ctx) => {
+  const repos = ctx.body
   return Repo.create(repos)
     .then(() => {
       ctx.status = 200
