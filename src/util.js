@@ -40,7 +40,6 @@ async function queryOpts({ name, debug = false }) {
   const opts = {
     Image: cfg.image,
     Cmd: cfg.command,
-    User: cfg.user || CONFIG.OWNER,
     Env: cfg.envs,
     AttachStdin: false,
     AttachStdout: false,
@@ -60,7 +59,11 @@ async function queryOpts({ name, debug = false }) {
     },
     name: `${PREFIX}-${name}`,
   }
-  opts.Env.push(`REPO=${name}`, `BIND_ADDRESS=${CONFIG.BIND_ADDRESS}`)
+  opts.Env.push(
+    `REPO=${name}`,
+    `BIND_ADDRESS=${CONFIG.BIND_ADDRESS}`,
+    `OWNER=${cfg.user || CONFIG.OWNER}`
+  )
   if (debug) {
     opts.Env.push('DEBUG=true')
   }
