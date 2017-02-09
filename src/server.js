@@ -45,7 +45,8 @@ if (!CONFIG.isTest) {
     all: true,
     filters: {
       label: {
-        syncing: true
+        syncing: true,
+        'ustcmirror.images': true,
       },
       status: {
         exited: true
@@ -68,9 +69,27 @@ if (!CONFIG.isTest) {
   })
 
   schedule.addCusJob('upgradeImages', CONFIG.IMAGES_UPGRADE_INTERVAL, () => {
+    logger.info('Upgrading images')
     CONFIG._images.forEach(tag => {
       docker.pull(tag)
       .catch(console.error)
+    })
+
+    docker.listImages({
+      all: true,
+      filters: {
+        label: {
+          'ustcmirror.images': true
+        },
+        dangling: {
+          true: true
+        }
+      }
+    })
+    .then(images => {
+      images.forEach(info => {
+        docker.getImage(info.Id).remove().catch(console.error)
+      })
     })
   })
   logger.info('Scheduled images upgrade')
