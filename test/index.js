@@ -9,8 +9,13 @@ import test from 'ava'
 import { Repository as Repo, User } from '../dist/models'
 import DATA from './mock.json'
 import mongoose from 'mongoose'
-import request from '../dist/request'
+import axios from 'axios'
 import { isListening, getLocalTime } from '../build/Release/addon.node'
+
+axios.defaults.validateStatus = (status) => true
+const request = axios.create({
+  baseURL: `http://localhost:${API_PORT}/api/v1/`
+})
 
 test.before(async t => {
   mongoose.createConnection('mongodb://127.0.0.1/test')
@@ -32,8 +37,6 @@ test.before(async t => {
   }])
 })
 
-const API = `http://localhost:${API_PORT}/api/v1`
-
 const adminToken = {
   headers: {
     [TOKEN_NAME]: '97e8bb1a932af6db0a33857d644280906c5a0395'
@@ -44,10 +47,6 @@ const normalToken = {
   headers: {
     [TOKEN_NAME]: 'e6960169400e8607f1826ea6260a32763a68f3bc'
   }
-}
-
-const clone = function(obj) {
-  return Object.assign({}, obj)
 }
 
 test('Addon: isListening()', t => {
@@ -63,24 +62,21 @@ test('Addon: getLocalTime()', t => {
 })
 
 test.serial('List repositories', t => {
-  return request(`${API}/repositories`)
+  return request('repositories')
     .then(res => {
-      t.true(res.ok)
-      return res.json()
-    })
-    .then(res => {
-      t.is(res.length, DATA.length)
-      for (const r of res) {
+      t.is(res.status, 200)
+      t.is(res.data.length, DATA.length)
+      for (const r of res.data) {
         t.truthy(r.name)
       }
     })
 })
 
 test.serial('Remove repository', t => {
-  return request(`${API}/repositories/gmt`, null, 'DELETE')
+  return request.delete('repositories/gmt')
     .then(res => {
       t.is(res.status, 204)
-      return request(`${API}/repositories/gmt`)
+      return request('repositories/gmt')
     })
     .then(res => {
       t.is(res.status, 404)
@@ -88,46 +84,40 @@ test.serial('Remove repository', t => {
 })
 
 test.serial('Update repository', t => {
-  return request(`${API}/repositories/bioc`, {
+  return request.put('repositories/bioc', {
     image: 'ustcmirror/rsync:latest',
     args: ['echo', '1'],
     volumes: ['/pypi:/tmp/repos/BIOC'],
     user: 'mirror'
-  }, 'PUT')
+  })
     .then(res => {
-      t.true(res.ok)
-      return request(`${API}/repositories/bioc`)
+      t.is(res.status, 204)
+      return request('repositories/bioc')
     })
     .then(res => {
-      t.true(res.ok)
-      return res.json()
-    })
-    .then(res => {
-      t.is(res.interval, '48 2 * * *')
-      t.is(res.user, 'mirror')
-      t.is(res.image, 'ustcmirror/rsync:latest')
-      t.is(res.args[0], 'echo')
-      t.is(res.args[1], '1')
-      t.true(res.volumes[0].endsWith('BIOC'))
+      t.is(res.status, 200)
+      t.is(res.data.interval, '48 2 * * *')
+      t.is(res.data.user, 'mirror')
+      t.is(res.data.image, 'ustcmirror/rsync:latest')
+      t.is(res.data.args[0], 'echo')
+      t.is(res.data.args[1], '1')
+      t.true(res.data.volumes[0].endsWith('BIOC'))
     })
 })
 
 test('Get repository', t => {
-  return request(`${API}/repositories/archlinux`)
+  return request('repositories/archlinux')
     .then(res => {
-      t.true(res.ok)
-      return res.json()
-    })
-    .then(res => {
-      t.is(res.image, 'ustcmirror/test:latest')
-      t.is(res.interval, '1 1 * * *')
-      t.is(res.storageDir, '/tmp/repos/archlinux')
-      t.is(res.envs[0], 'RSYNC_USER=asdh')
+      t.is(res.status, 200)
+      t.is(res.data.image, 'ustcmirror/test:latest')
+      t.is(res.data.interval, '1 1 * * *')
+      t.is(res.data.storageDir, '/tmp/repos/archlinux')
+      t.is(res.data.envs[0], 'RSYNC_USER=asdh')
     })
 })
 
 test('Create repository', t => {
-  return request(`${API}/repositories/vim`, {
+  return request.post('repositories/vim', {
     image: 'ustcmirror/test:latest',
     interval: '* 5 * * *',
     storageDir: '/tmp/repos/vim',
@@ -135,57 +125,44 @@ test('Create repository', t => {
   })
     .then(res => {
       t.is(res.status, 201)
-      return request(`${API}/repositories/vim`)
+      return request('repositories/vim')
     })
     .then(res => {
       t.is(res.status, 200)
-      return res.json()
-    })
-    .then(res => {
-      t.is(res.interval, '* 5 * * *')
-      t.is(res.image, 'ustcmirror/test:latest')
-      t.is(res.args[0], 'echo')
-      t.is(res.storageDir, '/tmp/repos/vim')
+      t.is(res.data.interval, '* 5 * * *')
+      t.is(res.data.image, 'ustcmirror/test:latest')
+      t.is(res.data.args[0], 'echo')
+      t.is(res.data.storageDir, '/tmp/repos/vim')
     })
 })
 
 test('Start a container', t => {
-  return request(`${API}/repositories/archlinux/sync`, null, 'POST')
+  return request.post('repositories/archlinux/sync', null)
     .then(res => {
       t.is(res.status, 204)
-      return res.json()
-    })
-    .then(() => {
-      return request(`${API}/containers/archlinux/wait`, null, 'POST')
+      return request.post('containers/archlinux/wait', null)
     })
     .then(res => {
       t.is(res.status, 200)
-      return res.json()
+      t.is(res.data.StatusCode, 0)
     })
-    .then(data => t.is(data.StatusCode, 0))
 
 })
 
 test('List users', async t => {
-  await request(`${API}/users`, null, 'GET', adminToken)
+  await request('users', adminToken)
     .then(res => {
-      t.true(res.ok)
-      return res.json()
-    })
-    .then(res => {
-      for (const r of res) {
+      t.is(res.status, 200)
+      for (const r of res.data) {
         t.truthy(r.name)
         t.truthy(r.token)
       }
     })
 
-  await request(`${API}/users`, null, 'GET', normalToken)
+  await request('users', normalToken)
     .then(res => {
-      t.true(res.ok)
-      return res.json()
-    })
-    .then(res => {
-      for (const r of res) {
+      t.is(res.status, 200)
+      for (const r of res.data) {
         t.truthy(r.name)
         t.falsy(r.token)
       }
@@ -193,59 +170,52 @@ test('List users', async t => {
 })
 
 test.serial('Create user', async t => {
-  await request(`${API}/users/foo`, {
+  await request.post('users/foo', {
     password: '3rd',
     admin: false
-  }, 'POST', clone(adminToken))
+  }, adminToken)
     .then(res => {
-      t.true(res.ok)
+      t.is(res.status, 201)
     })
 
-  await request(`${API}/users/foo`, null, 'GET',
-                clone(adminToken))
+  await request('users/foo', adminToken)
     .then(res => {
-      t.true(res.ok)
-      return res.json()
-    })
-    .then(data => {
-      t.true(data.name === 'foo')
+      t.is(res.status, 200)
+      t.true(res.data.name === 'foo')
     })
 })
 
 test.serial('Remove user', async t => {
-  await request(`${API}/users/foo`, null, 'DELETE',
-                clone(adminToken))
+  await request.delete('users/foo', adminToken)
     .then(res => {
-      t.true(res.ok)
-      return res.json()
+      t.is(res.status, 204)
     })
 
-  await request(`${API}/users/foo`, null, 'GET',
-                clone(adminToken))
+  await request('users/foo', adminToken)
     .then(res => {
-      t.false(res.ok)
+      t.is(res.status, 404)
     })
 })
 
 test('Update user profile', async t => {
-  await request(`${API}/users/kiana`, {
+  await request.put('users/kiana', {
     admin: true
-  }, 'PUT', clone(normalToken))
+  }, normalToken)
     .then(res => {
-      t.false(res.ok)
+      t.not(res.status, 204)
     })
 
-  await request(`${API}/users/kiana`, {
+  await request.put('users/kiana', {
     password: 'asdfqwer'
-  }, 'PUT', clone(normalToken))
+  }, normalToken)
     .then(res => {
-      t.true(res.ok)
+      t.is(res.status, 204)
     })
 
-  await request(`${API}/users/bronya`, {
+  await request.put('users/bronya', {
     admin: true
-  }, 'PUT', clone(adminToken))
+  }, adminToken)
     .then(res => {
-      t.true(res.ok)
+      t.is(res.status, 204)
     })
 })
