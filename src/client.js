@@ -132,13 +132,17 @@ program
   .command('user-add')
   .option('-n --name <name>', 'username')
   .option('-p --pass <password>', 'password')
-  .option('-r --role <role>', 'role of user [admin,normal]', /^(admin|normal)$/i, 'normal')
+  .option('-r --role <role>', 'role of user [admin,normal]', 'normal')
   .description('create user')
   .action((opts) => {
     if (!opts.name || !opts.pass) {
       console.error('Please tell me the username and password')
       return
     }
+    if (!/^(admin|normal)$/i.test(opts.role)) {
+      return console.error('Invalid role')
+    }
+
     req(opts.parent.apiroot, `users/${opts.name}`, {
       password: md5hash(opts.pass),
       admin: opts.role === 'admin'
@@ -180,13 +184,17 @@ program
 program
   .command('user-update <name>')
   .option('-p --pass <password>', 'password')
-  .option('-r --role <role>', 'role of user [admin,normal]', /^(admin|normal)$/i)
+  .option('-r --role <role>', 'role of user [admin,normal]', 'normal')
   .description('update user profile')
   .action((name, opts) => {
     if (typeof opts.role === 'undefined' &&
         typeof opts.pass === 'undefined') {
       return console.error('Nothing changes')
     }
+    if (!/^(admin|normal)$/i.test(opts.role)) {
+      return console.error('Invalid role')
+    }
+
     const payload = {}
     if (opts.role) {
       payload.admin = opts.role === 'admin'
