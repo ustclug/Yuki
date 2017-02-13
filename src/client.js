@@ -255,6 +255,35 @@ program
   })
 
 program
+  .command('repo-logs <repo>')
+  .description('fetch previous logs')
+  .option('-n --nth <number>', 'nth log file', 0)
+  .option('-s --stats', 'get stats', false)
+  .action((repo, opts) => {
+    const f = (root, url) => {
+      return req(root, url)
+      .then(res => {
+        if (!res.ok) {
+          return console.error(res.error.message)
+        }
+        res.body.pipe(process.stdout)
+      })
+      .catch(console.error)
+    }
+
+    if (opts.stats) {
+      const url = `repositories/${repo}/logs?stats=true`
+      return f(opts.parent.apiroot, url)
+    }
+
+    if (!/^\d+$/.test(opts.nth)) {
+      return console.error('-n/--nth must follow a number')
+    }
+    const url = `repositories/${repo}/logs?n=${opts.nth}`
+    return f(opts.parent.apiroot, url)
+  })
+
+program
   .command('repo-rm <repo>')
   .description('manually remove repository')
   .action((repo, opts) => {
@@ -375,7 +404,7 @@ program
     req(opts.parent.apiroot, u)
     .then((res) => {
       if (res.ok) {
-        file = path.resolve(process.cwd(), file ? file : 'repositories.json')
+        file = path.resolve(file ? file : 'repositories.json')
         const fout = fs.createWriteStream(file)
         res.body.pipe(fout)
         res.body.on('end', () => {
