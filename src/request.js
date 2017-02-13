@@ -77,7 +77,7 @@ export default class Client {
 
   request(cfg) {
     cfg = merge(this.common, cfg)
-    const url = normalizeUrl(Url.resolve(cfg.baseUrl, cfg.url))
+    const url = Url.resolve(normalizeUrl(cfg.baseUrl), cfg.url)
     delete cfg.url
     delete cfg.baseUrl
 
