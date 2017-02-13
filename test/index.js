@@ -4,17 +4,16 @@
 
 require('../dist')
 
-import { API_PORT, TOKEN_NAME } from '../dist/config'
 import test from 'ava'
-import { Repository as Repo, User } from '../dist/models'
-import DATA from './mock.json'
 import mongoose from 'mongoose'
-import axios from 'axios'
+import DATA from './mock.json'
+import Client from '../dist/request'
+import { API_PORT, TOKEN_NAME } from '../dist/config'
+import { Repository as Repo, User } from '../dist/models'
 import { isListening, getLocalTime } from '../build/Release/addon.node'
 
-axios.defaults.validateStatus = (status) => true
-const request = axios.create({
-  baseURL: `http://localhost:${API_PORT}/api/v1/`
+const request = new Client({
+  baseUrl: `http://localhost:${API_PORT}/api/v1/`
 })
 
 test.before(async t => {
@@ -62,11 +61,12 @@ test('Addon: getLocalTime()', t => {
 })
 
 test.serial('List repositories', t => {
-  return request('repositories')
-    .then(res => {
+  return request.get('repositories')
+    .then(async res => {
       t.is(res.status, 200)
-      t.is(res.data.length, DATA.length)
-      for (const r of res.data) {
+      const data = await res.json()
+      t.is(data.length, DATA.length)
+      for (const r of data) {
         t.truthy(r.name)
       }
     })
@@ -76,7 +76,7 @@ test.serial('Remove repository', t => {
   return request.delete('repositories/gmt')
     .then(res => {
       t.is(res.status, 204)
-      return request('repositories/gmt')
+      return request.get('repositories/gmt')
     })
     .then(res => {
       t.is(res.status, 404)
@@ -92,27 +92,29 @@ test.serial('Update repository', t => {
   })
     .then(res => {
       t.is(res.status, 204)
-      return request('repositories/bioc')
+      return request.get('repositories/bioc')
     })
-    .then(res => {
+    .then(async res => {
       t.is(res.status, 200)
-      t.is(res.data.interval, '48 2 * * *')
-      t.is(res.data.user, 'mirror')
-      t.is(res.data.image, 'ustcmirror/rsync:latest')
-      t.is(res.data.args[0], 'echo')
-      t.is(res.data.args[1], '1')
-      t.true(res.data.volumes[0].endsWith('BIOC'))
+      const data = await res.json()
+      t.is(data.interval, '48 2 * * *')
+      t.is(data.user, 'mirror')
+      t.is(data.image, 'ustcmirror/rsync:latest')
+      t.is(data.args[0], 'echo')
+      t.is(data.args[1], '1')
+      t.true(data.volumes[0].endsWith('BIOC'))
     })
 })
 
 test('Get repository', t => {
-  return request('repositories/archlinux')
-    .then(res => {
+  return request.get('repositories/archlinux')
+    .then(async res => {
+      const data = await res.json()
       t.is(res.status, 200)
-      t.is(res.data.image, 'ustcmirror/test:latest')
-      t.is(res.data.interval, '1 1 * * *')
-      t.is(res.data.storageDir, '/tmp/repos/archlinux')
-      t.is(res.data.envs[0], 'RSYNC_USER=asdh')
+      t.is(data.image, 'ustcmirror/test:latest')
+      t.is(data.interval, '1 1 * * *')
+      t.is(data.storageDir, '/tmp/repos/archlinux')
+      t.is(data.envs[0], 'RSYNC_USER=asdh')
     })
 })
 
@@ -125,14 +127,15 @@ test('Create repository', t => {
   })
     .then(res => {
       t.is(res.status, 201)
-      return request('repositories/vim')
+      return request.get('repositories/vim')
     })
-    .then(res => {
+    .then(async res => {
       t.is(res.status, 200)
-      t.is(res.data.interval, '* 5 * * *')
-      t.is(res.data.image, 'ustcmirror/test:latest')
-      t.is(res.data.args[0], 'echo')
-      t.is(res.data.storageDir, '/tmp/repos/vim')
+      const data = await res.json()
+      t.is(data.interval, '* 5 * * *')
+      t.is(data.image, 'ustcmirror/test:latest')
+      t.is(data.args[0], 'echo')
+      t.is(data.storageDir, '/tmp/repos/vim')
     })
 })
 
@@ -142,27 +145,30 @@ test('Start a container', t => {
       t.is(res.status, 204)
       return request.post('containers/archlinux/wait', null)
     })
-    .then(res => {
+    .then(async res => {
       t.is(res.status, 200)
-      t.is(res.data.StatusCode, 0)
+      const data = await res.json()
+      t.is(data.StatusCode, 0)
     })
 
 })
 
 test('List users', async t => {
-  await request('users', adminToken)
-    .then(res => {
+  await request.get('users', adminToken)
+    .then(async res => {
       t.is(res.status, 200)
-      for (const r of res.data) {
+      const data = await res.json()
+      for (const r of data) {
         t.truthy(r.name)
         t.truthy(r.token)
       }
     })
 
-  await request('users', normalToken)
-    .then(res => {
+  await request.get('users', normalToken)
+    .then(async res => {
       t.is(res.status, 200)
-      for (const r of res.data) {
+      const data = await res.json()
+      for (const r of data) {
         t.truthy(r.name)
         t.falsy(r.token)
       }
@@ -178,10 +184,11 @@ test.serial('Create user', async t => {
       t.is(res.status, 201)
     })
 
-  await request('users/foo', adminToken)
-    .then(res => {
+  await request.get('users/foo', adminToken)
+    .then(async res => {
       t.is(res.status, 200)
-      t.true(res.data.name === 'foo')
+      const data = await res.json()
+      t.true(data.name === 'foo')
     })
 })
 
@@ -191,7 +198,7 @@ test.serial('Remove user', async t => {
       t.is(res.status, 204)
     })
 
-  await request('users/foo', adminToken)
+  await request.get('users/foo', adminToken)
     .then(res => {
       t.is(res.status, 404)
     })
