@@ -3,14 +3,16 @@
 'use strict'
 
 import fs from 'fs'
-import url from 'url'
+import Url from 'url'
 import path from 'path'
 import { createHash } from 'crypto'
 import program from 'commander'
 import { getLocalTime } from '../build/Release/addon.node'
 import { API_ROOT, TOKEN_NAME } from './config'
 import meta from '../package.json'
-import request from './request'
+import Client from './request'
+
+const ins = new Client()
 
 const AUTH_RECORD = path.join(process.env['HOME'], '.ustcmirror', 'auth.json')
 let auths
@@ -33,24 +35,24 @@ try {
   }
 })(AUTH_RECORD)
 
-url.join = function(...eles) {
-  return eles.reduce((sum, ele) => url.resolve(sum, ele), '')
-}
-
 const md5hash = function(text) {
   return createHash('md5').update(text).digest('hex')
 }
 
 const normalizeUrl = (u) => {
-  if (!u.startsWith('http')) u = `http://${u}`
+  // not absolute
+  if (!/^([a-z][a-z\d\+\-\.]*:)?\/\//i.test(u)) u = `http://${u}`
   if (!u.endsWith('/')) u += '/'
   return u
 }
 
-const req = function(apiroot, path, data, method) {
+const req = function(apiroot, url, body, method = 'get') {
   apiroot = normalizeUrl(apiroot)
-  const api = url.join(apiroot, 'api/v1/', path)
-  return request(api, data, method, {
+  return ins.request({
+    baseUrl: Url.resolve(apiroot, 'api/v1/'),
+    url,
+    body,
+    method,
     headers: { [TOKEN_NAME]: auths[apiroot] || '' }
   })
 }
@@ -67,8 +69,8 @@ program
     const apiroot = normalizeUrl(opts.parent.apiroot)
     req(apiroot, 'auth', { username, password })
     .then(async (res) => {
-      const content = await res.json()
       if (res.ok) {
+        const content = await res.json()
         console.log('Login succeeded!')
 
         if (typeof auths[apiroot] === 'undefined' ||
@@ -83,7 +85,7 @@ program
           })
         }
       } else {
-        console.log(`Failed to login: ${content.message}`)
+        console.log(`Failed to login: ${res.error.message}`)
       }
     })
     .catch(console.error)
@@ -100,7 +102,7 @@ program
         if (err) {
           return console.error(err)
         }
-        console.log(`Remove token for ${apiroot}`)
+        console.log(`Removed token for ${apiroot}`)
       })
     } else {
       console.error(`Not logged in to ${apiroot}`)
@@ -114,13 +116,13 @@ program
     const apiroot = normalizeUrl(opts.parent.apiroot)
     req(opts.parent.apiroot, 'auth')
     .then(async (res) => {
-      const data = await res.json()
       if (res.ok) {
+        const data = await res.json()
         console.log(`name: ${data.name}`)
         console.log(`admin: ${data.admin}`)
-        console.log(`registry: ${apiroot}`)
+        console.log(`api: ${Url.resolve(apiroot, 'api/v1/')}`)
       } else {
-        console.error(data.message)
+        console.error(res.error.message)
       }
     })
     .catch(console.error)
@@ -141,10 +143,11 @@ program
       password: md5hash(opts.pass),
       admin: opts.role === 'admin'
     })
-    .then(async res => {
-      const data = await res.json()
+    .then(res => {
       if (!res.ok) {
-        console.error(data.message)
+        console.error(`Failed to create user <${opts.name}>: ${res.error.message}`)
+      } else {
+        console.log(`Successfully created user <${opts.name}>`)
       }
     })
     .catch(console.error)
@@ -157,18 +160,18 @@ program
     const u = name ? `users/${name}` : 'users'
     req(opts.parent.apiroot, u)
     .then(async (res) => {
-      const data = await res.json()
-      const output = (user) => {
-        const token = user.token === undefined ? 'secret' : user.token
-        const admin = user.admin === undefined ? 'secret' : user.admin
-        console.log(`${user.name}:`)
-        console.log(`\tToken: ${token}`)
-        console.log(`\tAdministrator: ${admin}`)
-      }
       if (res.ok) {
+        const data = await res.json()
+        const output = (user) => {
+          const token = user.token === undefined ? 'secret' : user.token
+          const admin = user.admin === undefined ? 'secret' : user.admin
+          console.log(`${user.name}:`)
+          console.log(`\tToken: ${token}`)
+          console.log(`\tAdministrator: ${admin}`)
+        }
         Array.isArray(data) ? data.forEach(output) : output(data)
       } else {
-        console.error(data.message)
+        console.error(res.error.message)
       }
     })
     .catch(console.error)
@@ -192,10 +195,11 @@ program
       payload.password = md5hash(opts.pass)
     }
     req(opts.parent.apiroot, `users/${name}`, payload, 'PUT')
-    .then(async res => {
-      const data = await res.json()
+    .then(res => {
       if (!res.ok) {
-        console.error(data.message)
+        console.error(`Failed to update user <${name}>: ${res.error.message}`)
+      } else {
+        console.error(`Successfully updated user <${name}>`)
       }
     })
     .catch(console.error)
@@ -206,10 +210,11 @@ program
   .description('remove user')
   .action((name, opts) => {
     req(opts.parent.apiroot, `users/${name}`, null, 'DELETE')
-    .then(async res => {
-      const data = await res.json()
+    .then(res => {
       if (!res.ok) {
-        console.error(data.message)
+        console.error(`Failed to remove user <${name}>: ${res.error.message}`)
+      } else {
+        console.log(`Successfully removed user <${name}>`)
       }
     })
     .catch(console.error)
@@ -234,9 +239,8 @@ program
           console.log(`\timage: ${repo.image}`)
           console.log(`\tinterval: ${repo.interval}`)
         }
-
       } else {
-        res.body.pipe(process.stderr)
+        console.error(res.error.message)
       }
     })
     .catch(console.error)
@@ -247,10 +251,11 @@ program
   .description('manually remove repository')
   .action((repo, opts) => {
     req(opts.parent.apiroot, `repositories/${repo}`, null, 'DELETE')
-    .then(async res => {
-      const data = await res.json()
+    .then(res => {
       if (!res.ok) {
-        console.error(data.message)
+        console.error(`Failed to remove repository <${repo}>: ${res.error.message}`)
+      } else {
+        console.log(`Successfully removed repository <${repo}>`)
       }
     })
     .catch(console.error)
@@ -262,8 +267,8 @@ program
   .action((opts) => {
     req(opts.parent.apiroot, 'containers')
     .then(async (res) => {
-      const data = await res.json()
       if (res.ok) {
+        const data = await res.json()
         for (const ct of data) {
           console.log(`${ct.Names[0]}:`)
           console.log(`\tCreated: ${getLocalTime(ct.Created)}`)
@@ -271,7 +276,7 @@ program
           console.log(`\tStatus: ${ct.Status}`)
         }
       } else {
-        console.error(data.message)
+        console.error(res.error.message)
       }
     })
     .catch(console.error)
@@ -282,10 +287,11 @@ program
   .description('manually remove container')
   .action((repo, opts) => {
     req(opts.parent.apiroot, `containers/${repo}`, null, 'DELETE')
-    .then(async res => {
-      const data = await res.json()
+    .then(res => {
       if (!res.ok) {
-        console.error(data.message)
+        console.error(`Failed to remove repository <${repo}>: ${res.error.message}`)
+      } else {
+        console.log(`Successfully removed container <${repo}>`)
       }
     })
     .catch(console.error)
@@ -303,7 +309,10 @@ program
 
     req(opts.parent.apiroot, url)
     .then(res => {
-      res.body.pipe(res.ok ? process.stdout : process.stderr)
+      if (!res.ok) {
+        return console.error(res.error.message)
+      }
+      res.body.pipe(process.stdout)
     })
     .catch(console.error)
   })
@@ -314,7 +323,11 @@ program
   .action((opts) => {
     req(opts.parent.apiroot, 'images/update', null, 'POST')
     .then(res => {
-      res.body.pipe(res.ok ? process.stdout : process.stderr)
+      if (!res.ok) {
+        console.error(`Failed to update images: ${res.error.message}`)
+      } else {
+        console.log('All up-to-date')
+      }
     })
     .catch(console.error)
   })
@@ -329,7 +342,7 @@ program
       `repositories/${repo}/sync`
 
     req(opts.parent.apiroot, url, null, 'POST')
-      .then(async res => {
+      .then(res => {
         if (res.ok) {
           res.body.pipe(process.stdout)
           if (opts.verbose) {
@@ -338,8 +351,7 @@ program
             })
           }
         } else {
-          const data = await res.json()
-          console.error(data.message)
+          console.error(res.error.message)
         }
       })
       .catch(console.error)
@@ -353,13 +365,16 @@ program
     let u = 'config'
     u += opts.pretty ? '?pretty=1' : ''
     req(opts.parent.apiroot, u)
-    .then(async (res) => {
+    .then((res) => {
       if (res.ok) {
         file = path.resolve(process.cwd(), file ? file : 'repositories.json')
         const fout = fs.createWriteStream(file)
         res.body.pipe(fout)
+        res.body.on('end', () => {
+          console.log(`config is exported at ${file}`)
+        })
       } else {
-        res.body.pipe(process.stderr)
+        console.error(res.error.message)
       }
     })
     .catch(console.error)
@@ -373,7 +388,11 @@ program
     const data = require(file)
     req(opts.parent.apiroot, 'config', data)
     .then(res => {
-      res.body.pipe(res.ok ? process.stdout : process.stderr)
+      if (!res.ok) {
+        console.error(`Failed to import config: ${res.error.message}`)
+      } else {
+        console.log('Successfully imported config')
+      }
     })
     .catch(console.error)
   })
