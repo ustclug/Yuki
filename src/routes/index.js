@@ -2,6 +2,8 @@
 
 'use strict'
 
+import fs from 'fs'
+import { createGunzip } from 'zlib'
 import path from 'path'
 import stream from 'stream'
 import koarouter from 'koa-router'
@@ -18,6 +20,7 @@ import { bringUp, autoRemove, dirExists, makeDir, queryOpts } from '../util'
 const PREFIX = CONFIG.CT_NAME_PREFIX
 const LABEL = CONFIG.CT_LABEL
 const router = koarouter({ prefix: '/api/v1' })
+const readDir = Promise.promisify(fs.readdir)
 
 const routerProxy = { router, url: '/' }
 
@@ -77,8 +80,33 @@ router.use(bodyParser({
 })
 router.use(auth)
 
+/**
+ * @apiVersion 0.1.0
+ */
+
+/**
+ * @apiDefine CommonErr
+ * @apiError {String} message Error message.
+ */
+
+/**
+ * @apiDefine AccessToken
+ * @apiHeader {String} x-mirror-token Users unique access-key.
+ */
+
 routerProxy
-  // Return username and admin according to token
+  /**
+   * @api {get} /auth Request info of User
+   * @apiName Whoami
+   * @apiGroup Auth
+   *
+   * @apiUse AccessToken
+   *
+   * @apiSuccess {String} name Name of the User
+   * @apiSuccess {Boolean} admin Whether User is admin
+   *
+   * @apiUse CommonErr
+   */
   .get('/auth', isAuthorized, (ctx) => {
     if (ctx.state.username) {
       ctx.body = {
@@ -91,7 +119,18 @@ routerProxy
       ctx.status = 404
     }
   })
-  // Create new user
+  /**
+   * @api {post} /auth Log in to remote registry
+   * @apiName Login
+   * @apiGroup Auth
+   *
+   * @apiParam {String} username User's name
+   * @apiParam {String} password User's password
+   *
+   * @apiSuccess {String} token Token of the User
+   *
+   * @apiUse CommonErr
+   */
   .post(async (ctx) => {
     const name = ctx.body.username
     const pwHash = ctx.body.password
@@ -111,12 +150,51 @@ routerProxy
     logger.info(`${name} login`)
   })
 
+/**
+ * @api {get} /repositories List repositories
+ * @apiName ListRepositories
+ * @apiGroup Repositories
+ *
+ * @apiSuccess {Object[]} repos(virtual field) List of repositories
+ * @apiSuccess {String} .interval Task interval
+ * @apiSuccess {String} .image Name of the Docker image
+ * @apiSuccess {String} .storageDir Path to storage directory
+ * @apiSuccess {Boolean} .autoRotLog Whether rotates log automatically
+ * @apiSuccess {Number} .rotateCycle Number of the cycle versions to save
+ * @apiSuccess {String[]} .args Arguments passed to image
+ * @apiSuccess {String[]} .envs Environment variables
+ * @apiSuccess {String[]} .volumes Volumes to be mount
+ * @apiSuccess {String} .bindIp Local ip to be bound
+ * @apiSuccess {String} .user Owner of the storage directory
+ *
+ * @apiUse CommonErr
+ */
 routerProxy.get('/repositories', (ctx) => {
   return Repo.find()
     .then(data => ctx.body = data)
 })
 
 .use('/repositories/:name')
+  /**
+   * @api {get} /repositories/:name Get Repository
+   * @apiName GetRepository
+   * @apiGroup Repositories
+   *
+   * @apiParam {String} name Name of the Repository
+   *
+   * @apiSuccess {String} interval Task interval
+   * @apiSuccess {String} image Name of the Docker image
+   * @apiSuccess {String} storageDir Path to storage directory
+   * @apiSuccess {Boolean} autoRotLog Whether rotates log automatically
+   * @apiSuccess {Number} rotateCycle Number of the cycle versions to save
+   * @apiSuccess {String[]} args Arguments passed to image
+   * @apiSuccess {String[]} envs Environment variables
+   * @apiSuccess {String[]} volumes Volumes to be mount
+   * @apiSuccess {String} bindIp Local ip to be bound
+   * @apiSuccess {String} user Owner of the storage directory
+   *
+   * @apiUse CommonErr
+   */
   .get((ctx) => {
     const name = ctx.params.name
     return Repo.findById(name)
@@ -134,6 +212,28 @@ routerProxy.get('/repositories', (ctx) => {
         setErrMsg(ctx, err)
       })
   })
+  /**
+   * @api {post} /repositories/:name Create Repository
+   * @apiName CreateRepository
+   * @apiGroup Repositories
+   *
+   * @apiUse AccessToken
+   * @apiParam {String} name Name of the Repository
+   * @apiParam {String} interval Task interval
+   * @apiParam {String} image Name of the Docker image
+   * @apiParam {String} storageDir Path to storage directory
+   * @apiParam {Boolean} autoRotLog=true Whether rotates log automatically (Optional)
+   * @apiParam {Number} rotateCycle=10 Number of the cycle versions to save (Optional)
+   * @apiParam {String[]} args Arguments passed to image (Optional)
+   * @apiParam {String[]} envs Environment variables (Optional)
+   * @apiParam {String[]} volumes Volumes to be mount (Optional)
+   * @apiParam {String} bindIp Local ip to be bound (Optional)
+   * @apiParam {String} user Owner of the storage directory (Optional)
+   *
+   * @apiSuccess (Success 201) {Object} empty Empty object
+   *
+   * @apiUse CommonErr
+   */
   .post(isAuthorized, (ctx) => {
     const body = ctx.body
     body.name = ctx.params.name
@@ -153,6 +253,28 @@ routerProxy.get('/repositories', (ctx) => {
         setErrMsg(ctx, err.errmsg)
       })
   })
+  /**
+   * @api {put} /repositories/:name Update Repository
+   * @apiName UpdateRepository
+   * @apiGroup Repositories
+   *
+   * @apiUse AccessToken
+   * @apiParam {String} name Name of the Repository
+   * @apiParam {String} interval Task interval
+   * @apiParam {String} image Name of the Docker image
+   * @apiParam {String} storageDir Path to storage directory
+   * @apiParam {Boolean} autoRotLog=true Whether rotates log automatically
+   * @apiParam {Number} rotateCycle=10 Number of the cycle versions to save
+   * @apiParam {String[]} args Arguments passed to image
+   * @apiParam {String[]} envs Environment variables
+   * @apiParam {String[]} volumes Volumes to be mount
+   * @apiParam {String} bindIp Local ip to be bound
+   * @apiParam {String} user Owner of the storage directory
+   *
+   * @apiSuccess (Success 204) {String} empty
+   *
+   * @apiUse CommonErr
+   */
   .put(isAuthorized, (ctx) => {
     const name = ctx.params.name
     return Repo.findByIdAndUpdate(name, ctx.body, {
@@ -169,6 +291,18 @@ routerProxy.get('/repositories', (ctx) => {
       setErrMsg(ctx, err.errmsg)
     })
   })
+  /**
+   * @api {delete} /repositories/:name Delete Repository
+   * @apiName DeleteRepository
+   * @apiGroup Repositories
+   *
+   * @apiUse AccessToken
+   * @apiParam {String} name Name of the Repository
+   *
+   * @apiSuccess (Success 204) {String} empty
+   *
+   * @apiUse CommonErr
+   */
   .delete(isAuthorized, (ctx) => {
     const name = ctx.params.name
     return Repo.findByIdAndRemove(name)
@@ -183,6 +317,76 @@ routerProxy.get('/repositories', (ctx) => {
       })
   })
 
+/**
+ * @api {get} /repositories/:name/sync Got Logs of Repository
+ * @apiName FetchRepositoryLogs
+ * @apiGroup Repositories
+ *
+ * @apiUse AccessToken
+ * @apiParam {String} name Name of the Repository
+ * @apiParam {Number} n Nth log-file
+ * @apiParam {Boolean} stats Only return matched log-files' names
+ *
+ * @apiSuccess (Success 200) {Stream} logs Log stream
+ * @apiSuccess (Success 200) {Object} names Names of the log-files
+ *
+ * @apiUse CommonErr
+ */
+.get('/repositories/:name/logs', isAuthorized, (ctx) => {
+  const repo = ctx.params.name
+  const nth = ctx.query.n || 0
+  const stats = !!ctx.query.stats
+  const logdir = path.join(CONFIG.LOGDIR_ROOT, repo)
+  if (!dirExists(logdir)) {
+    setErrMsg(ctx, `no such repo ${repo}`)
+    return ctx.status = 404
+  }
+
+  if (stats) {
+    return readDir(logdir)
+      .then((files) => ctx.body = files.filter(f => f.startsWith('result.log')))
+  }
+
+  return readDir(logdir)
+    .then((files) => {
+      const wantedName = `result.log.${nth}`
+      for (const f of files) {
+        if (f.startsWith(wantedName)) {
+          const fp = path.resolve(logdir, f)
+          switch (path.extname(f)) {
+            case '.gz':
+              ctx.body = fs.createReadStream(fp).pipe(createGunzip())
+              break
+            default:
+              ctx.body = fs.createReadStream(fp)
+              break
+          }
+          return
+        }
+      }
+      setErrMsg(ctx, `${path.join(repo, wantedName)} cannot be found`)
+      return ctx.status = 404
+    })
+    .catch(e => {
+      setErrMsg(ctx, e.message)
+      return ctx.status = 500
+    })
+})
+
+/**
+ * @api {post} /repositories/:name/sync Sync Repository
+ * @apiName SyncRepository
+ * @apiGroup Repositories
+ *
+ * @apiUse AccessToken
+ * @apiParam {String} name Name of the Repository
+ * @apiParam {Boolean} debug Start the container in debug mode
+ *
+ * @apiSuccess (Success 204) {String} empty
+ * @apiSuccess (Success 200) {Stream} logs Log stream
+ *
+ * @apiUse CommonErr
+ */
 .post('/repositories/:name/sync', isAuthorized, async (ctx) => {
   const name = ctx.params.name
   const debug = !!ctx.query.debug // dirty hack, convert to boolean
@@ -245,6 +449,15 @@ routerProxy.get('/repositories', (ctx) => {
 
 })
 
+/**
+ * @api {get} /containers List containers
+ * @apiName ListContainers
+ * @apiGroup Containers
+ *
+ * @apiSuccess {Object[]} containers(virtual field) List of containers
+ *
+ * @apiUse CommonErr
+ */
 .get('/containers', (ctx) => {
   return docker.listContainers({
     all: true,
@@ -259,6 +472,18 @@ routerProxy.get('/repositories', (ctx) => {
       ctx.body = data
     })
 })
+/**
+ * @api {delete} /containers/:repo Delete container
+ * @apiName ListContainers
+ * @apiGroup Containers
+ *
+ * @apiUse AccessToken
+ * @apiParam {String} repo Name of the Repository
+ *
+ * @apiSuccess {String} empty
+ *
+ * @apiUse CommonErr
+ */
 .delete('/containers/:repo', isAuthorized, (ctx) => {
   const name = `${PREFIX}-${ctx.params.repo}`
   const ct = docker.getContainer(name)
@@ -270,6 +495,17 @@ routerProxy.get('/repositories', (ctx) => {
       ctx.status = err.statusCode
     })
 })
+/**
+ * @api {post} /containers/:repo/wait Await container stop
+ * @apiName WaitForContainer
+ * @apiGroup Containers
+ *
+ * @apiParam {String} repo Name of the Repository
+ *
+ * @apiSuccess {Object} StatusCode Exit code
+ *
+ * @apiUse CommonErr
+ */
 .post('/containers/:repo/wait', (ctx) => {
   const name = `${PREFIX}-${ctx.params.repo}`
   const ct = docker.getContainer(name)
@@ -284,6 +520,16 @@ routerProxy.get('/repositories', (ctx) => {
       ctx.body = err.json
     })
 })
+/**
+ * @api {get} /containers/:repo/inspect Inspect container
+ * @apiName InspectContainer
+ * @apiGroup Containers
+ *
+ * @apiUse AccessToken
+ * @apiParam {String} repo Name of the Repository
+ *
+ * @apiUse CommonErr
+ */
 .get('/containers/:repo/inspect', isAuthorized, (ctx) => {
   const name = `${PREFIX}-${ctx.params.repo}`
   const ct = docker.getContainer(name)
@@ -296,6 +542,19 @@ routerProxy.get('/repositories', (ctx) => {
       ctx.body = err.json
     })
 })
+/**
+ * @api {get} /containers/:repo/logs Fetch logs of container
+ * @apiName GetLogsOfContainer
+ * @apiGroup Containers
+ *
+ * @apiUse AccessToken
+ * @apiParam {String} repo Name of the Repository
+ * @apiParam {Boolean} follow Follow log output
+ * @apiParam {String} tail=all Number of lines to show from the end of the logs
+ *
+ * @apiSuccess {Stream} log Log Stream
+ * @apiUse CommonErr
+ */
 .get('/containers/:repo/logs', isAuthorized, (ctx) => {
   const name = `${PREFIX}-${ctx.params.repo}`
   const follow = !!ctx.query.follow
@@ -350,6 +609,17 @@ routerProxy.post('/images/update', isAuthorized, async (ctx) => {
     })
 })
 
+/**
+ * @api {get} /users List Users
+ * @apiName ListUsers
+ * @apiGroup Users
+ *
+ * @apiUse AccessToken
+ *
+ * @apiSuccess {Object[]} users
+ *
+ * @apiUse CommonErr
+ */
 routerProxy.get('/users', isAuthorized, async (ctx) => {
   let users = null
   if (ctx.state.isAdmin) {
@@ -361,6 +631,16 @@ routerProxy.get('/users', isAuthorized, async (ctx) => {
   }
   return ctx.body = users
 })
+/**
+ * @api {put} /users/:name Update User
+ * @apiName UpdateUser
+ * @apiGroup Users
+ *
+ * @apiUse AccessToken
+ * @apiParam {String} name Name of the User
+ *
+ * @apiUse CommonErr
+ */
 .put('/users/:name', isAuthorized, ctx => {
   const name = ctx.params.name
   if (!ctx.state.isAdmin) {
@@ -389,6 +669,17 @@ routerProxy.get('/users', isAuthorized, async (ctx) => {
 })
 
 .use('/users/:name', isAuthorized, isAdmin)
+/**
+ * @api {get} /users/:name Get User
+ * @apiName GetUser
+ * @apiGroup Users
+ *
+ * @apiUse AccessToken
+ * @apiPermission admin
+ * @apiParam {String} name Name of the User
+ *
+ * @apiUse CommonErr
+ */
 .get(async ctx => {
   const name = ctx.params.name
   const user = await User.findById(name, { password: false })
@@ -399,6 +690,17 @@ routerProxy.get('/users', isAuthorized, async (ctx) => {
     ctx.body = user
   }
 })
+/**
+ * @api {post} /users/:name Create User
+ * @apiName CreateUser
+ * @apiGroup Users
+ *
+ * @apiUse AccessToken
+ * @apiPermission admin
+ * @apiParam {String} name Name of the User
+ *
+ * @apiUse CommonErr
+ */
 .post(ctx => {
   const body = ctx.body
   const newUser = {
@@ -416,6 +718,17 @@ routerProxy.get('/users', isAuthorized, async (ctx) => {
     setErrMsg(ctx, err.message)
   })
 })
+/**
+ * @api {delete} /users/:name Delete User
+ * @apiName DeleteUser
+ * @apiGroup Users
+ *
+ * @apiUse AccessToken
+ * @apiPermission admin
+ * @apiParam {String} name Name of the User
+ *
+ * @apiUse CommonErr
+ */
 .delete(ctx => {
   const name = ctx.params.name
   return User.findByIdAndRemove(name)
@@ -436,6 +749,15 @@ routerProxy.get('/users', isAuthorized, async (ctx) => {
 })
 
 routerProxy.use('/config', isAuthorized)
+/**
+ * @api {get} /config Export config of Repos
+ * @apiName ExportConfig
+ * @apiGroup Config
+ *
+ * @apiUse AccessToken
+ *
+ * @apiUse CommonErr
+ */
 .get((ctx) => {
   const pretty = !!ctx.query.pretty
   return Repo.find()
@@ -449,6 +771,16 @@ routerProxy.use('/config', isAuthorized)
     })
     .catch(console.error)
 })
+/**
+ * @api {post} /config Import config
+ * @apiName ImportConfig
+ * @apiGroup Config
+ *
+ * @apiUse AccessToken
+ * @apiPermission admin
+ *
+ * @apiUse CommonErr
+ */
 .post(isAdmin, (ctx) => {
   const repos = ctx.body
   return Repo.create(repos)
