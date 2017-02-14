@@ -12,7 +12,7 @@ import { API_ROOT, TOKEN_NAME } from './config'
 import meta from '../package.json'
 import Client from './request'
 
-const ins = new Client()
+const inst = new Client()
 
 const AUTH_RECORD = path.join(process.env['HOME'], '.ustcmirror', 'auth.json')
 let auths
@@ -46,9 +46,21 @@ const normalizeUrl = (u) => {
   return u
 }
 
+const toReadableSize = (size) => {
+  const units = ['', 'K', 'M']
+  const bsize = 1000
+  for (const u of units) {
+    if (size < bsize) {
+      return `${Math.round(size)}${u}`
+    }
+    size /= bsize
+  }
+  return `${Math.round(size)}G`
+}
+
 const req = function(apiroot, url, body, method = 'get') {
   apiroot = normalizeUrl(apiroot)
-  return ins.request({
+  return inst.request({
     baseUrl: Url.resolve(apiroot, 'api/v1/'),
     url,
     body,
@@ -260,27 +272,35 @@ program
   .option('-n --nth <number>', 'nth log file', 0)
   .option('-s --stats', 'get stats', false)
   .action((repo, opts) => {
-    const f = (root, url) => {
-      return req(root, url)
-      .then(res => {
-        if (!res.ok) {
-          return console.error(res.error.message)
-        }
-        res.body.pipe(process.stdout)
-      })
-      .catch(console.error)
-    }
-
     if (opts.stats) {
       const url = `repositories/${repo}/logs?stats=true`
-      return f(opts.parent.apiroot, url)
+      return req(opts.parent.apiroot, url)
+        .then(async res => {
+          if (!res.ok) {
+            return console.error(res.error.message)
+          }
+          const data = await res.json()
+          for (const i of data) {
+            console.log(`${i.name}:`)
+            console.log(`\tSize: ${toReadableSize(i.size)}`)
+            console.log(`\tLastMod: ${getLocalTime(i.mtime)}`)
+          }
+        })
+        .catch(console.error)
     }
 
     if (!/^\d+$/.test(opts.nth)) {
       return console.error('-n/--nth must follow a number')
     }
     const url = `repositories/${repo}/logs?n=${opts.nth}`
-    return f(opts.parent.apiroot, url)
+    return req(opts.parent.apiroot, url)
+    .then(res => {
+      if (!res.ok) {
+        return console.error(res.error.message)
+      }
+      res.body.pipe(process.stdout)
+    })
+    .catch(console.error)
   })
 
 program

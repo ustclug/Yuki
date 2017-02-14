@@ -15,7 +15,7 @@ import CONFIG from '../config'
 import logger from '../logger'
 import schedule from '../scheduler'
 import auth from './auth'
-import { bringUp, autoRemove, dirExists, makeDir, queryOpts } from '../util'
+import { bringUp, autoRemove, dirExists, makeDir, myStat, queryOpts } from '../util'
 
 const PREFIX = CONFIG.CT_NAME_PREFIX
 const LABEL = CONFIG.CT_LABEL
@@ -230,7 +230,6 @@ routerProxy.get('/repositories', (ctx) => {
    * @apiParam {String} bindIp Local ip to be bound (Optional)
    * @apiParam {String} user Owner of the storage directory (Optional)
    *
-   * @apiSuccess (Success 201) {Object} empty Empty object
    *
    * @apiUse CommonErr
    */
@@ -245,7 +244,6 @@ routerProxy.get('/repositories', (ctx) => {
     return Repo.create(body)
       .then((repo) => {
         ctx.status = 201
-        ctx.body = {}
         schedule.addJob(repo.name, repo.interval)
       }, (err) => {
         logger.error(`Creating ${body.name}: %s`, err)
@@ -344,7 +342,16 @@ routerProxy.get('/repositories', (ctx) => {
 
   if (stats) {
     return readDir(logdir)
-      .then((files) => ctx.body = files.filter(f => f.startsWith('result.log')))
+      .then((files) => {
+        ctx.body = files.filter(f => f.startsWith('result.log.'))
+          .reduce((acc, f) => {
+            try {
+              acc.push(myStat(logdir, f))
+            } catch (e) {
+            }
+            return acc
+          }, [])
+      })
   }
 
   return readDir(logdir)
@@ -352,7 +359,7 @@ routerProxy.get('/repositories', (ctx) => {
       const wantedName = `result.log.${nth}`
       for (const f of files) {
         if (f.startsWith(wantedName)) {
-          const fp = path.resolve(logdir, f)
+          const fp = path.join(logdir, f)
           switch (path.extname(f)) {
             case '.gz':
               ctx.body = fs.createReadStream(fp).pipe(createGunzip())
@@ -711,7 +718,6 @@ routerProxy.get('/users', isAuthorized, async (ctx) => {
   return User.create(newUser)
   .then(() => {
     ctx.status = 201
-    ctx.body = {}
   }, err => {
     logger.error(`Creating user ${ctx.params.name}: %s`, err)
     ctx.status = 400
@@ -786,6 +792,9 @@ routerProxy.use('/config', isAuthorized)
   return Repo.create(repos)
     .then(() => {
       ctx.status = 200
+    }, (err) => {
+      setErrMsg(ctx, err.message)
+      ctx.status = 500
     })
     .catch(console.error)
 })
