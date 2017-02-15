@@ -10,7 +10,7 @@ import docker from './docker'
 import CONFIG from './config'
 import logger from './logger'
 import schedule from './scheduler'
-import { cleanContainers, schedRepos } from './util'
+import { cleanImages, cleanContainers } from './util'
 
 const app = new Koa()
 module.exports = app
@@ -46,32 +46,14 @@ if (!CONFIG.isTest) {
     cleanContainers({ running: true }),
     cleanContainers({ exited: true })
   ])
-  .then(schedRepos)
-  .catch((err) => {
-    logger.error('Cleaning containers: %s', err)
-  })
+  .then(() => schedule.schedRepos())
+  .catch((err) => logger.error('Cleaning containers: %s', err))
 
   schedule.addCusJob('upgradeImages', CONFIG.IMAGES_UPGRADE_INTERVAL, () => {
     logger.info('Upgrading images')
 
     Promise.all(CONFIG._images.map((tag) => docker.pull(tag)))
-    .then(() => {
-      return docker.listImages({
-        filters: {
-          label: {
-            'ustcmirror.images': true
-          },
-          dangling: {
-            true: true
-          }
-        }
-      })
-      .then(images => {
-        images.forEach(info => {
-          docker.getImage(info.Id).remove().catch(console.error)
-        })
-      })
-    }, (err) => {
+    .then(cleanImages, (err) => {
       logger.error('Pulling images: %s', err)
     })
   })
