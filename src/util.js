@@ -4,7 +4,6 @@
 
 import fs from 'fs'
 import path from 'path'
-import Promise from 'bluebird'
 import docker from './docker'
 import { Repository as Repo } from './models'
 import CONFIG from './config'
