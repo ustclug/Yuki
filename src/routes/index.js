@@ -15,7 +15,8 @@ import CONFIG from '../config'
 import logger from '../logger'
 import schedule from '../scheduler'
 import auth from './auth'
-import { bringUp, autoRemove, dirExists, makeDir, myStat, queryOpts } from '../util'
+import { bringUp, autoRemove, dirExists,
+  makeDir, myStat, queryOpts, schedRepos } from '../util'
 
 const PREFIX = CONFIG.CT_NAME_PREFIX
 const LABEL = CONFIG.CT_LABEL
@@ -248,7 +249,7 @@ routerProxy.get('/repositories', (ctx) => {
       }, (err) => {
         logger.error(`Creating ${body.name}: %s`, err)
         ctx.status = 400
-        setErrMsg(ctx, err.errmsg)
+        setErrMsg(ctx, err.message)
       })
   })
   /**
@@ -286,7 +287,7 @@ routerProxy.get('/repositories', (ctx) => {
     .catch(err => {
       logger.error(`Updating ${name}: %s`, err)
       ctx.status = 500
-      setErrMsg(ctx, err.errmsg)
+      setErrMsg(ctx, err.message)
     })
   })
   /**
@@ -311,7 +312,7 @@ routerProxy.get('/repositories', (ctx) => {
       .catch(err => {
         logger.error(`Deleting ${name}: %s`, err)
         ctx.status = 500
-        setErrMsg(ctx, err.errmsg)
+        setErrMsg(ctx, err.message)
       })
   })
 
@@ -347,9 +348,10 @@ routerProxy.get('/repositories', (ctx) => {
           .reduce((acc, f) => {
             try {
               acc.push(myStat(logdir, f))
-            } catch (e) {
+            } finally {
+            // eslint-disable-next-line no-unsafe-finally
+              return acc
             }
-            return acc
           }, [])
       })
   }
@@ -372,11 +374,12 @@ routerProxy.get('/repositories', (ctx) => {
         }
       }
       setErrMsg(ctx, `${path.join(repo, wantedName)} cannot be found`)
-      return ctx.status = 404
+      ctx.status = 404
     })
     .catch(e => {
+      logger.error(`${repo} logs: %s`, e)
       setErrMsg(ctx, e.message)
-      return ctx.status = 500
+      ctx.status = 500
     })
 })
 
@@ -449,6 +452,7 @@ routerProxy.get('/repositories', (ctx) => {
         ctx.body = logStream
       })
       .catch(err => {
+        logger.error(`${name} sync: %s`, err)
         ctx.status = err.statusCode
         setErrMsg(ctx, err.reason)
       })
@@ -582,6 +586,7 @@ routerProxy.get('/repositories', (ctx) => {
       ctx.body = logStream
     })
     .catch(err => {
+      logger.error(`${name} logs: %s`, err)
       ctx.status = err.statusCode
       setErrMsg(ctx, err.reason)
     })
@@ -749,7 +754,7 @@ routerProxy.get('/users', isAuthorized, async (ctx) => {
   }, err => {
     logger.error(`Removing user ${ctx.params.name}: %s`, err)
     ctx.status = 500
-    setErrMsg(ctx, err.errmsg)
+    setErrMsg(ctx, err.message)
   })
 
 })
@@ -775,7 +780,11 @@ routerProxy.use('/config', isAuthorized)
         ctx.body = docs
       }
     })
-    .catch(console.error)
+    .catch(err => {
+      logger.error('Export config: %s', err)
+      setErrMsg(ctx, err.message)
+      ctx.status = 500
+    })
 })
 /**
  * @api {post} /config Import config
@@ -793,10 +802,30 @@ routerProxy.use('/config', isAuthorized)
     .then(() => {
       ctx.status = 200
     }, (err) => {
+      logger.error('Import config: %s', err)
       setErrMsg(ctx, err.message)
       ctx.status = 500
     })
-    .catch(console.error)
+})
+
+/**
+ * @api {post} /reload Reload config
+ * @apiName ReloadConfig
+ * @apiGroup Config
+ *
+ * @apiUse AccessToken
+ * @apiPermission admin
+ *
+ * @apiUse CommonErr
+ */
+.post('/reload', isAuthorized, isAdmin, (ctx) => {
+  CONFIG.reload()
+  return schedRepos()
+    .catch(err => {
+      logger.error('Reload config: %s', err)
+      setErrMsg(ctx, err.message)
+      ctx.status = 500
+    })
 })
 
 export default router.routes()
