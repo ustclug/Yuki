@@ -10,7 +10,7 @@ parserOptions:
   ecmaFeatures:
     experimentalObjectRestSpread: true
 
-plugins: ["import", "vue"]
+plugins: ["import"]
 
 parser: "babel-eslint"
 

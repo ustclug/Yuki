@@ -11,7 +11,7 @@
     "lint": "eslint src",
     "install": "node-gyp rebuild",
     "build": "NODE_ENV=production babel -d dist src && node-gyp rebuild",
-    "build:test": "babel -d dist src && node-gyp rebuild",
+    "build:dev": "babel -d dist src && node-gyp rebuild",
     "yukid": "NODE_ENV=production dist/index.js daemon",
     "yukid:dev": "NODE_ENV=dev dist/index.js daemon",
     "yukid:test": "NODE_ENV=test dist/index.js daemon"
@@ -41,7 +41,6 @@
     "node": ">=6"
   },
   "devDependencies": {
-    "apidoc": "^0.17.5",
     "ava": "^0.18.1",
     "babel-cli": "^6.22.2",
     "babel-eslint": "^7.1.1",
@@ -51,12 +50,8 @@
     "babel-preset-env": "^1.1.6",
     "babel-register": "^6.22.0",
     "eslint": "^3.15.0",
-    "eslint-config-vue": "^2.0.2",
     "eslint-plugin-import": "^2.2.0",
-    "eslint-plugin-vue": "^2.0.1",
-    "koa-static": "^3.0.0",
-    "vue": "^2.1.10",
-    "webpack": "^2.2.1"
+    "koa-static": "^3.0.0"
   },
   "babel": {
     "presets": [
