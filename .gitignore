@@ -3,10 +3,12 @@
 *.py[co]
 *~
 *.bac
+*.tgz
 __pycache__/
 node_modules/
 coverage
 .nyc_output
 reference/
 dist/
+doc/
 build/
