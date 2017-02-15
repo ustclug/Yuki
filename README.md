@@ -6,8 +6,8 @@ ustcmirror
 
 - [Introduction](#introduction)
 - [Dependencies](#dependencies)
+- [Quickstart](#quickstart)
 - [API Documentation](#api-documentation)
-- [Installation](#installation)
 - [Configuration](#configuration)
     - [Server side](#server-side)
     - [Client side](#client-side)
@@ -25,11 +25,7 @@ Aims to provide effortless management of docker containers on USTC Mirrors
 * make (building dep)
 * g++ (building dep)
 
-# API Documentation
-
-* [Routes](https://ustclug.github.io/ustcmirror/)
-
-# Installation
+# Quickstart
 
 ```
 npm i -g ustcmirror
@@ -45,10 +41,16 @@ $ cat ~/.ustcmirror/config.json
 }
 ```
 
+Start a mongo instance:
+
+```
+docker run --name mongo -p 127.0.0.1:27017:27017 -tid mongo:3.4
+```
+
 Run the daemon in debug mode:
 
 ```
-npm run yukid:dev
+NODE_ENV=dev ustcmirror daemon
 ```
 
 Play with the CLI:
@@ -56,6 +58,10 @@ Play with the CLI:
 ```
 ustcmirror -h
 ```
+
+# API Documentation
+
+* [Routes](https://ustclug.github.io/ustcmirror/)
 
 # Configuration
 
