@@ -11,7 +11,6 @@ import { bringUp, queryOpts, autoRemove, dirExists, makeDir } from './util'
 
 class Scheduler {
   constructor() {
-    this._paused = false
   }
 
   async addJob(name, spec) {
@@ -72,24 +71,15 @@ class Scheduler {
     return schedule.cancelJob(name)
   }
 
-  pause() {
-    if (this._paused) return
-    Object.values(schedule.scheduledJobs)
-      .forEach(job => {
-        job.cancel(true) // reschedule
+  schedRepos() {
+    return Repo.find({}, { interval: true, name: true })
+    .then(docs => {
+      docs.forEach(doc => {
+        // this -> scheduler instance
+        this.addJob(doc.name, doc.interval)
       })
-    this._paused = true
-  }
-
-  resume() {
-    if (!this._paused) return
-    Repo.find({}, { interval: true })
-    .forEach(r => {
-      schedule.scheduledJobs[r._id].reschedule(r.interval)
     })
-    this._paused = false
   }
-
 }
 
 export default new Scheduler()
