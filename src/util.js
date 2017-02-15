@@ -4,9 +4,9 @@
 
 import fs from 'fs'
 import path from 'path'
+import Promise from 'bluebird'
 import docker from './docker'
 import { Repository as Repo } from './models'
-import scheduler from './scheduler'
 import CONFIG from './config'
 
 const PREFIX = CONFIG.CT_NAME_PREFIX
@@ -100,15 +100,6 @@ function makeDir(path) {
   }
 }
 
-function schedRepos() {
-  return Repo.find({}, { interval: true, name: true })
-  .then(docs => {
-    docs.forEach(doc => {
-      scheduler.addJob(doc.name, doc.interval)
-    })
-  })
-}
-
 function myStat(dir, name) {
   const stats = fs.statSync(path.join(dir, name))
   const time2stamp = (time) => Math.round(time / 1000)
@@ -141,13 +132,31 @@ function cleanContainers(status = {running: true}) {
   })
 }
 
+function cleanImages() {
+  return docker.listImages({
+    filters: {
+      label: {
+        'ustcmirror.images': true
+      },
+      dangling: {
+        true: true
+      }
+    }
+  })
+  .then(images => {
+    images.forEach(info => {
+      docker.getImage(info.Id).remove().catch(console.error)
+    })
+  })
+}
+
 export default {
   autoRemove,
   bringUp,
   cleanContainers,
+  cleanImages,
   dirExists,
   makeDir,
   myStat,
-  schedRepos,
   queryOpts
 }
