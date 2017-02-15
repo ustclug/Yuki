@@ -455,6 +455,21 @@ program
   })
 
 program
+  .command('reload')
+  .description('reload all config')
+  .action((opts) => {
+    req(opts.parent.apiroot, 'reload', null, 'post')
+    .then(async (res) => {
+      if (res.ok) {
+        console.log('Successfully reloaded!')
+      } else {
+        console.error(res.error.message)
+      }
+    })
+    .catch(console.error)
+  })
+
+program
   .command('*')
   .action(() => program.outputHelp())
 
