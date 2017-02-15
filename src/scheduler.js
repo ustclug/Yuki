@@ -60,7 +60,7 @@ class Scheduler {
         .catch(e => logger.error(`Removing ${name}: %s`, e))
     })
 
-    logger.info(`Scheduled ${name}`)
+    logger.info(`${name} scheduled`)
     return true
   }
 

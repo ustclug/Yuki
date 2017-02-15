@@ -3,13 +3,14 @@
 'use strict'
 
 import Koa from 'koa'
+import Promise from 'bluebird'
 import routes from './routes'
 import mongoose from 'mongoose'
 import docker from './docker'
 import CONFIG from './config'
 import logger from './logger'
-import models from './models'
 import schedule from './scheduler'
+import { cleanContainers, schedRepos } from './util'
 
 const app = new Koa()
 module.exports = app
@@ -33,64 +34,46 @@ if (CONFIG.isTest) {
 }
 logger.info('Connected to MongoDB')
 
-const Repo = models.Repository
-
 const server = app.listen(CONFIG.API_PORT, () => {
   const addr = server.address()
   logger.info(`listening on ${addr.address}:${addr.port}`)
 })
 
 if (!CONFIG.isTest) {
-  docker.listContainers({
-    all: true,
-    filters: {
-      label: {
-        syncing: true,
-        'ustcmirror.images': true,
-      },
-      status: {
-        exited: true
-      }
-    }
-  })
-  .then(cts => {
-    logger.info('Cleaning exited containers')
-    cts.forEach(info => {
-      const ct = docker.getContainer(info.Id)
-      ct.remove({ v: true })
-        .catch(console.error)
-    })
-  })
-  .then(() => Repo.find({}, { interval: true, name: true }))
-  .then(docs => {
-    docs.forEach(doc => {
-      schedule.addJob(doc.name, doc.interval)
-    })
+  logger.info('Cleaning containers')
+
+  Promise.all([
+    cleanContainers({ running: true }),
+    cleanContainers({ exited: true })
+  ])
+  .then(schedRepos)
+  .catch((err) => {
+    logger.error('Cleaning containers: %s', err)
   })
 
   schedule.addCusJob('upgradeImages', CONFIG.IMAGES_UPGRADE_INTERVAL, () => {
     logger.info('Upgrading images')
-    CONFIG._images.forEach(tag => {
-      docker.pull(tag)
-      .catch(console.error)
-    })
 
-    docker.listImages({
-      all: true,
-      filters: {
-        label: {
-          'ustcmirror.images': true
-        },
-        dangling: {
-          true: true
+    Promise.all(CONFIG._images.map((tag) => docker.pull(tag)))
+    .then(() => {
+      return docker.listImages({
+        filters: {
+          label: {
+            'ustcmirror.images': true
+          },
+          dangling: {
+            true: true
+          }
         }
-      }
-    })
-    .then(images => {
-      images.forEach(info => {
-        docker.getImage(info.Id).remove().catch(console.error)
       })
+      .then(images => {
+        images.forEach(info => {
+          docker.getImage(info.Id).remove().catch(console.error)
+        })
+      })
+    }, (err) => {
+      logger.error('Pulling images: %s', err)
     })
   })
-  logger.info('Scheduled images upgrade')
+  logger.info('images-upgrade scheduled')
 }
