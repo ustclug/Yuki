@@ -5,10 +5,10 @@
 import fs from 'fs'
 import path from 'path'
 import docker from './docker'
-import models from './models'
+import { Repository as Repo } from './models'
+import scheduler from './scheduler'
 import CONFIG from './config'
 
-const Repo = models.Repository
 const PREFIX = CONFIG.CT_NAME_PREFIX
 const LABEL = CONFIG.CT_LABEL
 
@@ -100,10 +100,54 @@ function makeDir(path) {
   }
 }
 
+function schedRepos() {
+  return Repo.find({}, { interval: true, name: true })
+  .then(docs => {
+    docs.forEach(doc => {
+      scheduler.addJob(doc.name, doc.interval)
+    })
+  })
+}
+
+function myStat(dir, name) {
+  const stats = fs.statSync(path.join(dir, name))
+  const time2stamp = (time) => Math.round(time / 1000)
+  return {
+    name,
+    size: stats.size,
+    atime: time2stamp(stats.atime.getTime()),
+    mtime: time2stamp(stats.mtime.getTime()),
+    ctime: time2stamp(stats.ctime.getTime()),
+    birthtime: time2stamp(stats.birthtime.getTime())
+  }
+}
+
+function cleanContainers(status = {running: true}) {
+  return docker.listContainers({
+    all: true,
+    filters: {
+      label: {
+        syncing: true,
+        'ustcmirror.images': true,
+      },
+      status
+    }
+  })
+  .then(cts => {
+    cts.forEach(info => {
+      const ct = docker.getContainer(info.Id)
+      autoRemove(ct).catch(console.error)
+    })
+  })
+}
+
 export default {
-  bringUp,
   autoRemove,
+  bringUp,
+  cleanContainers,
   dirExists,
   makeDir,
+  myStat,
+  schedRepos,
   queryOpts
 }
