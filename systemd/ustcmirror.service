@@ -1,0 +1,11 @@
+[Unit]
+Description=RESTful API Server for Administering Docker Containers on USTC Mirrors
+After=network.target
+
+[Service]
+User=mirror
+ExecStart=/usr/local/bin/ustcmirror daemon
+Environment="NODE_ENV=dev"
+
+[Install]
+WantedBy=multi-user.target
