@@ -6,7 +6,7 @@ ustcmirror
 
 - [Introduction](#introduction)
 - [Dependencies](#dependencies)
-- [How it works](#how-it-works)
+- [API Documentation](#api-documentation)
 - [Installation](#installation)
 - [Configuration](#configuration)
     - [Server side](#server-side)
@@ -21,16 +21,13 @@ Aims to provide effortless management of docker containers on USTC Mirrors
 * Node.js > 6
 * Docker
 * MongoDB
+* python (building dep)
+* make (building dep)
+* g++ (building dep)
 
-# How it works
+# API Documentation
 
-```
-docker run -i --rm --user "$OWNER" --net=host \
-       -v "$storageDir:/data" -v "$LOGDIR_ROOT/$repo_name:/log" \
-       -e BIND_ADDRESS=$BIND_ADDRESS [-e other env vars] \
-       --label "$CT_LABEL" --name "${CT_NAME_PREFIX}-${repo_name}" \
-       ustcmirror/<sync_method>:latest
-```
+* [Routes](https://ustclug.github.io/ustcmirror/)
 
 # Installation
 
@@ -84,6 +81,7 @@ User-specific configuration: `~/.ustcmirror/config.(js|json)`
 | `CT_NAME_PREFIX` | Defaults to `syncing`. |
 | `LOGDIR_ROOT` | Defaults to `/var/log/ustcmirror`. |
 | `IMAGES_UPGRADE_INTERVAL` | Defaults to `1 * * * *`. |
+| `LOGLEVEL` | Defaults to `debug` if `NODE_ENV == 'dev'` else `warn`. |
 | `OWNER` | Defaults to `${process.getuid()}:${process.getgid()}` |
 
 ### Client side
