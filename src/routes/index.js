@@ -5,7 +5,7 @@
 import Router from 'koa-router'
 import bodyParser from 'koa-bodyparser'
 import api from './api'
-import board from './dashboard'
+import home from './home'
 import { isDev, isTest, TOKEN_NAME } from '../config'
 import { User } from '../models'
 import logger from '../logger'
@@ -47,6 +47,7 @@ router.use(async function auth(ctx, next) {
 })
 
 .use(api.routes(), api.allowedMethods())
-.use(board.routes(), board.allowedMethods())
+.use(home.routes(), home.allowedMethods())
+.redirect('/', '/home')
 
 export default router.routes()
