@@ -10,7 +10,7 @@
     "pub": "npm run build && npm publish",
     "lint": "eslint src",
     "install": "node-gyp rebuild",
-    "doc": "apidoc -i src/routes -f index.js",
+    "doc": "apidoc -i src/routes",
     "build": "NODE_ENV=production babel -d dist src && node-gyp rebuild",
     "build:dev": "babel -d dist src && node-gyp rebuild",
     "yukid": "NODE_ENV=production dist/index.js daemon",
