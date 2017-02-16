@@ -23,9 +23,9 @@ router.use(async function auth(ctx, next) {
   const token = ctx.header[TOKEN_NAME] || ''
   const user = await User.findOne({ token })
   if (user === null) {
-    ctx.state.authorized = isTest
+    ctx.state.isLoggedIn = isTest
   } else {
-    ctx.state.authorized = true
+    ctx.state.isLoggedIn = true
     ctx.state.isAdmin = user.admin
     ctx.state.username = user.name
   }

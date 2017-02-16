@@ -27,10 +27,10 @@ function setErrMsg(ctx, msg) {
   ctx.body = { message: msg }
 }
 
-function isAuthorized(ctx, next) {
-  if (!ctx.state.authorized) {
-    ctx.body = { message: 'unauthorized access' }
-    logger.warn(`Unauthorized: ${ctx.method} ${ctx.request.url}`)
+function isLoggedIn(ctx, next) {
+  if (!ctx.state.isLoggedIn) {
+    ctx.body = { message: 'unauthenticated access' }
+    logger.warn(`Unauthenticated: ${ctx.method} ${ctx.request.url}`)
     return ctx.status = 401
   }
   return next()
@@ -39,7 +39,7 @@ function isAuthorized(ctx, next) {
 function isAdmin(ctx, next) {
   if (!ctx.state.isAdmin) {
     ctx.body = { message: 'Operation not permitted. Please concat administrator' }
-    logger.warn(`Not permitted: ${ctx.state.username} ${ctx.method} ${ctx.request.url}`)
+    logger.warn(`Unauthorized: ${ctx.state.username} ${ctx.method} ${ctx.request.url}`)
     return ctx.status = 401
   }
   return next()
@@ -84,7 +84,7 @@ routerProxy
    *
    * @apiUse CommonErr
    */
-  .get('/auth', isAuthorized, (ctx) => {
+  .get('/auth', isLoggedIn, (ctx) => {
     if (ctx.state.username) {
       ctx.body = {
         name: ctx.state.username,
@@ -210,7 +210,7 @@ routerProxy.get('/repositories', (ctx) => {
    *
    * @apiUse CommonErr
    */
-  .post(isAuthorized, (ctx) => {
+  .post(isLoggedIn, (ctx) => {
     const body = ctx.body
     body.name = ctx.params.name
     if (!dirExists(body.storageDir)) {
@@ -250,7 +250,7 @@ routerProxy.get('/repositories', (ctx) => {
    *
    * @apiUse CommonErr
    */
-  .put(isAuthorized, (ctx) => {
+  .put(isLoggedIn, (ctx) => {
     const name = ctx.params.name
     return Repo.findByIdAndUpdate(name, ctx.body, {
       runValidators: true
@@ -278,7 +278,7 @@ routerProxy.get('/repositories', (ctx) => {
    *
    * @apiUse CommonErr
    */
-  .delete(isAuthorized, (ctx) => {
+  .delete(isLoggedIn, (ctx) => {
     const name = ctx.params.name
     return Repo.findByIdAndRemove(name)
       .then(() => {
@@ -307,7 +307,7 @@ routerProxy.get('/repositories', (ctx) => {
  *
  * @apiUse CommonErr
  */
-.get('/repositories/:name/logs', isAuthorized, (ctx) => {
+.get('/repositories/:name/logs', isLoggedIn, (ctx) => {
   const repo = ctx.params.name
   const nth = ctx.query.n || 0
   const stats = !!ctx.query.stats
@@ -373,7 +373,7 @@ routerProxy.get('/repositories', (ctx) => {
  *
  * @apiUse CommonErr
  */
-.post('/repositories/:name/sync', isAuthorized, async (ctx) => {
+.post('/repositories/:name/sync', isLoggedIn, async (ctx) => {
   const name = ctx.params.name
   const debug = !!ctx.query.debug // dirty hack, convert to boolean
 
@@ -471,7 +471,7 @@ routerProxy.get('/repositories', (ctx) => {
  *
  * @apiUse CommonErr
  */
-.delete('/containers/:repo', isAuthorized, (ctx) => {
+.delete('/containers/:repo', isLoggedIn, (ctx) => {
   const name = `${PREFIX}-${ctx.params.repo}`
   const ct = docker.getContainer(name)
   return ct.remove({ v: true })
@@ -517,7 +517,7 @@ routerProxy.get('/repositories', (ctx) => {
  *
  * @apiUse CommonErr
  */
-.get('/containers/:repo/inspect', isAuthorized, (ctx) => {
+.get('/containers/:repo/inspect', isLoggedIn, (ctx) => {
   const name = `${PREFIX}-${ctx.params.repo}`
   const ct = docker.getContainer(name)
   return ct.inspect()
@@ -542,7 +542,7 @@ routerProxy.get('/repositories', (ctx) => {
  * @apiSuccess {Stream} log Log Stream
  * @apiUse CommonErr
  */
-.get('/containers/:repo/logs', isAuthorized, (ctx) => {
+.get('/containers/:repo/logs', isLoggedIn, (ctx) => {
   const name = `${PREFIX}-${ctx.params.repo}`
   const follow = !!ctx.query.follow
   const tail = ctx.query.tail || 'all'
@@ -570,7 +570,7 @@ routerProxy.get('/repositories', (ctx) => {
 
 const actions = ['start', 'stop', 'restart', 'pause', 'unpause']
 actions.forEach(action => {
-  router.post(`/containers/:repo/${action}`, isAuthorized, ctx => {
+  router.post(`/containers/:repo/${action}`, isLoggedIn, ctx => {
     const name = `${PREFIX}-${ctx.params.repo}`
     const ct = docker.getContainer(name)
     return ct[action]()
@@ -584,7 +584,7 @@ actions.forEach(action => {
   })
 })
 
-routerProxy.post('/images/update', isAuthorized, async (ctx) => {
+routerProxy.post('/images/update', isLoggedIn, async (ctx) => {
   return Promise.all(CONFIG._images.map(tag => docker.pull(tag)))
     .then((data) => {
       ctx.status = 200
@@ -608,7 +608,7 @@ routerProxy.post('/images/update', isAuthorized, async (ctx) => {
  *
  * @apiUse CommonErr
  */
-routerProxy.get('/users', isAuthorized, async (ctx) => {
+routerProxy.get('/users', isLoggedIn, async (ctx) => {
   let users = null
   if (ctx.state.isAdmin) {
     // only hide password
@@ -629,7 +629,7 @@ routerProxy.get('/users', isAuthorized, async (ctx) => {
  *
  * @apiUse CommonErr
  */
-.put('/users/:name', isAuthorized, ctx => {
+.put('/users/:name', isLoggedIn, ctx => {
   const name = ctx.params.name
   if (!ctx.state.isAdmin) {
     if (name !== ctx.state.username || ctx.body.admin) {
@@ -656,7 +656,7 @@ routerProxy.get('/users', isAuthorized, async (ctx) => {
   })
 })
 
-.use('/users/:name', isAuthorized, isAdmin)
+.use('/users/:name', isLoggedIn, isAdmin)
 /**
  * @api {get} /users/:name Get User
  * @apiName GetUser
@@ -735,7 +735,7 @@ routerProxy.get('/users', isAuthorized, async (ctx) => {
 
 })
 
-routerProxy.use('/config', isAuthorized)
+routerProxy.use('/config', isLoggedIn)
 /**
  * @api {get} /config Export config of Repos
  * @apiName ExportConfig
@@ -794,7 +794,7 @@ routerProxy.use('/config', isAuthorized)
  *
  * @apiUse CommonErr
  */
-.post('/reload', isAuthorized, isAdmin, (ctx) => {
+.post('/reload', isLoggedIn, isAdmin, (ctx) => {
   CONFIG.reload()
   return schedule.schedRepos()
     .catch(err => {
