@@ -118,6 +118,20 @@ test('Get repository', t => {
     })
 })
 
+test('Filter repositories', t => {
+  return request.get('repositories?type=gitsync')
+    .then(async res => {
+      t.is(res.status, 200)
+      const data = await res.json()
+      t.is(data.length, 2)
+      for (const r of data) {
+        t.truthy(r.name)
+        t.truthy(r.interval)
+        t.is(r.image, 'ustcmirror/gitsync:latest')
+      }
+    })
+})
+
 test('Create repository', t => {
   return request.post('repositories/vim', {
     image: 'ustcmirror/test:latest',

@@ -7,21 +7,6 @@
     "storageDir": "/tmp/repos/archlinux"
 },
 {
-    "name": "kde",
-    "interval": "2 * * * *",
-    "image": "ustcmirror/test:latest",
-    "args": ["echo", "kde"],
-    "envs": ["RSYNC_USER=asdh", "RSYNC_HOST=rsync.mirrors.ustc.edu.cn", "RSYNC_PATH=kde", "RSYNC_EXCLUDE=--exclude .~tmp~/ --exclude nonexistent"],
-    "storageDir": "/tmp/repos/kde"
-},
-{
-    "name": "gmt",
-    "interval": "48 2 * * *",
-    "image": "ustcmirror/test:latest",
-    "args": ["echo", "gmt"],
-    "storageDir": "/tmp/repos/gmt"
-},
-{
     "name": "bioc",
     "interval": "48 2 * * *",
     "image": "ustcmirror/test:latest",
@@ -37,10 +22,57 @@
     "envs": ["LFTPSYNC_EXCLUDE=-X .~tmp~/", "LFTPSYNC_HOST=mirrors.ustc.edu.cn"],
     "storageDir": "/tmp/repos/ubuntu"
 },
+
+{
+    "name": "kde",
+    "interval": "2 * * * *",
+    "image": "ustcmirror/rsync:latest",
+    "args": [],
+    "envs": ["RSYNC_USER=asdh", "RSYNC_HOST=rsync.mirrors.ustc.edu.cn", "RSYNC_PATH=kde", "RSYNC_EXCLUDE=--exclude .~tmp~/ --exclude nonexistent"],
+    "storageDir": "/tmp/repos/kde"
+},
+{
+    "name": "openvz",
+    "interval": "48 2 * * *",
+    "image": "ustcmirror/rsync:latest",
+    "args": [],
+    "storageDir": "/tmp/repos/openvz"
+},
+{
+    "name": "gmt",
+    "interval": "48 2 * * *",
+    "image": "ustcmirror/rsync:latest",
+    "args": ["echo", "gmt"],
+    "storageDir": "/tmp/repos/gmt"
+},
+
+{
+    "name": "steamos",
+    "interval": "1 2 * * *",
+    "image": "ustcmirror/lftpsync:latest",
+    "envs": ["LFTPSYNC_HOST=http://repo.steampowered.com", "LTPSYNC_PATH=/"],
+    "storageDir": "/tmp/repos/steamos"
+},
+{
+    "name": "node",
+    "interval": "1 2 * * *",
+    "image": "ustcmirror/lftpsync:latest",
+    "envs": [],
+    "storageDir": "/tmp/repos/node"
+},
+
+{
+    "name": "linux.git",
+    "interval": "1 2 * * *",
+    "image": "ustcmirror/gitsync:latest",
+    "args": [],
+    "envs": [],
+    "storageDir": "/tmp/repos/linux.git"
+},
 {
     "name": "brew.git",
     "interval": "1 2 * * *",
-    "image": "ustcmirror/test:latest",
+    "image": "ustcmirror/gitsync:latest",
     "args": ["echo", "gmt"],
     "envs": ["GITSYNC_URL=https://github.com/Homebrew/brew.git", "GITSYNC_BITMAP=true"],
     "storageDir": "/tmp/repos/gmt"
