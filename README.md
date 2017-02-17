@@ -89,6 +89,7 @@ User-specific configuration: `~/.ustcmirror/config.(js|json)`
 | `IMAGES_UPGRADE_INTERVAL` | Defaults to `1 * * * *`. |
 | `LOGLEVEL` | Defaults to `debug` if `NODE_ENV == 'dev'` else `warn`. |
 | `OWNER` | Defaults to `${process.getuid()}:${process.getgid()}` |
+| `TIMESTAMP` | Defaults to `true` |
 
 ### Client side
 
