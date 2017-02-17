@@ -38,6 +38,7 @@ const reload = () => {
     LOGDIR_ROOT: '/var/log/ustcmirror',
     IMAGES_UPGRADE_INTERVAL: '1 * * * *',
     OWNER: `${process.getuid()}:${process.getgid()}`,
+    TIMESTAMP: true,
     LOGLEVEL: '',
     // For client
     API_ROOT: '',
@@ -73,6 +74,9 @@ const reload = () => {
   }
 
   merge(defaults, process.env, 'YUKI_')
+  if (typeof defaults.TIMESTAMP === 'string') {
+    defaults.TIMESTAMP = defaults.TIMESTAMP === 'true'
+  }
 
   if (!defaults.LOGLEVEL) {
     defaults.LOGLEVEL = isDev ? 'debug' : 'warn'
