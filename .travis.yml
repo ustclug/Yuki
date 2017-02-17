@@ -16,6 +16,7 @@ script:
 deploy:
   provider: npm
   email: jzeng@ustclug.org
+  skip_cleanup: true
   on:
     tags: true
     repo: ustclug/ustcmirror
