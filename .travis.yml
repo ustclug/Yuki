@@ -1,20 +1,23 @@
 language: node_js
-
 node_js:
   - 6
-
 cache:
   directories:
     - node_modules
-
 services:
   - docker
-
 before_script:
   - set -e
   - docker run -id -p 127.0.0.1:27017:27017 --name mongo mongo:3.4
   - npm run build
-
 script:
   - npm test
   - npm run lint
+deploy:
+  provider: npm
+  email: jzeng@ustclug.org
+  on:
+    tags: true
+    repo: ustclug/ustcmirror
+  api_key:
+    secure: ONjAzt75D4fMO8ukwcpAk3hy//FqCyVIEBmmfUHb9Z3r7CXuQxIf49uwWuNEeciiB34VLVrWiw7ii7bbdov3NOKaQhKhf/uF2GjcvG56wIEKlwQ7F4FLRdprs3oS7glVyMehj2stM0iwnSabUQ47cztR4z1bUvJX5ExAtQwiSU8uH9wm84luBqcsFPEOShs5TQ8dJSgXLxhax+0RgZayQlNjxRGUYILLs0lYnL6Tmf4QJElcU6pzXnddSxPTUvyx/49515hThICEZD3KpriqXU8Ms3mAWZWMBa8eJ7Shpa7xDYxpJ/tZuunQ0o7OG1T0Bvzh9FuhuXB3gvk5z06K/wKmzzA2ETc0lsoMmzBZSEdB6e2czs4jgnrrk1vM7TXFtzJqqziO3RG4rOd/QwhGOciDHi2f3q8VI+kkLDscVfr0ZhzZ5O2I3uk5oT+0rZ5jZJ9CwPQwVbmQ4hSKFvRIzYzKgVSMGQHMhTLhQcNB2Xq/i0IHleZztjNmVEMTuGUIJs9OfTa3TSMCi4bSuxU/YBErbtBA3zzl+EROBDYPCbGGCKof2krElgbKjzrZDPZQ1Nzd4f8PJDb2Re+EQT539l2rz2tCV9S2kjTY5qwNyclWRbpDtElmB6SDSzREd5rFsbETGRYnKe9OKUKiSaL+2aaCh+jR2i/Aqv3LsYiLa70=
