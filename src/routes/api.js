@@ -132,6 +132,8 @@ routerProxy
  * @apiName ListRepositories
  * @apiGroup Repositories
  *
+ * @apiParam {String} type Basename of the Docker image
+ *
  * @apiSuccess {Object[]} repos(virtual field) List of repositories
  * @apiSuccess {String} .interval Task interval
  * @apiSuccess {String} .image Name of the Docker image
@@ -147,7 +149,15 @@ routerProxy
  * @apiUse CommonErr
  */
 routerProxy.get('/repositories', (ctx) => {
-  return Repo.find()
+  const type = ctx.query.type
+  const query = type ? {
+    'image': {
+      '$regex': `ustcmirror/${type}`
+    }
+  } : null
+  return Repo.find(query)
+    .sort({ _id: 1 })
+    .exec()
     .then(data => ctx.body = data)
 })
 

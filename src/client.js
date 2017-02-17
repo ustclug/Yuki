@@ -243,17 +243,17 @@ program
 program
   .command('repo-list [repo]')
   .description('list repository(s)')
+  .option('-t --type <method>', 'filter repos based on syncing method')
   .action((repo, opts) => {
-    const u = repo ? `repositories/${repo}` : 'repositories'
+    let u = repo ? `repositories/${repo}` : 'repositories'
+    if (!repo && opts.type) {
+      u += `?type=${opts.type}`
+    }
     req(opts.parent.apiroot, u)
     .then(async res => {
       if (res.ok) {
         const data = await res.json()
-
-        let repos = null
-        if (!Array.isArray(data)) repos = [data]
-        else repos = data
-
+        const repos = Array.isArray(data) ? data : [data]
         for (const repo of repos) {
           console.log(`${repo.name}:`)
           console.log(`\timage: ${repo.image}`)
