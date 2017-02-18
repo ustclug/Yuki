@@ -31,14 +31,10 @@ Aims to provide effortless management of docker containers on USTC Mirrors
 npm i -g ustcmirror
 ```
 
-Specify the ip address to be bound in either `/etc/ustcmirror/config.json` or `~/.ustcmirror/config.json`:
+Create the base directory for repos:
 
 ```
-$ cat ~/.ustcmirror/config.json
-{
-    "BIND_ADDRESS": "1.2.3.4",
-    "LOGDIR_ROOT": "/home/knight/logs"
-}
+$ mkdir -p /var/log/ustcmirror
 ```
 
 Start a mongo instance:
@@ -79,6 +75,7 @@ User-specific configuration: `~/.ustcmirror/config.(js|json)`
 | `DB_NAME` | Defaults to `mirror`. |
 | `DB_PORT` | Defaults to `27017`. |
 | `API_PORT` | Defaults to `9999`. |
+| `API_ADDR` | Defaults to `127.0.0.1`. |
 | `DOCKERD_PORT` | Defaults to `2375`. |
 | `DOCKERD_HOST` | Defaults to `127.0.0.1`. |
 | `DOCKERD_SOCKET` | Defaults to `/var/run/docker.sock`. |
