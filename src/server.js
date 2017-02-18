@@ -34,7 +34,7 @@ if (CONFIG.isTest) {
 }
 logger.info('Connected to MongoDB')
 
-const server = app.listen(CONFIG.API_PORT, () => {
+const server = app.listen(CONFIG.API_PORT, CONFIG.API_ADDR, () => {
   const addr = server.address()
   logger.info(`listening on ${addr.address}:${addr.port}`)
 })
