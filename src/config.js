@@ -20,7 +20,7 @@ const isProd = process.env.NODE_ENV.startsWith('prod')
 const isTest = process.env.NODE_ENV.startsWith('test')
 
 let defaults = null
-const reload = () => {
+const setup = () => {
   defaults = {
     // For server
     DB_USER: '',
@@ -29,6 +29,7 @@ const reload = () => {
     DB_NAME: 'mirror',
     DB_PORT: 27017,
     API_PORT: 9999,
+    API_ADDR: '127.0.0.1',
     DOCKERD_PORT: 2375,
     DOCKERD_HOST: '127.0.0.1',
     DOCKERD_SOCKET: '/var/run/docker.sock',
@@ -43,7 +44,7 @@ const reload = () => {
     // For client
     API_ROOT: '',
   }
-  defaults.API_ROOT = `http://localhost:${defaults.API_PORT}/`
+  defaults.API_ROOT = `http://${defaults.API_ADDR}:${defaults.API_PORT}/`
 
   defaults.isDev = isDev
   defaults.isTest = isTest
@@ -99,9 +100,9 @@ const reload = () => {
     console.log('Configuration:', JSON.stringify(defaults, null, 4))
   }
 
-  defaults.reload = reload
+  defaults.reload = setup
 }
 
-reload()
+setup()
 
 export default defaults
