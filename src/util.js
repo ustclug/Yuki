@@ -60,7 +60,8 @@ async function queryOpts({ name, debug = false }) {
   }
   opts.Env.push(
     `REPO=${name}`,
-    `BIND_ADDRESS=${CONFIG.BIND_ADDRESS}`,
+    `BIND_ADDRESS=${cfg.bindIp || CONFIG.BIND_ADDRESS}`,
+    `PREFER_IPV6=${cfg.preferIpv6}`,
     `OWNER=${cfg.user || CONFIG.OWNER}`
   )
   if (debug) {
