@@ -84,12 +84,6 @@ const setup = () => {
   }
 
   if (!isTest) {
-    if (!(process.argv[2] !== 'daemon' ||
-      defaults.BIND_ADDRESS))
-    {
-      throw new Error('Need to specify <BIND_ADDRESS> in configuration')
-    }
-
     if (!/(error|warn|info|verbose|debug|silly)/.test(defaults.LOGLEVEL))
     {
       throw new Error(`Invalid LOGLEVEL: ${defaults.LOGLEVEL}`)
