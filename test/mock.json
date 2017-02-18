@@ -50,14 +50,13 @@
     "name": "steamos",
     "interval": "1 2 * * *",
     "image": "ustcmirror/lftpsync:latest",
-    "envs": ["LFTPSYNC_HOST=http://repo.steampowered.com", "LTPSYNC_PATH=/"],
+    "envs": ["LFTPSYNC_HOST=http://repo.steampowered.com", "LFTPSYNC_PATH=/"],
     "storageDir": "/tmp/repos/steamos"
 },
 {
     "name": "node",
     "interval": "1 2 * * *",
     "image": "ustcmirror/lftpsync:latest",
-    "envs": [],
     "storageDir": "/tmp/repos/node"
 },
 
@@ -65,8 +64,6 @@
     "name": "linux.git",
     "interval": "1 2 * * *",
     "image": "ustcmirror/gitsync:latest",
-    "args": [],
-    "envs": [],
     "storageDir": "/tmp/repos/linux.git"
 },
 {
