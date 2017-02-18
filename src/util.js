@@ -50,7 +50,6 @@ async function queryOpts({ name, debug = false }) {
     },
     HostConfig: {
       Binds: cfg.volumes,
-      NetworkMode: 'host',
       RestartPolicy: {
         Name: 'on-failure',
         MaximumRetryCount: 2
@@ -60,12 +59,15 @@ async function queryOpts({ name, debug = false }) {
   }
   opts.Env.push(
     `REPO=${name}`,
-    `BIND_ADDRESS=${cfg.bindIp || CONFIG.BIND_ADDRESS}`,
     `PREFER_IPV6=${cfg.preferIpv6}`,
     `OWNER=${cfg.user || CONFIG.OWNER}`
   )
   if (debug) {
     opts.Env.push('DEBUG=true')
+  }
+  if (cfg.bindIp || CONFIG.BIND_ADDRESS) {
+    opts.HostConfig.NetworkMode = 'host'
+    opts.Env.push(`BIND_ADDRESS=${cfg.bindIp || CONFIG.BIND_ADDRESS}`)
   }
   if (cfg.autoRotLog) {
     opts.Env.push('AUTO_ROTATE_LOG=true', `ROTATE_CYCLE=${cfg.rotateCycle}`)
