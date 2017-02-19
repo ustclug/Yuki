@@ -44,7 +44,8 @@ const setup = () => {
     // For client
     API_ROOT: '',
   }
-  defaults.API_ROOT = `http://${defaults.API_ADDR}:${defaults.API_PORT}/`
+  // Access server on localhost by default
+  defaults.API_ROOT = `http://localhost:${defaults.API_PORT}/`
 
   defaults.isDev = isDev
   defaults.isTest = isTest
