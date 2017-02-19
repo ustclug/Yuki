@@ -424,6 +424,7 @@ routerProxy.get('/repositories', (ctx) => {
     .catch(e => logger.error(`Removing ${name}: %s`, e))
     ctx.status = 204
   } else {
+    ctx.res.setTimeout(0)
     return ct.logs({
       stdout: true,
       stderr: true,
@@ -564,6 +565,7 @@ routerProxy.get('/repositories', (ctx) => {
     tail,
     follow
   }
+  ctx.res.setTimeout(0)
   return ct.logs(opts)
     .then(s => {
       const logStream = new stream.PassThrough()
