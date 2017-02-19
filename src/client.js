@@ -340,6 +340,22 @@ program
   })
 
 program
+  .command('ct-stop <repo>')
+  .description('stop running container')
+  .action((repo, opts) => {
+    const url = `containers/${repo}/stop`
+    req(opts.parent.apiroot, url, null, 'POST')
+      .then(res => {
+        if (res.ok) {
+          console.log(`Successfully stopped container <${repo}>`)
+        } else {
+          console.error(res.error.message)
+        }
+      })
+      .catch(console.error)
+  })
+
+program
   .command('ct-rm <repo>')
   .description('manually remove container')
   .action((repo, opts) => {
