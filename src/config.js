@@ -58,6 +58,7 @@ const setup = () => {
     'ustcmirror/gitsync:latest',
     'ustcmirror/rsync:latest',
     'ustcmirror/lftpsync:latest',
+    'ustcmirror/homebrew-bottles:latest',
   ]
 
   const fps = ['/etc/ustcmirror/config', path.join(process.env['HOME'], '.ustcmirror/config')]
