@@ -59,15 +59,15 @@ async function queryOpts({ name, debug = false }) {
   }
   opts.Env.push(
     `REPO=${name}`,
-    `PREFER_IPV6=${cfg.preferIpv6}`,
     `OWNER=${cfg.user || CONFIG.OWNER}`
   )
   if (debug) {
     opts.Env.push('DEBUG=true')
   }
-  if (cfg.bindIp || CONFIG.BIND_ADDRESS) {
+  const addr = cfg.bindIp || CONFIG.BIND_ADDRESS
+  if (addr) {
     opts.HostConfig.NetworkMode = 'host'
-    opts.Env.push(`BIND_ADDRESS=${cfg.bindIp || CONFIG.BIND_ADDRESS}`)
+    opts.Env.push(`BIND_ADDRESS=${addr}`)
   }
   if (cfg.autoRotLog) {
     opts.Env.push('AUTO_ROTATE_LOG=true', `ROTATE_CYCLE=${cfg.rotateCycle}`)
