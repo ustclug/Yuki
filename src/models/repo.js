@@ -25,10 +25,6 @@ const schema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
-  preferIpv6: {
-    type: Boolean,
-    default: false
-  },
   rotateCycle: {
     type: Number,
     default: 10
