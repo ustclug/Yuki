@@ -485,7 +485,7 @@ routerProxy.get('/repositories', (ctx) => {
 .delete('/containers/:repo', isLoggedIn, (ctx) => {
   const name = `${PREFIX}-${ctx.params.repo}`
   const ct = docker.getContainer(name)
-  return ct.remove({ v: true })
+  return ct.remove({ v: true, force: true })
     .then(() => ctx.status = 204)
     .catch(err => {
       logger.error('Delete repo: %s', err)
