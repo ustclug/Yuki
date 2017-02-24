@@ -170,7 +170,7 @@ program
   })
 
 program
-  .command('user-list [name]')
+  .command('user-ls [name]')
   .description('list user(s)')
   .action((name, opts) => {
     const u = name ? `users/${name}` : 'users'
@@ -241,7 +241,7 @@ program
   })
 
 program
-  .command('repo-list [repo]')
+  .command('repo-ls [repo]')
   .description('list repository(s)')
   .option('-t --type <method>', 'filter repos based on syncing method')
   .action((repo, opts) => {
@@ -319,7 +319,7 @@ program
   })
 
 program
-  .command('ct-list')
+  .command('ct-ls')
   .description('list all containers')
   .action((opts) => {
     req(opts.parent.apiroot, 'containers')
