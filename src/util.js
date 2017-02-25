@@ -136,9 +136,9 @@ function cleanContainers(status = {running: true}) {
 }
 
 function updateImages() {
-  return Promise.all(
-    Repo.distinct('image')
-    .map((tag) => docker.pull(tag)))
+  return Repo.distinct('image')
+    .then(tags => tags.map((tag) => docker.pull(tag)))
+    .then(ps => Promise.all(ps))
 }
 
 function cleanImages() {

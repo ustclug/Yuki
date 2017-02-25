@@ -13,7 +13,7 @@ import { Repository as Repo, User} from '../models'
 import CONFIG from '../config'
 import logger from '../logger'
 import schedule from '../scheduler'
-import { bringUp, autoRemove, dirExists,
+import { bringUp, autoRemove, dirExists, updateImages,
   makeDir, myStat, queryOpts } from '../util'
 
 const PREFIX = CONFIG.CT_NAME_PREFIX
@@ -597,10 +597,7 @@ actions.forEach(action => {
 })
 
 routerProxy.post('/images/update', isLoggedIn, async (ctx) => {
-  return Promise.all(CONFIG._images.map(tag => docker.pull(tag)))
-    .then((data) => {
-      ctx.status = 200
-    })
+  return updateImages()
     .catch(err => {
       logger.error('Update images: %s', err)
       ctx.status = err.statusCode
