@@ -89,8 +89,6 @@ const setup = () => {
   if (isDev) {
     console.log('Configuration:', JSON.stringify(defaults, null, 4))
   }
-
-  defaults.reload = setup
 }
 
 setup()

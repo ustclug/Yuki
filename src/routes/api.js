@@ -807,7 +807,6 @@ routerProxy.use('/config', isLoggedIn)
  * @apiUse CommonErr
  */
 .post('/reload', isLoggedIn, isAdmin, (ctx) => {
-  CONFIG.reload()
   return schedule.schedRepos()
     .catch(err => {
       logger.error('Reload config: %s', err)
