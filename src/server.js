@@ -6,11 +6,10 @@ import Koa from 'koa'
 import Promise from 'bluebird'
 import routes from './routes'
 import mongoose from 'mongoose'
-import docker from './docker'
 import CONFIG from './config'
 import logger from './logger'
 import schedule from './scheduler'
-import { cleanImages, cleanContainers } from './util'
+import { updateImages, cleanImages, cleanContainers } from './util'
 
 const app = new Koa()
 module.exports = app
@@ -49,13 +48,15 @@ if (!CONFIG.isTest) {
   .then(() => schedule.schedRepos())
   .catch((err) => logger.error('Cleaning containers: %s', err))
 
-  schedule.addCusJob('upgradeImages', CONFIG.IMAGES_UPGRADE_INTERVAL, () => {
-    logger.info('Upgrading images')
-
-    Promise.all(CONFIG._images.map((tag) => docker.pull(tag)))
+  schedule.addCusJob('updateImages', CONFIG.IMAGES_UPDATE_INTERVAL, () => {
+    logger.info('Updating images')
+    updateImages()
     .then(cleanImages, (err) => {
       logger.error('Pulling images: %s', err)
     })
+    .catch((err) => {
+      logger.error('Cleaning images: %s', err)
+    })
   })
-  logger.info('images-upgrade scheduled')
+  logger.info('images-update scheduled')
 }

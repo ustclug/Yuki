@@ -18,6 +18,7 @@ function merge(target, src, prefix = '') {
 const isDev = process.env.NODE_ENV.startsWith('dev')
 const isProd = process.env.NODE_ENV.startsWith('prod')
 const isTest = process.env.NODE_ENV.startsWith('test')
+const isCLI = process.argv[2] !== 'daemon'
 
 let defaults = null
 const setup = () => {
@@ -37,14 +38,14 @@ const setup = () => {
     CT_LABEL: 'syncing',
     CT_NAME_PREFIX: 'syncing',
     LOGDIR_ROOT: '/var/log/ustcmirror',
-    IMAGES_UPGRADE_INTERVAL: '1 * * * *',
+    IMAGES_UPDATE_INTERVAL: '1 * * * *',
     OWNER: `${process.getuid()}:${process.getgid()}`,
     TIMESTAMP: true,
     LOGLEVEL: '',
     // For client
     API_ROOT: '',
   }
-  // Access server on localhost by default
+  // Access local server by default
   defaults.API_ROOT = `http://localhost:${defaults.API_PORT}/`
 
   defaults.isDev = isDev
@@ -53,13 +54,6 @@ const setup = () => {
 
   // should be lower case
   defaults['TOKEN_NAME'] = 'x-mirror-token'
-
-  defaults._images = [
-    'ustcmirror/gitsync:latest',
-    'ustcmirror/rsync:latest',
-    'ustcmirror/lftpsync:latest',
-    'ustcmirror/homebrew-bottles:latest',
-  ]
 
   const fps = ['/etc/ustcmirror/config', path.join(process.env['HOME'], '.ustcmirror/config')]
 
@@ -85,7 +79,7 @@ const setup = () => {
     defaults.LOGLEVEL = isDev ? 'debug' : 'warn'
   }
 
-  if (!isTest) {
+  if (!isCLI && !isTest) {
     if (!/(error|warn|info|verbose|debug|silly)/.test(defaults.LOGLEVEL))
     {
       throw new Error(`Invalid LOGLEVEL: ${defaults.LOGLEVEL}`)

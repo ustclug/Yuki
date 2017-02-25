@@ -4,6 +4,7 @@
 
 import fs from 'fs'
 import path from 'path'
+import Promise from 'bluebird'
 import docker from './docker'
 import { Repository as Repo } from './models'
 import CONFIG from './config'
@@ -134,6 +135,12 @@ function cleanContainers(status = {running: true}) {
   })
 }
 
+function updateImages() {
+  return Promise.all(
+    Repo.distinct('image')
+    .map((tag) => docker.pull(tag)))
+}
+
 function cleanImages() {
   return docker.listImages({
     filters: {
@@ -160,5 +167,6 @@ export default {
   dirExists,
   makeDir,
   myStat,
-  queryOpts
+  queryOpts,
+  updateImages
 }
