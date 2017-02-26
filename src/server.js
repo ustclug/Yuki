@@ -41,10 +41,7 @@ const server = app.listen(CONFIG.API_PORT, CONFIG.API_ADDR, () => {
 if (!CONFIG.isTest) {
   logger.info('Cleaning containers')
 
-  Promise.all([
-    cleanContainers({ running: true }),
-    cleanContainers({ exited: true })
-  ])
+  cleanContainers()
   .then(() => schedule.schedRepos())
   .catch((err) => logger.error('Cleaning containers: %s', err))
 

@@ -116,15 +116,14 @@ function myStat(dir, name) {
   }
 }
 
-function cleanContainers(status = {running: true}) {
+function cleanContainers() {
   return docker.listContainers({
     all: true,
     filters: {
       label: {
         syncing: true,
         'ustcmirror.images': true,
-      },
-      status
+      }
     }
   })
   .then(cts => {
