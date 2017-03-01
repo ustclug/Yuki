@@ -34,13 +34,10 @@ async function queryOpts({ name, debug = false }) {
     return null
   }
   const logdir = path.join(CONFIG.LOGDIR_ROOT, name)
-  if (!CONFIG.isTest) {
-    cfg.volumes.push(`${cfg.storageDir}:/data`, `${logdir}:/log`)
-  }
   const opts = {
     Image: cfg.image,
-    Cmd: cfg.command,
-    Env: cfg.envs,
+    Cmd: cfg.cmd,
+    Env: [],
     AttachStdin: false,
     AttachStdout: false,
     AttachStderr: false,
@@ -50,7 +47,7 @@ async function queryOpts({ name, debug = false }) {
       [LABEL]: ''
     },
     HostConfig: {
-      Binds: cfg.volumes,
+      Binds: [],
       RestartPolicy: {
         Name: 'on-failure',
         MaximumRetryCount: 2
@@ -62,6 +59,15 @@ async function queryOpts({ name, debug = false }) {
     `REPO=${name}`,
     `OWNER=${cfg.user || CONFIG.OWNER}`
   )
+  for (const [k, v] of Object.entries(cfg.envs)) {
+    opts.Env.push(`${k}=${v}`)
+  }
+  for (const [k, v] of Object.entries(cfg.volumes)) {
+    opts.HostConfig.Binds.push(`${k}:${v}`)
+  }
+  if (!CONFIG.isTest) {
+    opts.HostConfig.Binds.push(`${cfg.storageDir}:/data`, `${logdir}:/log`)
+  }
   if (debug) {
     opts.Env.push('DEBUG=true')
   }
@@ -70,8 +76,8 @@ async function queryOpts({ name, debug = false }) {
     opts.HostConfig.NetworkMode = 'host'
     opts.Env.push(`BIND_ADDRESS=${addr}`)
   }
-  if (cfg.autoRotLog) {
-    opts.Env.push('AUTO_ROTATE_LOG=true', `ROTATE_CYCLE=${cfg.rotateCycle}`)
+  if (cfg.logRotCycle) {
+    opts.Env.push(`LOG_ROTATE_CYCLE=${cfg.logRotCycle}`)
   }
   return opts
 }
