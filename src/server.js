@@ -9,6 +9,7 @@ import mongoose from 'mongoose'
 import CONFIG from './config'
 import logger from './logger'
 import schedule from './scheduler'
+import { User } from './models'
 import { updateImages, cleanImages, cleanContainers } from './util'
 
 const app = new Koa()
@@ -56,4 +57,24 @@ if (!CONFIG.isTest) {
     })
   })
   logger.info('images-update scheduled')
+
+  User.findOne()
+  .then((user) => {
+    if (user === null) {
+      return User.create({
+        // root:root
+        name: 'root',
+        password: '63a9f0ea7bb98050796b649e85481845',
+        admin: true
+      })
+    }
+  })
+  .then((root) => {
+    if (root) {
+      logger.info('User `root` with password `root` has been created.')
+    }
+  })
+  .catch((err) => {
+    logger.error('Creating user <root> in empty db: %s', err)
+  })
 }
