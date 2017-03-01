@@ -21,17 +21,19 @@ const schema = new mongoose.Schema({
     type: String,
     required: true
   },
-  autoRotLog: {
-    type: Boolean,
-    default: true
-  },
-  rotateCycle: {
+  logRotCycle: {
     type: Number,
     default: 10
   },
-  args: [String],
-  envs: [String],
-  volumes: [String],
+  cmd: [String],
+  envs: {
+    type: Object,
+    default: {}
+  },
+  volumes: {
+    type: Object,
+    default: {}
+  },
   bindIp: String,
   user: String,
 }, { id: false })
