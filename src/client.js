@@ -265,9 +265,9 @@ program
           pprint(`interval: ${repo.interval}`, 2)
           if (repo.envs) {
             pprint('envs:', 2)
-            Object.keys(repo.envs).forEach(k => {
+            for (const k of Object.keys(repo.envs)) {
               pprint(`${k}: ${repo.envs[k]}`, 4)
-            })
+            }
           }
           if (repo.storageDir) {
             pprint(`storageDir: ${repo.storageDir}`, 2)
@@ -316,6 +316,22 @@ program
         return console.error(res.error.message)
       }
       res.body.pipe(process.stdout)
+    })
+    .catch(console.error)
+  })
+
+program
+  .command('repo-update <repo> <keyval>')
+  .description('update config of repository')
+  .action((repo, keyval, opts) => {
+    const [k, v] = keyval.split('=', 2)
+    req(opts.parent.apiroot, `repositories/${repo}`, { [k]: v }, 'PUT')
+    .then(res => {
+      if (!res.ok) {
+        console.error(`Failed to update repository <${repo}>: ${res.error.message}`)
+      } else {
+        console.log(`Successfully updated repository <${repo}>`)
+      }
     })
     .catch(console.error)
   })
