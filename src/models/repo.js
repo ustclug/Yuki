@@ -36,7 +36,7 @@ const schema = new mongoose.Schema({
   },
   bindIp: String,
   user: String,
-}, { id: false })
+}, { id: false, strict: 'throw' })
 
 schema.virtual('name')
   .get(function() {
