@@ -58,6 +58,11 @@ const toReadableSize = (size) => {
   return `${Math.round(size)}G`
 }
 
+const pprint = (msg, indent = 0) => {
+  process.stdout.write(Array(indent + 1).join(' '))
+  console.log(msg)
+}
+
 const req = function(apiroot, url, body, method = 'get') {
   apiroot = normalizeUrl(apiroot)
   return inst.request({
@@ -255,9 +260,21 @@ program
         const data = await res.json()
         const repos = Array.isArray(data) ? data : [data]
         for (const repo of repos) {
-          console.log(`${repo.name}:`)
-          console.log(`\timage: ${repo.image}`)
-          console.log(`\tinterval: ${repo.interval}`)
+          pprint(`${repo.name}:`)
+          pprint(`image: ${repo.image}`, 2)
+          pprint(`interval: ${repo.interval}`, 2)
+          if (repo.envs) {
+            pprint('envs:', 2)
+            Object.keys(repo.envs).forEach(k => {
+              pprint(`${k}: ${repo.envs[k]}`, 4)
+            })
+          }
+          if (repo.storageDir) {
+            pprint(`storageDir: ${repo.storageDir}`, 2)
+          }
+          if (repo.bindIp) {
+            pprint(`bindIp: ${repo.bindIp}`, 2)
+          }
         }
       } else {
         console.error(res.error.message)
