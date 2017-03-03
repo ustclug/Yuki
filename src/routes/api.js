@@ -266,6 +266,8 @@ routerProxy.get('/repositories', (ctx) => {
   .put(isLoggedIn, (ctx) => {
     const name = ctx.params.name
     return Repo.findByIdAndUpdate(name, ctx.body, {
+      // return the modified doc
+      new: true,
       runValidators: true
     })
     .then((repo) => {
