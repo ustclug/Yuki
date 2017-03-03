@@ -60,10 +60,7 @@ async function queryOpts({ name, debug = false }) {
     },
     HostConfig: {
       Binds: [],
-      RestartPolicy: {
-        Name: 'on-failure',
-        MaximumRetryCount: 2
-      },
+      AutoRemove: true,
     },
     name: `${PREFIX}-${name}`,
   }
@@ -92,15 +89,6 @@ async function queryOpts({ name, debug = false }) {
     opts.Env.push(`LOG_ROTATE_CYCLE=${cfg.logRotCycle}`)
   }
   return opts
-}
-
-function autoRemove(ct) {
-  return ct.wait()
-  // FIXME
-  // res: {
-  // "StatusCode": 0
-  // }
-    .then((res) => ct.remove({ v: true, force: true }))
 }
 
 function dirExists(path) {
@@ -135,21 +123,34 @@ function myStat(dir, name) {
 }
 
 function cleanContainers() {
-  return docker.listContainers({
-    all: true,
-    filters: {
-      label: {
-        syncing: true,
-        'ustcmirror.images': true,
-      }
-    }
-  })
-  .then(cts => {
-    cts.forEach(info => {
-      const ct = docker.getContainer(info.Id)
-      autoRemove(ct).catch(console.error)
+
+  const removing = ['created', 'exited', 'dead']
+    .map((status) => {
+      return docker.listContainers({
+        all: true,
+        filters: {
+          label: {
+            syncing: true,
+            'ustcmirror.images': true,
+          },
+          status: {
+            [status]: true
+          }
+        }
+      })
+      .then((cts) => {
+        return Promise.all(
+          cts.map((info) => {
+            const ct = docker.getContainer(info.Id)
+            return ct.remove({
+              v: true,
+              force: true
+            })
+          })
+        )
+      })
     })
-  })
+  return Promise.all(removing)
 }
 
 function updateImages() {
@@ -177,7 +178,6 @@ function cleanImages() {
 }
 
 export default {
-  autoRemove,
   bringUp,
   cleanContainers,
   cleanImages,
