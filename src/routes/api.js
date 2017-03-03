@@ -155,7 +155,7 @@ routerProxy.get('/repositories', (ctx) => {
       '$regex': `ustcmirror/${type}`
     }
   } : null
-  return Repo.find(query)
+  return Repo.find(query, { name: 1, image: 1, interval: 1 })
     .sort({ _id: 1 })
     .exec()
     .then(data => ctx.body = data)
@@ -184,7 +184,10 @@ routerProxy.get('/repositories', (ctx) => {
    */
   .get((ctx) => {
     const name = ctx.params.name
-    return Repo.findById(name)
+    const proj = ctx.state.isLoggedIn ? null : {
+      name: 1, interval: 1, image: 1
+    }
+    return Repo.findById(name, proj)
       .then((data) => {
         if (data !== null) {
           ctx.body = data
