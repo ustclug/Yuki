@@ -7,7 +7,7 @@ import schedule from 'node-schedule'
 import logger from './logger'
 import { Repository as Repo } from './models'
 import CONFIG from './config'
-import { bringUp, queryOpts, autoRemove, dirExists, makeDir } from './util'
+import { bringUp, queryOpts, dirExists, makeDir } from './util'
 
 class Scheduler {
   constructor() {
@@ -48,15 +48,12 @@ class Scheduler {
         return
       }
 
-      let ct
       try {
-        ct = await bringUp(opts)
+        await bringUp(opts)
       } catch (e) {
         return logger.error(`bringUp ${name}: %s`, e)
       }
       logger.debug(`Syncing ${name}`)
-      autoRemove(ct)
-        .catch(e => logger.error(`Removing ${name}: %s`, e))
     })
 
     logger.info(`${name} scheduled`)

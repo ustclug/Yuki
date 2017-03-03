@@ -13,8 +13,8 @@ import { Repository as Repo, User} from '../models'
 import CONFIG from '../config'
 import logger from '../logger'
 import schedule from '../scheduler'
-import { bringUp, autoRemove, dirExists, updateImages,
-  makeDir, myStat, queryOpts } from '../util'
+import { bringUp, dirExists, updateImages, makeDir,
+         myStat, queryOpts } from '../util'
 
 const PREFIX = CONFIG.CT_NAME_PREFIX
 const LABEL = CONFIG.CT_LABEL
@@ -423,8 +423,6 @@ routerProxy.get('/repositories', (ctx) => {
   }
 
   if (!debug) {
-    autoRemove(ct)
-    .catch(e => logger.error(`Removing ${name}: %s`, e))
     ctx.status = 204
   } else {
     ctx.res.setTimeout(0)
