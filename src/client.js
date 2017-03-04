@@ -325,7 +325,13 @@ program
   .description('update config of repository')
   .action((repo, keyval, opts) => {
     const [k, v] = keyval.split('=', 2)
-    req(opts.parent.apiroot, `repositories/${repo}`, { [k]: v }, 'PUT')
+    const payload = {}
+    if (v.length === 0) {
+      payload['$unset'] = { [k]: '' }
+    } else {
+      payload[k] = v
+    }
+    req(opts.parent.apiroot, `repositories/${repo}`, payload, 'PUT')
     .then(res => {
       if (!res.ok) {
         console.error(`Failed to update repository <${repo}>: ${res.error.message}`)
