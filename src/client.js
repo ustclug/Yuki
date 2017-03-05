@@ -466,11 +466,6 @@ program
       .then(res => {
         if (res.ok) {
           res.body.pipe(process.stdout)
-          if (opts.verbose) {
-            res.body.on('end', () => {
-              console.log('!!! Please manually remove the container !!!')
-            })
-          }
         } else {
           console.error(res.error.message)
         }
