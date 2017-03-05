@@ -269,6 +269,15 @@ program
               pprint(`${k}: ${repo.envs[k]}`, 4)
             }
           }
+          if (repo.volumes) {
+            pprint('volumes:', 2)
+            for (const k of Object.keys(repo.volumes)) {
+              pprint(`${k}: ${repo.volumes[k]}`, 4)
+            }
+          }
+          if (repo.cmd) {
+            pprint(`cmd: ${repo.cmd}`, 2)
+          }
           if (repo.storageDir) {
             pprint(`storageDir: ${repo.storageDir}`, 2)
           }
