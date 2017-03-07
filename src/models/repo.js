@@ -25,7 +25,6 @@ const schema = new mongoose.Schema({
     type: Number,
     default: 10
   },
-  cmd: [String],
   envs: {
     type: Object,
     default: {}
