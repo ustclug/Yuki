@@ -86,7 +86,6 @@ test.serial('Remove repository', t => {
 test.serial('Update repository', t => {
   return request.put('repositories/bioc', {
     image: 'ustcmirror/rsync:latest',
-    cmd: ['echo', '1'],
     volumes: {
       '/pypi': '/tmp/repos/BIOC'
     },
@@ -102,8 +101,6 @@ test.serial('Update repository', t => {
       t.is(data.interval, '48 2 * * *')
       t.is(data.user, 'mirror')
       t.is(data.image, 'ustcmirror/rsync:latest')
-      t.is(data.cmd[0], 'echo')
-      t.is(data.cmd[1], '1')
       t.true(data.volumes['/pypi'].endsWith('BIOC'))
     })
 })
@@ -139,7 +136,6 @@ test('Create repository', t => {
     image: 'ustcmirror/test:latest',
     interval: '* 5 * * *',
     storageDir: '/tmp/repos/vim',
-    cmd: ['echo', 'vim'],
   })
     .then(res => {
       t.is(res.status, 201)
@@ -150,7 +146,6 @@ test('Create repository', t => {
       const data = await res.json()
       t.is(data.interval, '* 5 * * *')
       t.is(data.image, 'ustcmirror/test:latest')
-      t.is(data.cmd[0], 'echo')
       t.is(data.storageDir, '/tmp/repos/vim')
     })
 })

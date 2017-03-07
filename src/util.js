@@ -48,7 +48,6 @@ async function queryOpts({ name, debug = false }) {
   const logdir = path.join(CONFIG.LOGDIR_ROOT, name)
   const opts = {
     Image: cfg.image,
-    Cmd: cfg.cmd,
     Env: [],
     AttachStdin: false,
     AttachStdout: false,

@@ -3,10 +3,6 @@
     "name": "archlinux",
     "interval": "1 1 * * *",
     "image": "ustcmirror/test:latest",
-    "cmd": [
-      "echo",
-      "archlinux"
-    ],
     "storageDir": "/tmp/repos/archlinux",
     "envs": {
       "RSYNC_USER": "asdh",
@@ -19,10 +15,6 @@
     "name": "bioc",
     "interval": "48 2 * * *",
     "image": "ustcmirror/test:latest",
-    "cmd": [
-      "echo",
-      "bioc"
-    ],
     "storageDir": "/tmp/repos/bioc",
     "envs": {
       "RSYNC_USER": "asdh",
@@ -35,10 +27,6 @@
     "name": "ubuntu",
     "interval": "10 1 * * *",
     "image": "ustcmirror/test:latest",
-    "cmd": [
-      "echo",
-      "ubuntu"
-    ],
     "storageDir": "/tmp/repos/ubuntu",
     "envs": {
       "LFTPSYNC_EXCLUDE": "-X .~tmp~/",
@@ -67,10 +55,6 @@
     "name": "gmt",
     "interval": "48 2 * * *",
     "image": "ustcmirror/rsync:latest",
-    "cmd": [
-      "echo",
-      "gmt"
-    ],
     "storageDir": "/tmp/repos/gmt"
   },
   {
@@ -99,10 +83,6 @@
     "name": "brew.git",
     "interval": "1 2 * * *",
     "image": "ustcmirror/gitsync:latest",
-    "cmd": [
-      "echo",
-      "brew.git"
-    ],
     "storageDir": "/tmp/repos/gmt",
     "envs": {
       "GITSYNC_URL": "https://github.com/Homebrew/brew.git",
