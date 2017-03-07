@@ -2,7 +2,7 @@
 
 'use strict'
 
-import Docker from 'dockode'
+import Docker from 'dockerode'
 import Promise from 'bluebird'
 import config from './config'
 import logger from './logger'
@@ -12,11 +12,11 @@ const daemon = new Map()
 daemon.set('tcp', {
   host: config.DOCKERD_HOST,
   port: config.DOCKERD_PORT,
-  promiseLibrary: Promise
+  Promise: Promise
 })
 daemon.set('socket', {
   socketPath: config.DOCKERD_SOCKET,
-  promiseLibrary: Promise
+  Promise: Promise
 })
 
 let docker = null
