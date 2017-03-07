@@ -20,9 +20,8 @@ const isProd = process.env.NODE_ENV.startsWith('prod')
 const isTest = process.env.NODE_ENV.startsWith('test')
 const isCLI = process.argv[2] !== 'daemon'
 
-let defaults = null
 const setup = () => {
-  defaults = {
+  const defaults = {
     // For server
     DB_USER: '',
     DB_PASSWD: '',
@@ -89,8 +88,7 @@ const setup = () => {
   if (isDev) {
     console.log('Configuration:', JSON.stringify(defaults, null, 4))
   }
+  return defaults
 }
 
-setup()
-
-export default defaults
+export default setup()
