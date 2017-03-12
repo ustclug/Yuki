@@ -344,19 +344,24 @@ program
   })
 
 program
-  .command('ct-ls')
-  .description('list all containers')
-  .action((opts) => {
-    req(opts.parent.apiroot, 'containers')
+  .command('ct-ls [ct]')
+  .description('list container(s)')
+  .action((ct, opts) => {
+    const u = ct ? `containers/${ct}` : 'containers'
+    req(opts.parent.apiroot, u)
     .then(async (res) => {
       if (res.ok) {
         const data = await res.json()
-        for (const ct of data) {
-          console.log(`${ct.Names[0]}:`)
-          console.log(`\tId: ${ct.Id.slice(0, 8)}`)
-          console.log(`\tCreated: ${getLocalTime(ct.Created)}`)
-          console.log(`\tState: ${ct.State}`)
-          console.log(`\tStatus: ${ct.Status}`)
+        if (Array.isArray(data)) {
+          for (const ct of data) {
+            console.log(`${ct.Names[0]}:`)
+            console.log(`\tId: id:${ct.Id.slice(0, 10)}`)
+            console.log(`\tCreated: ${getLocalTime(ct.Created)}`)
+            console.log(`\tState: ${ct.State}`)
+            console.log(`\tStatus: ${ct.Status}`)
+          }
+        } else {
+          console.log(JSON.stringify(data, null, 4))
         }
       } else {
         console.error(res.error.message)
