@@ -1,6 +1,8 @@
 ustcmirror
 ==========
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/knight42/Yuki.svg)](https://greenkeeper.io/)
+
 
 [![Build Status](https://travis-ci.org/ustclug/ustcmirror.svg?branch=master)](https://travis-ci.org/ustclug/ustcmirror)
 
