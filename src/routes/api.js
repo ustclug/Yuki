@@ -488,11 +488,27 @@ routerProxy.get('/repositories', (ctx) => {
       ctx.body = data
     })
 })
-.get('/containers/:repo', (ctx) => {
-  return getContainer(ctx.params.repo)
-  .then((data) => {
-    ctx.body = data
-  })
+/**
+ * @api {get} /containers/:repo Inspect container
+ * @apiName InspectContainer
+ * @apiGroup Containers
+ *
+ * @apiUse AccessToken
+ * @apiParam {String} repo Name of the Repository
+ *
+ * @apiUse CommonErr
+ */
+.get('/containers/:repo', isLoggedIn, (ctx) => {
+  const ct = getContainer(ctx.params.repo)
+  return ct.inspect()
+    .then((data) => {
+      ctx.body = data
+    }, (err) => {
+      logger.error('Inspect container: %s', err)
+      ctx.status = err.statusCode
+      ctx.message = err.reason
+      ctx.body = err.json
+    })
 })
 /**
  * @api {delete} /containers/:repo Delete container
@@ -511,7 +527,7 @@ routerProxy.get('/repositories', (ctx) => {
   return ct.remove({ v: true, force: true })
     .then(() => ctx.status = 204)
     .catch(err => {
-      logger.error('Delete repo: %s', err)
+      logger.error('Delete container: %s', err)
       ctx.body = err.json
       ctx.status = err.statusCode
     })
@@ -535,27 +551,6 @@ routerProxy.get('/repositories', (ctx) => {
       ctx.body = res
     })
     .catch(err => {
-      ctx.status = err.statusCode
-      ctx.message = err.reason
-      ctx.body = err.json
-    })
-})
-/**
- * @api {get} /containers/:repo/inspect Inspect container
- * @apiName InspectContainer
- * @apiGroup Containers
- *
- * @apiUse AccessToken
- * @apiParam {String} repo Name of the Repository
- *
- * @apiUse CommonErr
- */
-.get('/containers/:repo/inspect', isLoggedIn, (ctx) => {
-  const ct = getContainer(ctx.params.repo)
-  return ct.inspect()
-    .then((data) => {
-      ctx.body = data
-    }, (err) => {
       ctx.status = err.statusCode
       ctx.message = err.reason
       ctx.body = err.json
