@@ -169,11 +169,9 @@ function cleanImages() {
       }
     }
   })
-  .then(images => {
-    images.forEach(info => {
-      docker.getImage(info.Id).remove().catch(console.error)
-    })
-  })
+    .then(images => Promise.all(images.map(info => {
+      return docker.getImage(info.Id).remove()
+    })))
 }
 
 export default {

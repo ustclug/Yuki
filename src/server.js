@@ -71,7 +71,7 @@ if (!CONFIG.isTest) {
   })
   .then((root) => {
     if (root) {
-      logger.info('User `root` with password `root` has been created.')
+      logger.warn('User `root` with password `root` has been created.')
     }
   })
   .catch((err) => {
