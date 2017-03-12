@@ -20,7 +20,8 @@ try {
   auths = require(AUTH_RECORD)
 } catch (e) {
   if (e.code !== 'MODULE_NOT_FOUND') {
-    throw e
+    console.error(`Invalid json in ${AUTH_RECORD}: %s`, e)
+    process.exit(1)
   }
   auths = {}
 }
@@ -58,11 +59,6 @@ const toReadableSize = (size) => {
   return `${Math.round(size)}G`
 }
 
-const pprint = (msg, indent = 0) => {
-  process.stdout.write(Array(indent + 1).join(' '))
-  console.log(msg)
-}
-
 const req = function(apiroot, url, body, method = 'get') {
   apiroot = normalizeUrl(apiroot)
   return inst.request({
@@ -97,6 +93,7 @@ program
           return new Promise((ful, rej) => {
             fs.writeFile(AUTH_RECORD, JSON.stringify(auths, null, 4), err => {
               if (err) return rej(err)
+              fs.chmodSync(AUTH_RECORD, 0o600)
               ful()
             })
           })
@@ -260,30 +257,10 @@ program
         const data = await res.json()
         const repos = Array.isArray(data) ? data : [data]
         for (const repo of repos) {
-          pprint(`${repo.name}:`)
-          pprint(`image: ${repo.image}`, 2)
-          pprint(`interval: ${repo.interval}`, 2)
-          if (repo.envs) {
-            pprint('envs:', 2)
-            for (const k of Object.keys(repo.envs)) {
-              pprint(`${k}: ${repo.envs[k]}`, 4)
-            }
-          }
-          if (repo.volumes) {
-            pprint('volumes:', 2)
-            for (const k of Object.keys(repo.volumes)) {
-              pprint(`${k}: ${repo.volumes[k]}`, 4)
-            }
-          }
-          if (repo.cmd) {
-            pprint(`cmd: ${repo.cmd}`, 2)
-          }
-          if (repo.storageDir) {
-            pprint(`storageDir: ${repo.storageDir}`, 2)
-          }
-          if (repo.bindIp) {
-            pprint(`bindIp: ${repo.bindIp}`, 2)
-          }
+          process.stdout.write(`${repo.name}: `)
+          delete repo.name
+          delete repo._id
+          console.log(JSON.stringify(repo, null, 2))
         }
       } else {
         console.error(res.error.message)
@@ -376,6 +353,7 @@ program
         const data = await res.json()
         for (const ct of data) {
           console.log(`${ct.Names[0]}:`)
+          console.log(`\tId: ${ct.Id.slice(0, 8)}`)
           console.log(`\tCreated: ${getLocalTime(ct.Created)}`)
           console.log(`\tState: ${ct.State}`)
           console.log(`\tStatus: ${ct.Status}`)
