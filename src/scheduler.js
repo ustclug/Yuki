@@ -60,6 +60,10 @@ class Scheduler {
     return true
   }
 
+  isScheduled(name) {
+    return !!schedule.scheduledJobs[name]
+  }
+
   addCusJob(name, spec, cb) {
     return schedule.scheduleJob(name, spec, cb)
   }
