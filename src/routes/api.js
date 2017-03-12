@@ -45,6 +45,16 @@ function isAdmin(ctx, next) {
   return next()
 }
 
+function getContainer(repo) {
+  let spec = ''
+  if (repo.startsWith('id:')) {
+    spec = repo.slice(3)
+  } else {
+    spec = `${PREFIX}-${repo}`
+  }
+  return docker.getContainer(spec)
+}
+
 ['get', 'put', 'post', 'delete', 'use'].forEach(m => {
   routerProxy[m] = function(url, ...cb) {
     if (typeof url === 'string') {
@@ -158,6 +168,11 @@ routerProxy.get('/repositories', (ctx) => {
   return Repo.find(query, { name: 1, image: 1, interval: 1 })
     .sort({ _id: 1 })
     .exec()
+    .then(data => data.map(r => {
+      r = r.toJSON()
+      r.scheduled = schedule.isScheduled(r.name)
+      return r
+    }))
     .then(data => ctx.body = data)
 })
 
@@ -473,6 +488,12 @@ routerProxy.get('/repositories', (ctx) => {
       ctx.body = data
     })
 })
+.get('/containers/:repo', (ctx) => {
+  return getContainer(ctx.params.repo)
+  .then((data) => {
+    ctx.body = data
+  })
+})
 /**
  * @api {delete} /containers/:repo Delete container
  * @apiName ListContainers
@@ -485,9 +506,8 @@ routerProxy.get('/repositories', (ctx) => {
  *
  * @apiUse CommonErr
  */
-.delete('/containers/:repo', isLoggedIn, (ctx) => {
-  const name = `${PREFIX}-${ctx.params.repo}`
-  const ct = docker.getContainer(name)
+.delete(isLoggedIn, (ctx) => {
+  const ct = getContainer(ctx.params.repo)
   return ct.remove({ v: true, force: true })
     .then(() => ctx.status = 204)
     .catch(err => {
@@ -508,8 +528,7 @@ routerProxy.get('/repositories', (ctx) => {
  * @apiUse CommonErr
  */
 .post('/containers/:repo/wait', (ctx) => {
-  const name = `${PREFIX}-${ctx.params.repo}`
-  const ct = docker.getContainer(name)
+  const ct = getContainer(ctx.params.repo)
   return ct.wait()
     .then((res) => {
       ctx.status = 200
@@ -532,8 +551,7 @@ routerProxy.get('/repositories', (ctx) => {
  * @apiUse CommonErr
  */
 .get('/containers/:repo/inspect', isLoggedIn, (ctx) => {
-  const name = `${PREFIX}-${ctx.params.repo}`
-  const ct = docker.getContainer(name)
+  const ct = getContainer(ctx.params.repo)
   return ct.inspect()
     .then((data) => {
       ctx.body = data
@@ -557,11 +575,11 @@ routerProxy.get('/repositories', (ctx) => {
  * @apiUse CommonErr
  */
 .get('/containers/:repo/logs', isLoggedIn, (ctx) => {
-  const name = `${PREFIX}-${ctx.params.repo}`
   const follow = !!ctx.query.follow
   const tail = ctx.query.tail || 'all'
 
-  const ct = docker.getContainer(name)
+  const repo = ctx.params.repo
+  const ct = getContainer(repo)
   const opts = {
     stdout: true,
     stderr: true,
@@ -577,17 +595,29 @@ routerProxy.get('/repositories', (ctx) => {
       ctx.body = logStream
     })
     .catch(err => {
-      logger.error(`${name} logs: %s`, err)
+      logger.error(`${repo} logs: %s`, err)
       ctx.status = err.statusCode
       setErrMsg(ctx, err.reason)
     })
 })
 
-const actions = ['start', 'stop', 'restart', 'pause', 'unpause']
+router.post('/containers/:repo/stop', isLoggedIn, ctx => {
+  const ct = getContainer(ctx.params.repo)
+  const t = ctx.query.t || 10 // timeout(sec)
+  return ct.stop({ t })
+    .then(() => ctx.status = 204)
+    .catch(err => {
+      logger.error('Stopping container: %s', err)
+      ctx.status = err.statusCode
+      ctx.message = err.reason
+      ctx.body = err.json
+    })
+})
+
+const actions = ['start', 'restart', 'pause', 'unpause']
 actions.forEach(action => {
   router.post(`/containers/:repo/${action}`, isLoggedIn, ctx => {
-    const name = `${PREFIX}-${ctx.params.repo}`
-    const ct = docker.getContainer(name)
+    const ct = getContainer(ctx.params.repo)
     return ct[action]()
       .then(() => ctx.status = 204)
       .catch(err => {
