@@ -6,7 +6,7 @@ import fs from 'fs'
 import path from 'path'
 import Promise from 'bluebird'
 import docker from './docker'
-import { Repository as Repo } from './models'
+import { Repository as Repo, Log } from './models'
 import CONFIG from './config'
 
 const PREFIX = CONFIG.CT_NAME_PREFIX
@@ -37,6 +37,25 @@ async function bringUp(cfg) {
     }
   }
   await ct.start()
+
+  const name = cfg.name.substring(PREFIX.length + 1)
+  Log.update({ _id: name }, {
+    status: 'running'
+  }, { upsert: true })
+    .catch((err) => console.error('%s', err))
+
+  ct.wait((data) => {
+    const log = {}
+    if (data.StatusCode === 0) {
+      log.status = 'success'
+      log.lastSuccess = Date.now()
+    } else {
+      log.status = 'failure'
+    }
+    return Log.update({ _id: name }, log, { upsert: true })
+  })
+    .catch((err) => console.error('%s', err))
+
   return ct
 }
 
@@ -121,8 +140,29 @@ function myStat(dir, name) {
   }
 }
 
-function cleanContainers() {
+function initLogs() {
+  return docker.listContainers({
+    all: true,
+    filters: {
+      label: {
+        syncing: true,
+        'ustcmirror.images': true,
+      },
+      status: {
+        running: true
+      }
+    }
+  })
+  .then(infos => infos.map(info => info.Names[0].substring(PREFIX.length + 2)))
+  .then(names => {
+    return Promise.all(names.map(
+      name => Log.update({ _id: name }, {
+        status: 'running'
+      }, { upsert: true })))
+  })
+}
 
+function cleanContainers() {
   const removing = ['created', 'exited', 'dead']
     .map((status) => {
       return docker.listContainers({
@@ -179,6 +219,7 @@ export default {
   cleanContainers,
   cleanImages,
   dirExists,
+  initLogs,
   makeDir,
   myStat,
   queryOpts,

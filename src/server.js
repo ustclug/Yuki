@@ -10,7 +10,8 @@ import CONFIG from './config'
 import logger from './logger'
 import schedule from './scheduler'
 import { User } from './models'
-import { updateImages, cleanImages, cleanContainers } from './util'
+import { updateImages, cleanImages,
+  cleanContainers, initLogs } from './util'
 
 const app = new Koa()
 module.exports = app
@@ -57,6 +58,9 @@ if (!CONFIG.isTest) {
     })
   })
   logger.info('images-update scheduled')
+
+  initLogs()
+  .catch((e) => logger.error('%s', e))
 
   User.findOne()
   .then((user) => {
