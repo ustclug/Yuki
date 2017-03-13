@@ -44,16 +44,17 @@ async function bringUp(cfg) {
   }, { upsert: true })
     .catch((err) => console.error('%s', err))
 
-  ct.wait((data) => {
-    const log = {}
-    if (data.StatusCode === 0) {
-      log.status = 'success'
-      log.lastSuccess = Date.now()
-    } else {
-      log.status = 'failure'
-    }
-    return Log.update({ _id: name }, log, { upsert: true })
-  })
+  ct.wait()
+    .then((data) => {
+      const log = {}
+      if (data.StatusCode === 0) {
+        log.status = 'success'
+        log.lastSuccess = Date.now()
+      } else {
+        log.status = 'failure'
+      }
+      return Log.update({ _id: name }, log, { upsert: true })
+    })
     .catch((err) => console.error('%s', err))
 
   return ct
