@@ -42,20 +42,10 @@ async function bringUp(cfg) {
   Log.update({ _id: name }, {
     status: 'running'
   }, { upsert: true })
-    .catch((err) => console.error('%s', err))
+  .catch((err) => console.error('%s', err))
 
-  ct.wait()
-    .then((data) => {
-      const log = {}
-      if (data.StatusCode === 0) {
-        log.status = 'success'
-        log.lastSuccess = Date.now()
-      } else {
-        log.status = 'failure'
-      }
-      return Log.update({ _id: name }, log, { upsert: true })
-    })
-    .catch((err) => console.error('%s', err))
+  updateStatus(name)
+  .catch((err) => console.error('%s', err))
 
   return ct
 }
@@ -141,6 +131,21 @@ function myStat(dir, name) {
   }
 }
 
+function updateStatus(repo) {
+  return docker.getContainer(`${PREFIX}-${repo}`)
+    .wait()
+    .then((data) => {
+      const log = {}
+      if (data.StatusCode === 0) {
+        log.status = 'success'
+        log.lastSuccess = Date.now()
+      } else {
+        log.status = 'failure'
+      }
+      return Log.update({ _id: repo }, log, { upsert: true })
+    })
+}
+
 function initLogs() {
   return docker.listContainers({
     all: true,
@@ -157,9 +162,12 @@ function initLogs() {
   .then(infos => infos.map(info => info.Names[0].substring(PREFIX.length + 2)))
   .then(names => {
     return Promise.all(names.map(
-      name => Log.update({ _id: name }, {
+      name =>
+      Log.update({ _id: name }, {
         status: 'running'
-      }, { upsert: true })))
+      }, { upsert: true })
+        .then(() => updateStatus(name))
+    ))
   })
 }
 
