@@ -205,6 +205,8 @@ routerProxy.get('/repositories', (ctx) => {
     return Repo.findById(name, proj)
       .then((data) => {
         if (data !== null) {
+          data = data.toJSON()
+          data.scheduled = schedule.isScheduled(name)
           ctx.body = data
         } else {
           ctx.status = 404
