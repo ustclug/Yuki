@@ -9,7 +9,7 @@ import mongoose from 'mongoose'
 import DATA from './mock.json'
 import Client from '../dist/request'
 import { API_PORT, TOKEN_NAME } from '../dist/config'
-import { Repository as Repo, User } from '../dist/models'
+import { Repository as Repo, User, Log } from '../dist/models'
 import { isListening, getLocalTime } from '../build/Release/addon.node'
 
 const request = new Client({
@@ -21,6 +21,7 @@ test.before(async t => {
   await Repo.remove()
   await Repo.create(DATA)
   await User.remove()
+  await Log.remove()
   await User.create([{
     name: 'yuki',
     password: 'longpass',
