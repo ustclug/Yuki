@@ -9,7 +9,7 @@ import stream from 'stream'
 import koarouter from 'koa-router'
 import Promise from 'bluebird'
 import docker from '../docker'
-import { Repository as Repo, User} from '../models'
+import { Repository as Repo, User } from '../models'
 import CONFIG from '../config'
 import logger from '../logger'
 import schedule from '../scheduler'
@@ -165,12 +165,12 @@ routerProxy.get('/repositories', (ctx) => {
       '$regex': `ustcmirror/${type}`
     }
   } : null
-  return Repo.find(query, { name: 1, image: 1, interval: 1 })
+  return Repo.find(query, { image: 1, interval: 1 })
     .sort({ _id: 1 })
     .exec()
     .then(data => data.map(r => {
       r = r.toJSON()
-      r.scheduled = schedule.isScheduled(r.name)
+      r.scheduled = schedule.isScheduled(r._id)
       return r
     }))
     .then(data => ctx.body = data)
@@ -200,7 +200,7 @@ routerProxy.get('/repositories', (ctx) => {
   .get((ctx) => {
     const name = ctx.params.name
     const proj = ctx.state.isLoggedIn ? null : {
-      name: 1, interval: 1, image: 1
+      interval: 1, image: 1
     }
     return Repo.findById(name, proj)
       .then((data) => {
@@ -251,7 +251,7 @@ routerProxy.get('/repositories', (ctx) => {
     return Repo.create(body)
       .then((repo) => {
         ctx.status = 201
-        schedule.addJob(repo.name, repo.interval)
+        schedule.addJob(repo._id, repo.interval)
       }, (err) => {
         logger.error(`Creating ${body.name}: %s`, err)
         ctx.status = 400
@@ -789,6 +789,7 @@ routerProxy.use('/config', isLoggedIn)
   return Repo.find()
     .sort({ _id: 1 }).exec()
     .then(docs => {
+      docs = docs.map(d => d.toJSON({ versionKey: false, getters: false }))
       if (pretty) {
         ctx.body = JSON.stringify(docs, null, 2)
       } else {

@@ -257,8 +257,7 @@ program
         const data = await res.json()
         const repos = Array.isArray(data) ? data : [data]
         for (const repo of repos) {
-          process.stdout.write(`${repo.name}: `)
-          delete repo.name
+          process.stdout.write(`${repo._id}: `)
           delete repo._id
           console.log(JSON.stringify(repo, null, 2))
         }
@@ -284,7 +283,7 @@ program
           }
           const data = await res.json()
           for (const i of data) {
-            console.log(`${i.name}:`)
+            console.log(`${i._id}:`)
             console.log(`\tSize: ${toReadableSize(i.size)}`)
             console.log(`\tLastMod: ${getLocalTime(i.mtime)}`)
           }

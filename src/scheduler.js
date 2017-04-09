@@ -73,11 +73,11 @@ class Scheduler {
   }
 
   schedRepos() {
-    return Repo.find({}, { interval: true, name: true })
+    return Repo.find({}, { interval: true })
     .then(docs => {
       docs.forEach(doc => {
         // this -> scheduler instance
-        this.addJob(doc.name, doc.interval)
+        this.addJob(doc._id, doc.interval)
       })
     })
   }

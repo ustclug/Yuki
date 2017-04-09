@@ -84,7 +84,7 @@ test.serial('List repositories', t => {
       const data = await res.json()
       t.is(data.length, DATA.length)
       for (const r of data) {
-        t.truthy(r.name)
+        t.truthy(r._id)
       }
     })
 })
@@ -141,7 +141,7 @@ test('Filter repositories', t => {
       const data = await res.json()
       t.is(data.length, 2)
       for (const r of data) {
-        t.truthy(r.name)
+        t.truthy(r._id)
         t.truthy(r.interval)
         t.is(r.image, 'ustcmirror/gitsync:latest')
       }
@@ -187,7 +187,7 @@ test('List users', async t => {
       t.is(res.status, 200)
       const data = await res.json()
       for (const r of data) {
-        t.truthy(r.name)
+        t.truthy(r._id)
         t.truthy(r.token)
       }
     })
@@ -197,7 +197,7 @@ test('List users', async t => {
       t.is(res.status, 200)
       const data = await res.json()
       for (const r of data) {
-        t.truthy(r.name)
+        t.truthy(r._id)
         t.falsy(r.token)
       }
     })
@@ -216,7 +216,7 @@ test.serial('Create user', async t => {
     .then(async res => {
       t.is(res.status, 200)
       const data = await res.json()
-      t.true(data.name === 'foo')
+      t.true(data._id === 'foo')
     })
 })
 
