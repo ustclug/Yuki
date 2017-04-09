@@ -2,6 +2,7 @@
 
 'use strict'
 
+require('./patch')
 const config = require('./config')
 
 if (config.isTest || process.argv[2] === 'daemon') {

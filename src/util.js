@@ -12,18 +12,6 @@ import CONFIG from './config'
 const PREFIX = CONFIG.CT_NAME_PREFIX
 const LABEL = CONFIG.CT_LABEL
 
-if (typeof Object.entries !== 'function') {
-  Object.entries = function entries(obj) {
-    var entrys = []
-    for (var key in obj) {
-      if (obj.hasOwnProperty(key)) {
-        entrys.push([key, obj[key]])
-      }
-    }
-    return entrys
-  }
-}
-
 async function bringUp(cfg) {
   let ct
   try {
