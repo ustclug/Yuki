@@ -61,6 +61,22 @@ test('Addon: getLocalTime()', t => {
   t.throws(getLocalTime.bind(null, 1, 2))
 })
 
+test('String.prototype.splitN', t => {
+  const s = 'q=3=4=5'
+  t.deepEqual(s.splitN('=', 0), ['q=3=4=5'])
+  t.deepEqual(s.splitN('=', 1), ['q', '3=4=5'])
+  t.deepEqual(s.splitN('=', 2), ['q', '3', '4=5'])
+  t.deepEqual(''.splitN('=', 2), [''])
+})
+
+test('Object.entries', t => {
+  const obj = { a: 3, b: 4 }
+  for (const [k, v] of Object.entries(obj)) {
+    t.truthy(k)
+    t.truthy(v)
+  }
+})
+
 test.serial('List repositories', t => {
   return request.get('repositories')
     .then(async res => {
