@@ -130,7 +130,8 @@ function updateStatus(repo) {
       } else {
         log.status = 'failure'
       }
-      return Log.update({ _id: repo }, log, { upsert: true })
+      log.exitCode = data.StatusCode
+      return Log.findByIdAndUpdate(repo, log, { upsert: true })
     })
 }
 
@@ -151,7 +152,7 @@ function initLogs() {
   .then(names => {
     return Promise.all(names.map(
       name =>
-      Log.update({ _id: name }, {
+      Log.findByIdAndUpdate(name, {
         status: 'running'
       }, { upsert: true })
         .then(() => updateStatus(name))

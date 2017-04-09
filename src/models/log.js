@@ -7,6 +7,10 @@ import mongoose from 'mongoose'
 const schema = new mongoose.Schema({
   _id: String,
   lastSuccess: Date,
+  exitCode: {
+    type: Number,
+    default: -1
+  },
   status: {
     enum: ['success', 'failure', 'running', 'unknown'],
     default: 'unknown',
@@ -19,11 +23,9 @@ const schema = new mongoose.Schema({
 })
 
 schema.virtual('name')
-  .get(function() {
-    return this._id
-  })
   .set(function(name) {
     this._id = name
   })
 
+schema.set('toJSON', { versionKey: false, getters: true })
 export default mongoose.model('Log', schema)
