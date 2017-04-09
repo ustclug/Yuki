@@ -23,9 +23,9 @@
     "babel-runtime": "^6.22.0",
     "bluebird": "^3.4.7",
     "commander": "^2.9.0",
-    "dockerode": "2.4.0",
+    "dockerode": "2.4.3",
     "koa": "^2.1.0",
-    "koa-bodyparser": "^3.2.0",
+    "koa-bodyparser": "=3.2.0",
     "koa-router": "^7.1.0",
     "mongoose": "^4.8.7",
     "nan": "^2.5.1",
@@ -42,7 +42,7 @@
     "node": ">=6"
   },
   "devDependencies": {
-    "ava": "^0.18.1",
+    "ava": "^0.19.0",
     "babel-cli": "^6.24.0",
     "babel-eslint": "^7.1.1",
     "babel-plugin-add-module-exports": "^0.2.1",
