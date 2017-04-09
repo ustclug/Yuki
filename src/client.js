@@ -310,7 +310,7 @@ program
   .command('repo-update <repo> <keyval>')
   .description('update config of repository')
   .action((repo, keyval, opts) => {
-    const [k, v] = keyval.split('=', 2)
+    const [k, v] = keyval.splitN('=', 1) // See `patch.js`
     const payload = {}
     if (v.length === 0) {
       payload['$unset'] = { [k]: '' }
