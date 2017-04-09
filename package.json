@@ -31,6 +31,7 @@
     "nan": "^2.5.1",
     "node-fetch": "^1.6.3",
     "node-schedule": "^1.2.0",
+    "split": "^1.0.0",
     "winston": "^2.3.1"
   },
   "preferGlobal": true,
