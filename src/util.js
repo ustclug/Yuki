@@ -5,12 +5,45 @@
 import fs from 'fs'
 import path from 'path'
 import Promise from 'bluebird'
+import split from 'split'
 import docker from './docker'
 import { Repository as Repo, Log } from './models'
 import CONFIG from './config'
 
 const PREFIX = CONFIG.CT_NAME_PREFIX
 const LABEL = CONFIG.CT_LABEL
+
+class Queue {
+  constructor(size) {
+    this._size = size
+    this._buffer = new Array()
+  }
+  push(...ele) {
+    const after = this._buffer.length + ele.length
+    if (after > this._size) {
+      this.trimLeft(after - this._size)
+    }
+    return this._buffer.push.apply(this._buffer, ele)
+  }
+  join(sep) {
+    return this._buffer.join(sep)
+  }
+  trimLeft(cnt) {
+    for (; cnt > 0; cnt--) {
+      this._buffer.shift()
+    }
+  }
+}
+
+function tailStream(cnt, stream) {
+  return new Promise((res, rej) => {
+    const q = new Queue(cnt)
+    stream.pipe(split(/\r?\n(?=.)/))
+      .on('data', q.push.bind(q))
+      .on('close', () => res(q.join('\n')))
+      .on('error', rej)
+  })
+}
 
 async function bringUp(cfg) {
   let ct
@@ -221,5 +254,6 @@ export default {
   makeDir,
   myStat,
   queryOpts,
+  tailStream,
   updateImages
 }
