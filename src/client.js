@@ -273,6 +273,7 @@ program
   .description('fetch previous logs')
   .option('-n --nth <number>', 'nth log file', 0)
   .option('-s --stats', 'get stats', false)
+  .option('--tail <num>', 'specify lines of logs at the end', 'all')
   .action((repo, opts) => {
     if (opts.stats) {
       const url = `repositories/${repo}/logs?stats=true`
@@ -294,7 +295,7 @@ program
     if (!/^\d+$/.test(opts.nth)) {
       return console.error('-n/--nth must follow a number')
     }
-    const url = `repositories/${repo}/logs?n=${opts.nth}`
+    const url = `repositories/${repo}/logs?n=${opts.nth}&tail=${opts.tail}`
     return req(opts.parent.apiroot, url)
     .then(res => {
       if (!res.ok) {
@@ -500,7 +501,7 @@ program
   .description('reload all config')
   .action((opts) => {
     req(opts.parent.apiroot, 'reload', null, 'post')
-    .then(async (res) => {
+    .then((res) => {
       if (res.ok) {
         console.log('Successfully reloaded!')
       } else {

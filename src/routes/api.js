@@ -14,7 +14,7 @@ import CONFIG from '../config'
 import logger from '../logger'
 import schedule from '../scheduler'
 import { bringUp, dirExists, updateImages, makeDir,
-         myStat, queryOpts } from '../util'
+         myStat, queryOpts, tailStream } from '../util'
 
 const PREFIX = CONFIG.CT_NAME_PREFIX
 const LABEL = CONFIG.CT_LABEL
@@ -343,10 +343,16 @@ routerProxy.get('/repositories', (ctx) => {
   const repo = ctx.params.name
   const nth = ctx.query.n || 0
   const stats = !!ctx.query.stats
+  const tail = ctx.query.tail || 'all'
   const logdir = path.join(CONFIG.LOGDIR_ROOT, repo)
   if (!dirExists(logdir)) {
     setErrMsg(ctx, `no such repo ${repo}`)
     return ctx.status = 404
+  }
+
+  if (!/^(all|\d+)$/.test(tail)) {
+    setErrMsg(ctx, `Invalid argument: tail: ${tail}`)
+    return ctx.status = 401
   }
 
   if (stats) {
@@ -369,16 +375,24 @@ routerProxy.get('/repositories', (ctx) => {
       const wantedName = `result.log.${nth}`
       for (const f of files) {
         if (f.startsWith(wantedName)) {
+          if (+tail === 0) {
+            return ctx.body = ''
+          }
           const fp = path.join(logdir, f)
+          let content = null
           switch (path.extname(f)) {
             case '.gz':
-              ctx.body = fs.createReadStream(fp).pipe(createGunzip())
+              content = fs.createReadStream(fp).pipe(createGunzip())
               break
             default:
-              ctx.body = fs.createReadStream(fp)
+              content = fs.createReadStream(fp)
               break
           }
-          return
+          if (tail === 'all') {
+            return ctx.body = content
+          }
+          return tailStream(+tail, content)
+            .then((data) => ctx.body = data)
         }
       }
       setErrMsg(ctx, `${path.join(repo, wantedName)} cannot be found`)
