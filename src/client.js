@@ -198,19 +198,19 @@ program
 program
   .command('user-update <name>')
   .option('-p --pass <password>', 'password')
-  .option('-r --role <role>', 'role of user [admin,normal]', 'normal')
+  .option('-r --role <role>', 'role of user [admin,normal]')
   .description('update user profile')
   .action((name, opts) => {
     if (typeof opts.role === 'undefined' &&
         typeof opts.pass === 'undefined') {
       return console.error('Nothing changes')
     }
-    if (!/^(admin|normal)$/i.test(opts.role)) {
-      return console.error('Invalid role')
-    }
 
     const payload = {}
     if (opts.role) {
+      if (!/^(admin|normal)$/i.test(opts.role)) {
+        return console.error('Invalid role')
+      }
       payload.admin = opts.role === 'admin'
     }
     if (opts.pass) {
