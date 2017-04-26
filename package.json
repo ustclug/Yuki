@@ -27,10 +27,12 @@
     "koa": "^2.1.0",
     "koa-bodyparser": "=3.2.0",
     "koa-router": "^7.1.0",
-    "mongoose": "^4.8.7",
-    "nan": "^2.5.1",
+    "mongoose": "^4.9.6",
+    "nan": "^2.6.2",
     "node-fetch": "^1.6.3",
     "node-schedule": "^1.2.0",
+    "pty.js": "^0.3.1",
+    "socket.io-client": "^1.7.3",
     "split": "^1.0.0",
     "winston": "^2.3.1"
   },
@@ -43,13 +45,13 @@
     "node": ">=6"
   },
   "devDependencies": {
-    "ava": "^0.19.0",
+    "ava": "^0.19.1",
     "babel-cli": "^6.24.0",
-    "babel-eslint": "^7.1.1",
+    "babel-eslint": "^7.2.3",
     "babel-plugin-add-module-exports": "^0.2.1",
     "babel-plugin-transform-runtime": "^6.22.0",
     "babel-preset-babili": "0.0.12",
-    "babel-preset-env": "^1.2.1",
+    "babel-preset-env": "^1.4.0",
     "babel-register": "^6.24.0",
     "eslint": "^3.17.1",
     "eslint-plugin-import": "^2.2.0"
