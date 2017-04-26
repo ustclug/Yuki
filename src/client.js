@@ -284,7 +284,7 @@ program
           }
           const data = await res.json()
           for (const i of data) {
-            console.log(`${i._id}:`)
+            console.log(`${i.name}:`)
             console.log(`\tSize: ${toReadableSize(i.size)}`)
             console.log(`\tLastMod: ${getLocalTime(i.mtime)}`)
           }
