@@ -9,7 +9,7 @@ import stream from 'stream'
 import koarouter from 'koa-router'
 import Promise from 'bluebird'
 import docker from '../docker'
-import { Repository as Repo, User } from '../models'
+import { Repository as Repo, User, Meta } from '../models'
 import CONFIG from '../config'
 import logger from '../logger'
 import schedule from '../scheduler'
@@ -145,6 +145,26 @@ routerProxy
     }
     ctx.body = token
     logger.info(`${name} login`)
+  })
+
+routerProxy
+  .get('/meta', (ctx) => {
+    return Meta.find()
+      .populate('upstream')
+      .then((docs) => docs.map(r => r.toJSON()))
+      .then((data) => ctx.body = data)
+  })
+  .get('/meta/:name', (ctx) => {
+    const name = ctx.params.name
+    return Meta.findById(name)
+      .populate('upstream')
+      .then(r => {
+        if (r === null) {
+          ctx.status = 404
+          return setErrMsg(ctx, `no such repository: ${ctx.params.name}`)
+        }
+        ctx.body = r.toJSON()
+      })
   })
 
 /**
