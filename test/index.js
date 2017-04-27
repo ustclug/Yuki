@@ -3,7 +3,6 @@
 'use strict'
 
 require('../dist')
-
 import test from 'ava'
 import mongoose from 'mongoose'
 import DATA from './mock.json'
@@ -11,10 +10,20 @@ import Client from '../dist/request'
 import { API_PORT, TOKEN_NAME } from '../dist/config'
 import { Repository as Repo, User, Log } from '../dist/models'
 import { isListening, getLocalTime } from '../build/Release/addon.node'
+import { createHash } from 'crypto'
 
 const request = new Client({
   baseUrl: `http://localhost:${API_PORT}/api/v1/`
 })
+
+const md5hash = function(text) {
+  return createHash('md5').update(text).digest('hex')
+}
+
+const calToken = (name, pass) => {
+  const hash = createHash('sha1').update(name).update(pass)
+  return hash.digest('hex')
+}
 
 test.before(async t => {
   mongoose.createConnection('mongodb://127.0.0.1/test')
@@ -24,28 +33,28 @@ test.before(async t => {
   await Log.remove()
   await User.create([{
     name: 'yuki',
-    password: 'longpass',
+    password: md5hash('longpass'),
     admin: true,
   }, {
     name: 'kiana',
-    password: 'password',
+    password: md5hash('password'),
     admin: false,
   }, {
     name: 'bronya',
-    password: 'homu',
+    password: md5hash('homu'),
     admin: false,
   }])
 })
 
 const adminToken = {
   headers: {
-    [TOKEN_NAME]: '97e8bb1a932af6db0a33857d644280906c5a0395'
+    [TOKEN_NAME]: calToken('yuki', md5hash('longpass'))
   }
 }
 
 const normalToken = {
   headers: {
-    [TOKEN_NAME]: 'e6960169400e8607f1826ea6260a32763a68f3bc'
+    [TOKEN_NAME]: calToken('kiana', md5hash('password'))
   }
 }
 
@@ -245,6 +254,11 @@ test('Update user profile', async t => {
   }, normalToken)
     .then(res => {
       t.is(res.status, 204)
+    })
+
+  await User.findById('kiana', 'token')
+    .then(data => {
+      t.is(data.token, calToken('kiana', 'asdfqwer'))
     })
 
   await request.put('users/bronya', {
