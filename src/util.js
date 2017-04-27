@@ -165,18 +165,18 @@ function myStat(dir, name) {
 function insertLog(repo) {
   return docker.getContainer(`${PREFIX}-${repo}`)
     .wait()
-    .then((data) => {
-      if (data.StatusCode === 0) {
-        return Meta.findByIdAndUpdate(repo, {
-          size: storage.getSize(repo),
-          lastSuccess: Date.now()
-        })
-      }
-    })
-    .then(() => Log.create({
+    .then((data) => Log.create({
       name: repo,
       exitCode: data.StatusCode
     }))
+    .then((doc) => {
+      if (doc.exitCode === 0) {
+        return Meta.findByIdAndUpdate(repo, {
+          size: storage.getSize(repo),
+          lastSuccess: Date.now()
+        }, { upsert: true })
+      }
+    })
 }
 
 function createMeta(docs) {
