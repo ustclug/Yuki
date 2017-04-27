@@ -243,6 +243,28 @@ program
   })
 
 program
+  .command('meta-ls [repo]')
+  .description('list metadata of repository(s)')
+  .action((repo, opts) => {
+    const u = repo ? `meta/${repo}` : 'meta'
+    req(opts.parent.apiroot, u)
+    .then(async res => {
+      if (res.ok) {
+        const data = await res.json()
+        const repos = Array.isArray(data) ? data : [data]
+        for (const repo of repos) {
+          process.stdout.write(`${repo._id}: `)
+          delete repo._id
+          console.log(JSON.stringify(repo, null, 2))
+        }
+      } else {
+        console.error(res.error.message)
+      }
+    })
+    .catch(console.error)
+  })
+
+program
   .command('repo-ls [repo]')
   .description('list repository(s)')
   .option('-t --type <method>', 'filter repos based on syncing method')
