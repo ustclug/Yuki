@@ -40,6 +40,9 @@ const setup = () => {
     IMAGES_UPDATE_INTERVAL: '1 * * * *',
     OWNER: `${process.getuid()}:${process.getgid()}`,
     TIMESTAMP: true,
+    STORAGE_OPTS: {
+      fs: 'fs'
+    },
     LOGLEVEL: '',
     // For client
     API_ROOT: '',
@@ -81,7 +84,12 @@ const setup = () => {
   if (!isCLI && !isTest) {
     if (!/(error|warn|info|verbose|debug|silly)/.test(defaults.LOGLEVEL))
     {
-      throw new Error(`Invalid LOGLEVEL: ${defaults.LOGLEVEL}`)
+      console.error(`Invalid LOGLEVEL: ${defaults.LOGLEVEL}`)
+      process.exit(1)
+    }
+    if (typeof defaults.STORAGE_OPTS !== 'object') {
+      console.error('Invalid STORAGE_OPTS: %j', defaults.STORAGE_OPTS)
+      process.exit(1)
     }
   }
 

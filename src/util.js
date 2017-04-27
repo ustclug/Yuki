@@ -9,6 +9,7 @@ import split from 'split'
 import docker from './docker'
 import { Repository as Repo, Log, Meta } from './models'
 import CONFIG from './config'
+import plugins from './plugins'
 
 const PREFIX = CONFIG.CT_NAME_PREFIX
 const LABEL = CONFIG.CT_LABEL
@@ -33,6 +34,19 @@ class Queue {
       this._buffer.shift()
     }
   }
+}
+
+let storage
+switch (CONFIG.STORAGE_OPTS.fs) {
+  case 'zfs':
+    storage = new plugins.Zfs({
+      root: CONFIG.STORAGE_OPTS.root
+    })
+    break;
+
+  case 'fs':
+  default:
+    storage = new plugins.Fs()
 }
 
 function tailStream(cnt, stream) {
@@ -152,11 +166,17 @@ function insertLog(repo) {
   return docker.getContainer(`${PREFIX}-${repo}`)
     .wait()
     .then((data) => {
-      return Log.create({
-        name: repo,
-        exitCode: data.StatusCode
-      })
+      if (data.StatusCode === 0) {
+        return Meta.findByIdAndUpdate(repo, {
+          size: storage.getSize(repo),
+          lastSuccess: Date.now()
+        })
+      }
     })
+    .then(() => Log.create({
+      name: repo,
+      exitCode: data.StatusCode
+    }))
 }
 
 function createMeta(docs) {
@@ -176,7 +196,7 @@ function createMeta(docs) {
       names.map(name =>
         Meta.update(
           { _id: name },
-          {},
+          { size: storage.getSize(name) },
           { upsert: true }
         )
       )
