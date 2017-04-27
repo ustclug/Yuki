@@ -397,7 +397,7 @@ routerProxy.get('/repositories', (ctx) => {
               return acc
             }
           }, [])
-          .sort((x, y) => x.mtime < y.mtime)
+          .sort((x, y) => x.mtime - y.mtime)
       })
   }
 
