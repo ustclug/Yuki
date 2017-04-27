@@ -9,7 +9,7 @@ const schema = new mongoose.Schema({
     type: String,
     default: 'unknown'
   },
-  lastSucess: {
+  lastSuccess: {
     type: Date,
     default: new Date(0)
   }
@@ -29,8 +29,8 @@ const virt = schema.virtual('upstream', {
 // https://github.com/Automattic/mongoose/issues/4835
 virt.getters.unshift(function(repo) {
   const defVal = 'unknown'
-  if (!(repo.image && repo.envs)) {
-    return
+  if (!(repo && repo.image && repo.envs)) {
+    return defVal
   }
   if (!repo.image.startsWith('ustcmirror/')) {
     return defVal
