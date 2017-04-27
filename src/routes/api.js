@@ -13,8 +13,10 @@ import { Repository as Repo, User } from '../models'
 import CONFIG from '../config'
 import logger from '../logger'
 import schedule from '../scheduler'
-import { bringUp, dirExists, updateImages, makeDir,
-         myStat, queryOpts, tailStream } from '../util'
+import { bringUp, dirExists, updateImages,
+  makeDir, myStat, queryOpts,
+  updateMeta, tailStream
+} from '../util'
 
 const PREFIX = CONFIG.CT_NAME_PREFIX
 const LABEL = CONFIG.CT_LABEL
@@ -38,7 +40,7 @@ function isLoggedIn(ctx, next) {
 
 function isAdmin(ctx, next) {
   if (!ctx.state.isAdmin) {
-    ctx.body = { message: 'Operation not permitted. Please concat administrator' }
+    ctx.body = { message: 'Operation not permitted. Please concat administrator.' }
     logger.warn(`Unauthorized: ${ctx.state.username} ${ctx.method} ${ctx.request.url}`)
     return ctx.status = 401
   }
@@ -65,6 +67,14 @@ function getContainer(repo) {
     }
     return this
   }
+})
+
+router.use(function jsonOnly(ctx, next) {
+  if (ctx.accepts('json') === false) {
+    setErrMsg(ctx, 'Only JSON is accepted.')
+    return ctx.status = 400
+  }
+  return next()
 })
 
 /**
@@ -367,6 +377,7 @@ routerProxy.get('/repositories', (ctx) => {
               return acc
             }
           }, [])
+          .sort((x, y) => x.mtime < y.mtime)
       })
   }
 
@@ -829,6 +840,7 @@ routerProxy.use('/config', isLoggedIn)
 .post(isAdmin, (ctx) => {
   const repos = ctx.body
   return Repo.create(repos)
+    .then(updateMeta)
     .then(() => {
       ctx.status = 200
     }, (err) => {
