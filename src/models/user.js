@@ -27,14 +27,31 @@ const schema = new mongoose.Schema({
   }
 }, { id: false })
 
+const calToken = (name, pass) => {
+  const hash = createHash('sha1').update(name).update(pass)
+  return hash.digest('hex')
+}
+
+schema.pre('findOneAndUpdate', function(next) {
+  const cond = this._conditions
+  const update = this._update.$set || this._update
+  if (cond._id && update.password) {
+    this.update(cond, {
+      $set: {
+        token: calToken(cond._id, update.password)
+      }
+    })
+  }
+  return next()
+})
+
 schema.virtual('name')
   .get(function() {
     return this._id
   })
   .set(function(name) {
     this._id = name
-    const hash = createHash('sha1').update(this._id).update(this.password)
-    this.token = hash.digest('hex')
+    this.token = calToken(name, this.password)
   })
 
 schema.set('toJSON', { versionKey: false, getters: true })
