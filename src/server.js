@@ -11,7 +11,7 @@ import logger from './logger'
 import schedule from './scheduler'
 import { User } from './models'
 import { updateImages, cleanImages,
-  cleanContainers, initLogs } from './util'
+  cleanContainers, createMeta } from './util'
 
 const app = new Koa()
 module.exports = app
@@ -59,7 +59,7 @@ if (!CONFIG.isTest) {
   })
   logger.info('images-update scheduled')
 
-  initLogs()
+  createMeta()
   .catch((e) => logger.error('%s', e))
 
   User.findOne()

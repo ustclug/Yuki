@@ -7,7 +7,7 @@ import path from 'path'
 import Promise from 'bluebird'
 import split from 'split'
 import docker from './docker'
-import { Repository as Repo, Log } from './models'
+import { Repository as Repo, Log, Meta } from './models'
 import CONFIG from './config'
 
 const PREFIX = CONFIG.CT_NAME_PREFIX
@@ -60,12 +60,8 @@ async function bringUp(cfg) {
   await ct.start()
 
   const name = cfg.name.substring(PREFIX.length + 1)
-  Log.update({ _id: name }, {
-    status: 'running'
-  }, { upsert: true })
-  .catch((err) => console.error('%s', err))
 
-  updateStatus(name)
+  insertLog(name)
   .catch((err) => console.error('%s', err))
 
   return ct
@@ -152,45 +148,40 @@ function myStat(dir, name) {
   }
 }
 
-function updateStatus(repo) {
+function insertLog(repo) {
   return docker.getContainer(`${PREFIX}-${repo}`)
     .wait()
     .then((data) => {
-      const log = {}
-      if (data.StatusCode === 0) {
-        log.status = 'success'
-        log.lastSuccess = Date.now()
-      } else {
-        log.status = 'failure'
-      }
-      log.exitCode = data.StatusCode
-      return Log.findByIdAndUpdate(repo, log, { upsert: true })
+      return Log.create({
+        name: repo,
+        exitCode: data.StatusCode
+      })
     })
 }
 
-function initLogs() {
-  return docker.listContainers({
-    all: true,
-    filters: {
-      label: {
-        syncing: true,
-        'ustcmirror.images': true,
-      },
-      status: {
-        running: true
-      }
+function createMeta(docs) {
+  let names
+  if (docs === undefined) {
+    names = Repo.find(null, { _id: 1 })
+      .then(repos => repos.map(r => r.toJSON()._id))
+  } else {
+    if (Array.isArray(docs)) {
+      names = Promise.resolve(docs.map(doc => doc._id))
+    } else {
+      names = Promise.resolve([docs._id])
     }
-  })
-  .then(infos => infos.map(info => info.Names[0].substring(PREFIX.length + 2)))
-  .then(names => {
-    return Promise.all(names.map(
-      name =>
-      Log.findByIdAndUpdate(name, {
-        status: 'running'
-      }, { upsert: true })
-        .then(() => updateStatus(name))
-    ))
-  })
+  }
+  return names
+    .then(names =>
+      names.map(name =>
+        Meta.update(
+          { _id: name },
+          {},
+          { upsert: true }
+        )
+      )
+    )
+    .then(Promise.all)
 }
 
 function cleanContainers() {
@@ -250,10 +241,10 @@ export default {
   cleanContainers,
   cleanImages,
   dirExists,
-  initLogs,
   makeDir,
   myStat,
   queryOpts,
   tailStream,
-  updateImages
+  updateImages,
+  createMeta
 }
