@@ -39,9 +39,7 @@ class Queue {
 let storage
 switch (CONFIG.STORAGE_OPTS.fs) {
   case 'zfs':
-    storage = new plugins.Zfs({
-      root: CONFIG.STORAGE_OPTS.root
-    })
+    storage = new plugins.Zfs()
     break;
 
   case 'fs':
@@ -162,7 +160,8 @@ function myStat(dir, name) {
   }
 }
 
-function insertLog(repo) {
+async function insertLog(repo) {
+  const cfg = await Repo.findById(repo, { storageDir: 1 })
   return docker.getContainer(`${PREFIX}-${repo}`)
     .wait()
     .then((data) => Log.create({
@@ -172,7 +171,7 @@ function insertLog(repo) {
     .then((doc) => {
       if (doc.exitCode === 0) {
         return Meta.findByIdAndUpdate(repo, {
-          size: storage.getSize(repo),
+          size: storage.getSize(cfg.storageDir),
           lastSuccess: Date.now()
         }, { upsert: true })
       }
@@ -180,25 +179,23 @@ function insertLog(repo) {
 }
 
 function createMeta(docs) {
-  let names
+  let data
   if (docs === undefined) {
-    names = Repo.find(null, { _id: 1 })
-      .then(repos => repos.map(r => r.toJSON()._id))
+    data = Repo.find(null, { _id: 1, storageDir: 1 })
+      .then(repos => repos.map(r => r.toJSON()))
   } else {
     if (Array.isArray(docs)) {
-      names = Promise.resolve(docs.map(doc => doc._id))
+      data = Promise.resolve(docs)
     } else {
-      names = Promise.resolve([docs._id])
+      data = Promise.resolve([docs])
     }
   }
-  return names
-    .then(names =>
-      names.map(name =>
-        Meta.update(
-          { _id: name },
-          { size: storage.getSize(name) },
-          { upsert: true }
-        )
+  return data
+    .then(data =>
+      data.map(doc =>
+        Meta.findByIdAndUpdate(doc._id, {
+          size: storage.getSize(doc.storageDir)
+        }, { upsert: true })
       )
     )
     .then(Promise.all)
