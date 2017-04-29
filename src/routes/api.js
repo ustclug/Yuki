@@ -14,7 +14,7 @@ import CONFIG from '../config'
 import logger from '../logger'
 import schedule from '../scheduler'
 import { bringUp, dirExists, updateImages,
-  makeDir, myStat, queryOpts,
+  makeDir, myStat, queryOpts, getLocalTime,
   updateMeta, tailStream
 } from '../util'
 
@@ -149,9 +149,23 @@ routerProxy
 
 routerProxy
   .get('/meta', (ctx) => {
+    const availKeys = ['name', 'size', 'lastSuccess']
+    let key = ctx.query.key || 'name'
+    if (availKeys.indexOf(key) < 0) {
+      ctx.status = 400
+      return setErrMsg(ctx, `invalid key: ${key}`)
+    }
+    const order = +ctx.query.order || 1
+    if (key === 'name') key = '_id'
     return Meta.find()
       .populate('upstream')
-      .then((docs) => docs.map(r => r.toJSON()))
+      .sort({ [key]: order })
+      .then((docs) => docs
+        .map(r => {
+          r = r.prettySize().toJSON()
+          r.lastSuccess = getLocalTime(r.lastSuccess)
+          return r
+        }))
       .then((data) => ctx.body = data)
   })
   .get('/meta/:name', (ctx) => {
