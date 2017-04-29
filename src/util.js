@@ -169,12 +169,14 @@ async function insertLog(repo) {
       exitCode: data.StatusCode
     }))
     .then((doc) => {
-      if (doc.exitCode === 0) {
-        return Meta.findByIdAndUpdate(repo, {
-          size: storage.getSize(cfg.storageDir),
-          lastSuccess: Date.now()
-        }, { upsert: true })
+      const meta = {
+        size: storage.getSize(cfg.storageDir),
+        lastExitCode: doc.exitCode
       }
+      if (doc.exitCode === 0) {
+        meta.lastSuccess = Date.now()
+      }
+      return Meta.findByIdAndUpdate(repo, meta, { upsert: true })
     })
 }
 
