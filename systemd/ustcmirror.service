@@ -1,6 +1,7 @@
 [Unit]
 Description=RESTful API Server for Administering Docker Containers on USTC Mirrors
-After=network.target
+After=docker.service
+Requires=docker.service
 
 [Service]
 User=mirror
