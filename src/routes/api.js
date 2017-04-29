@@ -14,7 +14,7 @@ import CONFIG from '../config'
 import logger from '../logger'
 import schedule from '../scheduler'
 import { bringUp, dirExists, updateImages,
-  makeDir, myStat, queryOpts, getLocalTime,
+  makeDir, myStat, queryOpts,
   updateMeta, tailStream
 } from '../util'
 
