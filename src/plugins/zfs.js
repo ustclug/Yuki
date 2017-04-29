@@ -9,11 +9,16 @@ export default class Zfs extends Fs {
   constructor() {
     super()
     const prefix = (process.getuid() === 0) ? '' : 'sudo'
-    this.cmd = `${prefix} zfs list -H -o used `
+    this.cmd = `${prefix} zfs list -Hp -o used `
   }
 
   getSize(dir) {
     const cmd = this.cmd + dir
-    return execSync(cmd, { encoding: 'utf8' }).trim()
+    let size = -1
+    try {
+      size = +execSync(cmd, { encoding: 'utf8' }).trim()
+    } catch (e) {
+    }
+    return size
   }
 }

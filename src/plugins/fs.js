@@ -8,6 +8,6 @@ export default class Fs {
   }
 
   getSize() {
-    return 'unknown'
+    return -1
   }
 }
