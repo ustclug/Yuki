@@ -1,0 +1,31 @@
+{
+  "name": "webui",
+  "description": "Web UI",
+  "version": "1.0.0",
+  "author": "knight42 <anonymousknight96@gmail.com>",
+  "private": true,
+  "scripts": {
+    "dev": "cross-env NODE_ENV=development webpack-dev-server --open --hot",
+    "build": "cross-env NODE_ENV=production webpack --progress --hide-modules"
+  },
+  "dependencies": {
+    "axios": "^0.16.1",
+    "iview": "^2.0.0-rc.12",
+    "moment": "^2.18.1",
+    "vue": "^2.2.1"
+  },
+  "devDependencies": {
+    "babel-core": "^6.0.0",
+    "babel-loader": "^7.0.0",
+    "babel-preset-latest": "^6.0.0",
+    "cross-env": "^4.0.0",
+    "css-loader": "^0.28.0",
+    "file-loader": "^0.11.1",
+    "html-webpack-plugin": "^2.28.0",
+    "style-loader": "^0.16.1",
+    "vue-loader": "^12.0.2",
+    "vue-template-compiler": "^2.2.1",
+    "webpack": "^2.2.0",
+    "webpack-dev-server": "^2.2.0"
+  }
+}
