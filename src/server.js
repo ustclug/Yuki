@@ -3,6 +3,7 @@
 'use strict'
 
 import Koa from 'koa'
+import serve from 'koa-static'
 import Promise from 'bluebird'
 import routes from './routes'
 import mongoose from 'mongoose'
@@ -16,6 +17,7 @@ import { updateImages, cleanImages,
 const app = new Koa()
 module.exports = app
 
+app.use(serve(__dirname, { maxage: 3600 * 1000 }))
 app.use(routes)
 app.on('error', (err) => {
   console.error('Uncaught error: ', err)

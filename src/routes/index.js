@@ -3,9 +3,7 @@
 'use strict'
 
 import Router from 'koa-router'
-import bodyParser from 'koa-bodyparser'
 import api from './api'
-import home from './home'
 import { isDev, isTest, TOKEN_NAME } from '../config'
 import { User } from '../models'
 import logger from '../logger'
@@ -31,23 +29,7 @@ router.use(async function auth(ctx, next) {
   }
   return next()
 })
-.use(bodyParser({
-  onerror: (err, ctx) => {
-    logger.warn('Parsing body: %s', err)
-    ctx.body = {
-      message: 'invalid json'
-    }
-    ctx.status = 400
-  }
-}), (ctx, next) => {
-  if (ctx.request.body) {
-    ctx.body = ctx.request.body
-  }
-  return next()
-})
 
 .use(api.routes(), api.allowedMethods())
-.use(home.routes(), home.allowedMethods())
-.redirect('/', '/home')
 
 export default router.routes()

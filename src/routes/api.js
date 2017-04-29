@@ -5,6 +5,7 @@
 import fs from 'fs'
 import { createGunzip } from 'zlib'
 import path from 'path'
+import bodyParser from 'koa-bodyparser'
 import stream from 'stream'
 import koarouter from 'koa-router'
 import Promise from 'bluebird'
@@ -73,6 +74,20 @@ router.use(function jsonOnly(ctx, next) {
   if (ctx.accepts('json') === false) {
     setErrMsg(ctx, 'Only JSON is accepted.')
     return ctx.status = 400
+  }
+  return next()
+})
+.use(bodyParser({
+  onerror: (err, ctx) => {
+    logger.warn('Parsing body: %s', err)
+    ctx.body = {
+      message: 'invalid json'
+    }
+    ctx.status = 400
+  }
+}), (ctx, next) => {
+  if (ctx.request.body) {
+    ctx.body = ctx.request.body
   }
   return next()
 })
