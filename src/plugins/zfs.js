@@ -18,6 +18,7 @@ export default class Zfs extends Fs {
     try {
       size = +execSync(cmd, { encoding: 'utf8' }).trim()
     } catch (e) {
+    // eslint-disable-next-line no-empty
     }
     return size
   }
