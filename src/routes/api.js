@@ -160,12 +160,7 @@ routerProxy
     return Meta.find()
       .populate('upstream')
       .sort({ [key]: order })
-      .then((docs) => docs
-        .map(r => {
-          r = r.toJSON()
-          r.lastSuccess = getLocalTime(r.lastSuccess)
-          return r
-        }))
+      .then((docs) => docs.map(r => r.toJSON()))
       .then((data) => ctx.body = data)
   })
   .get('/meta/:name', (ctx) => {
