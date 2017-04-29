@@ -9,6 +9,8 @@ node_modules/
 coverage
 .nyc_output
 reference/
-dist/
+dist/*
+!dist/index.html
+!dist/assets/
 doc/
 build/
