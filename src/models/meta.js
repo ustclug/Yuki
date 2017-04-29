@@ -25,24 +25,6 @@ const schema = new mongoose.Schema({
   timestamps: true
 })
 
-// FIXME: Modifying Document._doc is undefined behaviour,
-// depends on the implementation
-schema.methods.prettySize = function() {
-  if (undefined === this.size) return this
-  const units = ['B', 'KB', 'MB', 'GB']
-  let size = this.size
-  for (const unit of units) {
-    if (size < 1024) {
-      this._doc.size = `${size.toFixed(1)} ${unit}`
-      return this
-    } else {
-      size /= 1024
-    }
-  }
-  this._doc.size = `${size.toFixed(1)} TB`
-  return this
-}
-
 const virt = schema.virtual('upstream', {
   ref: 'Repository',
   localField: '_id',

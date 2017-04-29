@@ -162,7 +162,7 @@ routerProxy
       .sort({ [key]: order })
       .then((docs) => docs
         .map(r => {
-          r = r.prettySize().toJSON()
+          r = r.toJSON()
           r.lastSuccess = getLocalTime(r.lastSuccess)
           return r
         }))
