@@ -9,7 +9,7 @@ import DATA from './mock.json'
 import Client from '../dist/request'
 import { API_PORT, TOKEN_NAME } from '../dist/config'
 import { Repository as Repo, User, Log } from '../dist/models'
-import { isListening, getLocalTime } from '../build/Release/addon.node'
+import { isListening } from '../build/Release/addon.node'
 import { createHash } from 'crypto'
 
 const request = new Client({
@@ -62,12 +62,6 @@ test('Addon: isListening()', t => {
   t.true(isListening('127.0.0.1', API_PORT))
   t.true(isListening('localhost', API_PORT))
   t.false(isListening('localhost', 4))
-})
-
-test('Addon: getLocalTime()', t => {
-  t.truthy(getLocalTime())
-  t.truthy(getLocalTime(1485346154))
-  t.throws(getLocalTime.bind(null, 1, 2))
 })
 
 test('String.prototype.splitN', t => {
