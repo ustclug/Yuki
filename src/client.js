@@ -7,7 +7,7 @@ import Url from 'url'
 import path from 'path'
 import { createHash } from 'crypto'
 import program from 'commander'
-import { getLocalTime } from '../build/Release/addon.node'
+import { getLocalTime } from './util'
 import { API_ROOT, TOKEN_NAME } from './config'
 import meta from '../package.json'
 import Client from './request'
@@ -48,7 +48,7 @@ const normalizeUrl = (u) => {
 }
 
 const toReadableSize = (size) => {
-  const units = ['', 'K', 'M']
+  const units = ['B', 'K', 'M', 'G']
   const bsize = 1000
   for (const u of units) {
     if (size < bsize) {
@@ -56,7 +56,7 @@ const toReadableSize = (size) => {
     }
     size /= bsize
   }
-  return `${Math.round(size)}G`
+  return `${Math.round(size)}T`
 }
 
 const req = function(apiroot, url, body, method = 'get') {
@@ -245,8 +245,16 @@ program
 program
   .command('meta-ls [repo]')
   .description('list metadata of repository(s)')
+  .option('-k --key <key>',
+    'sort repos according to specified key. [name,lastSuccess,size]',
+    'name')
+  .option('-r --reverse', 'reverse the result')
   .action((repo, opts) => {
-    const u = repo ? `meta/${repo}` : 'meta'
+    if (!/^(name|lastSuccess|size)$/i.test(opts.key)) {
+      return console.error(`Invalid key: ${opts.key}`)
+    }
+    const order = opts.reverse ? -1 : 1
+    const u = repo ? `meta/${repo}` : `meta?order=${order}&key=${opts.key}`
     req(opts.parent.apiroot, u)
     .then(async res => {
       if (res.ok) {
@@ -255,6 +263,7 @@ program
         for (const repo of repos) {
           process.stdout.write(`${repo._id}: `)
           delete repo._id
+          repo.size = toReadableSize(repo.size)
           console.log(JSON.stringify(repo, null, 2))
         }
       } else {
