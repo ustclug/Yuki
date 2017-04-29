@@ -264,6 +264,8 @@ program
           process.stdout.write(`${repo._id}: `)
           delete repo._id
           repo.size = toReadableSize(repo.size)
+          repo.updatedAt = getLocalTime(repo.updatedAt)
+          repo.lastSuccess = getLocalTime(repo.lastSuccess)
           console.log(JSON.stringify(repo, null, 2))
         }
       } else {
@@ -290,6 +292,9 @@ program
         for (const repo of repos) {
           process.stdout.write(`${repo._id}: `)
           delete repo._id
+          if (repo.updatedAt) {
+            repo.updatedAt = getLocalTime(repo.updatedAt)
+          }
           console.log(JSON.stringify(repo, null, 2))
         }
       } else {
