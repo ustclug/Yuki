@@ -6,6 +6,7 @@ import fs from 'fs'
 import path from 'path'
 import Promise from 'bluebird'
 import split from 'split'
+import moment from 'moment'
 import docker from './docker'
 import { Repository as Repo, Log, Meta } from './models'
 import CONFIG from './config'
@@ -255,11 +256,18 @@ function cleanImages() {
     })))
 }
 
+function getLocalTime(date) {
+  return moment(date)
+    .local()
+    .format('YYYY-MM-DD HH:mm:ss')
+}
+
 export default {
   bringUp,
   cleanContainers,
   cleanImages,
   dirExists,
+  getLocalTime,
   makeDir,
   myStat,
   queryOpts,

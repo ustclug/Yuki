@@ -4,7 +4,7 @@
 
 import winston from 'winston'
 import { LOGLEVEL, TIMESTAMP } from './config'
-import { getLocalTime } from '../build/Release/addon.node'
+import { getLocalTime } from './util'
 
 export default new (winston.Logger)({
   transports: [
