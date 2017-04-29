@@ -52,11 +52,11 @@ const toReadableSize = (size) => {
   const bsize = 1000
   for (const u of units) {
     if (size < bsize) {
-      return `${Math.round(size)}${u}`
+      return `${size.toFixed(2)}${u}`
     }
     size /= bsize
   }
-  return `${Math.round(size)}T`
+  return `${size.toFixed(2)}T`
 }
 
 const req = function(apiroot, url, body, method = 'get') {
