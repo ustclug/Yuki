@@ -21,7 +21,7 @@ const app = new Koa()
 const server = require('http').createServer(app.callback())
 const io = require('socket.io')(server)
 io.on('connection', (socket) => {
-  require('./shell')(socket)
+  require('./ws/shell')(socket)
 })
 
 app.use(routes)
