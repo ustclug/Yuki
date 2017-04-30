@@ -139,7 +139,7 @@ routerProxy
       password: false
     })
     if (token === null) {
-      logger.warn(`Auth: invalid user or password: ${name}`)
+      logger.warn(`Auth: invalid user or password: <${name}>`)
       setErrMsg(ctx, 'invalid user or password')
       return ctx.status = 404
     }
@@ -727,7 +727,7 @@ routerProxy.get('/users', isLoggedIn, async (ctx) => {
   if (!ctx.state.isAdmin) {
     if (name !== ctx.state.username || ctx.body.admin) {
       setErrMsg(ctx, 'operation not permitted')
-      logger.warn(`${ctx.state.username} tried to update ${ctx.params.name}`)
+      logger.warn(`<${ctx.state.username}> tried to update <${ctx.params.name}>`)
       return ctx.status = 401
     }
   }
@@ -737,13 +737,13 @@ routerProxy.get('/users', isLoggedIn, async (ctx) => {
   .then((data) => {
     if (data === null) {
       setErrMsg(ctx, `no such user: ${name}`)
-      logger.warn(`${ctx.state.username} tried to update ${ctx.params.name}`)
+      logger.warn(`<${ctx.state.username}> tried to update <${ctx.params.name}>`)
       return ctx.status = 404
     }
     ctx.status = 204
   })
   .catch(err => {
-    logger.error(`Updating user ${name}: %s`, err)
+    logger.error(`Updating user <${name}>: %s`, err)
     ctx.status = 500
     setErrMsg(ctx, err.errmsg)
   })
@@ -766,7 +766,7 @@ routerProxy.get('/users', isLoggedIn, async (ctx) => {
   const user = await User.findById(name, { password: false })
   if (user === null) {
     ctx.status = 404
-    setErrMsg(ctx, `no such user ${name}`)
+    setErrMsg(ctx, `no such user <${name}>`)
   } else {
     ctx.body = user
   }
@@ -793,7 +793,7 @@ routerProxy.get('/users', isLoggedIn, async (ctx) => {
   .then(() => {
     ctx.status = 201
   }, err => {
-    logger.error(`Creating user ${ctx.params.name}: %s`, err)
+    logger.error(`Creating user <${ctx.params.name}>: %s`, err)
     ctx.status = 400
     setErrMsg(ctx, err.message)
   })
@@ -817,11 +817,11 @@ routerProxy.get('/users', isLoggedIn, async (ctx) => {
       ctx.status = 204
     } else {
       ctx.status = 404
-      logger.warn(`${ctx.state.username} tried to delete ${ctx.params.name}`)
-      setErrMsg(ctx, `no such user: ${name}`)
+      logger.warn(`<${ctx.state.username}> tried to delete <${ctx.params.name}>`)
+      setErrMsg(ctx, `no such user: <${name}>`)
     }
   }, err => {
-    logger.error(`Removing user ${ctx.params.name}: %s`, err)
+    logger.error(`Removing user <${ctx.params.name}>: %s`, err)
     ctx.status = 500
     setErrMsg(ctx, err.message)
   })
