@@ -548,6 +548,38 @@ program
   })
 
 program
+  .command('shell')
+  .description('start an interactive shell on remote')
+  .action((opts) => {
+    const socketio = require('socket.io-client')
+    const readline = require('readline')
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: null
+    })
+    const apiroot = normalizeUrl(opts.parent.apiroot)
+    const socket = socketio(apiroot, {
+      timeout: 5000,
+      reconnectionAttempts: 3
+    })
+    const exit = () => {
+      console.error('Failed to connect to socket.io server.')
+      process.exit(1)
+    }
+    socket.on('connect_error', exit)
+    socket.on('content_timeout', exit)
+
+    rl.on('line', (line) => {
+      socket.emit('shell-input', line)
+    })
+    rl.on('close', () => process.exit(0))
+    socket.on('shell-output', (data) => {
+      process.stdout.write(data)
+    })
+
+  })
+
+program
   .command('*')
   .action(() => program.outputHelp())
 

@@ -10,11 +10,19 @@ import CONFIG from './config'
 import logger from './logger'
 import schedule from './scheduler'
 import { User } from './models'
-import { updateImages, cleanImages,
-  cleanContainers, createMeta } from './util'
+import {
+  cleanImages,
+  cleanContainers,
+  createMeta,
+  updateImages,
+} from './util'
 
 const app = new Koa()
-module.exports = app
+const server = require('http').createServer(app.callback())
+const io = require('socket.io')(server)
+io.on('connection', (socket) => {
+  require('./shell')(socket)
+})
 
 app.use(routes)
 app.on('error', (err) => {
@@ -35,8 +43,8 @@ if (CONFIG.isTest) {
 }
 logger.info('Connected to MongoDB')
 
-const server = app.listen(CONFIG.API_PORT, CONFIG.API_ADDR, () => {
-  const addr = server.address()
+const listening = server.listen(CONFIG.API_PORT, CONFIG.API_ADDR, () => {
+  const addr = listening.address()
   logger.info(`listening on ${addr.address}:${addr.port}`)
 })
 
