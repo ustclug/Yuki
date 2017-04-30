@@ -7,10 +7,10 @@ import Url from 'url'
 import path from 'path'
 import { createHash } from 'crypto'
 import program from 'commander'
-import { getLocalTime } from './util'
-import { API_ROOT, TOKEN_NAME } from './config'
-import meta from '../package.json'
-import Client from './request'
+import { getLocalTime } from '../util'
+import { API_ROOT, TOKEN_NAME } from '../config'
+import meta from '../../package.json'
+import Client from '../request'
 
 const inst = new Client()
 
@@ -549,7 +549,7 @@ program
 
 program
   .command('shell')
-  .description('start an interactive shell on remote')
+  .description('start an interactive shell on remote machine')
   .action((opts) => {
     const apiroot = normalizeUrl(opts.parent.apiroot)
     const socketio = require('socket.io-client')
