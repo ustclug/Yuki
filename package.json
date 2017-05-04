@@ -57,7 +57,8 @@
     "babel-preset-env": "^1.4.0",
     "babel-register": "^6.24.0",
     "eslint": "^3.17.1",
-    "eslint-plugin-import": "^2.2.0"
+    "eslint-plugin-import": "^2.2.0",
+    "lerna": "^2.0.0-rc.4"
   },
   "babel": {
     "presets": [

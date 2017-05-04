@@ -5,7 +5,7 @@ Requires=docker.service
 
 [Service]
 User=mirror
-ExecStart=/usr/local/bin/ustcmirror daemon
+ExecStart=/usr/local/bin/yukid
 Environment="NODE_ENV=dev"
 
 [Install]
