@@ -1,0 +1,27 @@
+{
+  "name": "yuki-cli",
+  "version": "0.1.0",
+  "description": "The command line interface for ustcmirror",
+  "main": "index.js",
+  "repository": "https://github.com/ustclug/ustcmirror/tree/master/packages/yuki-cli/",
+  "author": "knight_42 <anonymousknight96@gmail.com>",
+  "license": "MIT",
+  "preferGlobal": true,
+  "bin": {
+    "yuki": "index.js",
+    "ustcmirror": "index.js"
+  },
+  "files": [
+    "*.js"
+  ],
+  "engines": {
+    "node": ">=6"
+  },
+  "dependencies": {
+    "bluebird": "^3.5.0",
+    "commander": "^2.9.0",
+    "moment": "^2.18.1",
+    "node-fetch": "^1.6.3",
+    "socket.io-client": "^1.7.3"
+  }
+}
