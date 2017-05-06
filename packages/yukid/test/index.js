@@ -10,7 +10,6 @@ import Client from '../lib'
 import { API_PORT } from '../dist/config'
 import { TOKEN_NAME } from '../dist/globals'
 import { Repository as Repo, User, Log } from '../dist/models'
-import { isListening } from '../build/Release/addon.node'
 import { createHash } from 'crypto'
 
 const request = new Client({
@@ -58,12 +57,6 @@ const normalToken = {
     [TOKEN_NAME]: calToken('kiana', md5hash('password'))
   }
 }
-
-test('Addon: isListening()', t => {
-  t.true(isListening('127.0.0.1', API_PORT))
-  t.true(isListening('localhost', API_PORT))
-  t.false(isListening('localhost', 4))
-})
 
 test('String.prototype.splitN', t => {
   const s = 'q=3=4=5'

@@ -4,30 +4,30 @@
 
 import Docker from 'dockerode'
 import Promise from 'bluebird'
-import config from './config'
+import CONFIG from './config'
 import logger from './logger'
 import { IS_PROD } from './globals'
-import { isListening } from '../build/Release/addon.node'
+import isListening from 'is-listening'
 
 const daemon = new Map()
 daemon.set('tcp', {
-  host: config.DOCKERD_HOST,
-  port: config.DOCKERD_PORT,
+  host: CONFIG.DOCKERD_HOST,
+  port: CONFIG.DOCKERD_PORT,
   Promise: Promise
 })
 daemon.set('socket', {
-  socketPath: config.DOCKERD_SOCKET,
+  socketPath: CONFIG.DOCKERD_SOCKET,
   Promise: Promise
 })
 
 let docker = null
 if (!IS_PROD &&
-    isListening(config.DOCKERD_HOST, config.DOCKERD_PORT)) {
+    isListening(CONFIG.DOCKERD_PORT, CONFIG.DOCKERD_HOST)) {
   // Check synchronously if the socket can be connected
   // with native addon
   logger.debug('dockerd: TCP socket connected')
   docker = new Docker(daemon.get('tcp'))
-} else if (isListening(config.DOCKERD_SOCKET)) {
+} else if (isListening(CONFIG.DOCKERD_SOCKET)) {
   logger.debug('dockerd: UNIX local socket connected')
   docker = new Docker(daemon.get('socket'))
 }
