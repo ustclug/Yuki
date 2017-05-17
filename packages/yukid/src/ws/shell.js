@@ -16,7 +16,7 @@ export default function bash(socket) {
         ok: false,
         msg: 'Invalid token.'
       })
-      return socket.diconnect(true)
+      return socket.disconnect(true)
     }
     if (!user.admin) {
       logger.warn(`shell: unauthorized access: <${user._id}>.`)

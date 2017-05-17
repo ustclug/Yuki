@@ -128,8 +128,8 @@ routerProxy
    * @apiUse CommonErr
    */
   .post(async (ctx) => {
-    const name = ctx.body.username
-    const pwHash = ctx.body.password
+    const name = ctx.body$.username
+    const pwHash = ctx.body$.password
     const token = await User.findOne({
       _id: name,
       password: pwHash
