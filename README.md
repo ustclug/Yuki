@@ -2,7 +2,7 @@ ustcmirror
 ==========
 
 
-[![Build Status](https://travis-ci.org/ustclug/ustcmirror.svg?branch=master)](https://travis-ci.org/ustclug/ustcmirror)
+[![Build Status](https://travis-ci.org/knight42/Yuki.svg?branch=master)](https://travis-ci.org/knight42/Yuki)
 
 - [Introduction](#introduction)
 - [Dependencies](#dependencies)
@@ -28,7 +28,7 @@ Aims to provide effortless management of docker containers on USTC Mirrors
 # Quickstart
 
 ```
-npm i -g ustcmirror
+npm i -g yukid yuki-cli
 ```
 
 Create the base directory for repos:
@@ -46,13 +46,13 @@ docker run --name mongo -p 127.0.0.1:27017:27017 -tid mongo:3.4
 Run the daemon in debug mode:
 
 ```
-NODE_ENV=dev ustcmirror daemon
+NODE_ENV=dev yukid
 ```
 
 Play with the CLI:
 
 ```
-ustcmirror -h
+yuki -h
 ```
 
 # API Documentation
