@@ -1,101 +1,16 @@
 {
-  "name": "ustcmirror",
-  "version": "0.1.6",
+  "name": "yuki",
+  "private": true,
   "description": "Aims to provide effortless management of docker containers on USTC Mirrors",
-  "main": "dist/index.js",
-  "repository": "https://github.com/ustclug/ustcmirror",
+  "repository": "https://github.com/knight42/Yuki",
   "scripts": {
-    "test": "NODE_ENV=test ava --no-cache",
-    "dev": "babel -wd dist src",
-    "pub": "npm run build && npm publish",
-    "lint": "eslint src",
-    "install": "node-gyp rebuild",
-    "doc": "apidoc -i src/routes -f api.js",
-    "build": "NODE_ENV=production babel -d dist src && node-gyp rebuild",
-    "build:dev": "babel -d dist src && node-gyp rebuild",
-    "yukid": "NODE_ENV=production dist/index.js daemon",
-    "yukid:dev": "NODE_ENV=dev dist/index.js daemon",
-    "yukid:test": "NODE_ENV=test dist/index.js daemon"
+    "build": "lerna bootstrap --hoist --npm-client yarn",
+    "test": "lerna --scope yukid exec npm test",
+    "lint": "lerna --scope yukid run lint"
   },
   "author": "knight_42 <anonymousknight96@gmail.com>",
   "license": "MIT",
-  "dependencies": {
-    "babel-runtime": "^6.22.0",
-    "bluebird": "^3.4.7",
-    "commander": "^2.9.0",
-    "dockerode": "2.4.3",
-    "koa": "^2.1.0",
-    "koa-bodyparser": "=3.2.0",
-    "koa-router": "^7.1.0",
-    "moment": "^2.18.1",
-    "mongoose": "^4.9.6",
-    "nan": "^2.6.2",
-    "node-fetch": "^1.6.3",
-    "node-pty": "^0.6.4",
-    "node-schedule": "^1.2.0",
-    "pty.js": "^0.3.1",
-    "socket.io": "^1.7.3",
-    "socket.io-client": "^1.7.3",
-    "split": "^1.0.0",
-    "winston": "^2.3.1"
-  },
-  "preferGlobal": true,
-  "bin": {
-    "yuki": "dist/index.js",
-    "ustcmirror": "dist/index.js"
-  },
-  "engines": {
-    "node": ">=6"
-  },
   "devDependencies": {
-    "ava": "^0.19.1",
-    "babel-cli": "^6.24.0",
-    "babel-eslint": "^7.2.3",
-    "babel-plugin-add-module-exports": "^0.2.1",
-    "babel-plugin-transform-runtime": "^6.22.0",
-    "babel-preset-babili": "0.0.12",
-    "babel-preset-env": "^1.4.0",
-    "babel-register": "^6.24.0",
-    "eslint": "^3.17.1",
-    "eslint-plugin-import": "^2.2.0",
     "lerna": "^2.0.0-rc.4"
-  },
-  "babel": {
-    "presets": [
-      [
-        "env",
-        {
-          "node": 6
-        }
-      ]
-    ],
-    "env": {
-      "production": {
-        "presets": [
-          "babili"
-        ]
-      }
-    },
-    "plugins": [
-      "add-module-exports",
-      [
-        "transform-runtime",
-        {
-          "polyfill": false,
-          "regenerator": true
-        }
-      ]
-    ]
-  },
-  "ava": {
-    "require": [
-      "babel-register"
-    ],
-    "babel": "inherit",
-    "failFast": true,
-    "verbose": true,
-    "files": [
-      "test/*.js"
-    ]
   }
 }
