@@ -4,10 +4,10 @@
 
 import Fs from './base'
 import Zfs from './zfs'
-import { STORAGE } from '../config'
+import { FILESYSTEM } from '../config'
 
 let storage = null
-switch (STORAGE.fs) {
+switch (FILESYSTEM.type) {
   case 'zfs':
     storage = new Zfs()
     break;

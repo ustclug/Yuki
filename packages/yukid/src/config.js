@@ -34,8 +34,8 @@ const setup = () => {
     IMAGES_UPDATE_INTERVAL: '1 * * * *',
     OWNER: `${process.getuid()}:${process.getgid()}`,
     TIMESTAMP: true,
-    STORAGE: {
-      fs: 'fs'
+    FILESYSTEM: {
+      type: 'fs'
     },
     LOGLEVEL: '',
   }
@@ -72,8 +72,8 @@ const setup = () => {
       console.error(`Invalid LOGLEVEL: ${defaults.LOGLEVEL}`)
       process.exit(1)
     }
-    if (typeof defaults.STORAGE !== 'object') {
-      console.error('Invalid STORAGE: %j', defaults.STORAGE)
+    if (typeof defaults.FILESYSTEM !== 'object') {
+      console.error('Invalid FILESYSTEM: %j', defaults.FILESYSTEM)
       process.exit(1)
     }
   }
