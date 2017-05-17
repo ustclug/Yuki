@@ -4,8 +4,9 @@
   "description": "Aims to provide effortless management of docker containers on USTC Mirrors",
   "repository": "https://github.com/knight42/Yuki",
   "scripts": {
-    "build": "lerna bootstrap --hoist --npm-client yarn",
-    "test": "lerna --scope yukid exec npm test",
+    "bootstrap": "lerna bootstrap --hoist",
+    "build:yukid": "lerna --scope yukid exec yarn build",
+    "test": "lerna --scope yukid exec yarn test",
     "lint": "lerna --scope yukid run lint"
   },
   "author": "knight_42 <anonymousknight96@gmail.com>",
