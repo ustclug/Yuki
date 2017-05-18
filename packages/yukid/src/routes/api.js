@@ -505,9 +505,8 @@ routerProxy.get('/repositories', (ctx) => {
     })
       .then(s => {
         const logStream = new stream.PassThrough()
-        s.on('end', () => {
-          logStream.end()
-        })
+        s.on('end', logStream.end.bind(logStream))
+        ctx.req.on('close', s.destroy.bind(s))
         ct.modem.demuxStream(s, logStream, logStream)
         ctx.body = logStream
       })
@@ -640,7 +639,8 @@ routerProxy.get('/repositories', (ctx) => {
   return ct.logs(opts)
     .then(s => {
       const logStream = new stream.PassThrough()
-      s.on('end', () => logStream.end())
+      s.on('end', logStream.end.bind(logStream))
+      ctx.req.on('close', s.destroy.bind(s))
       ct.modem.demuxStream(s, logStream, logStream)
       ctx.body = logStream
     })
