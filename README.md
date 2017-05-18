@@ -14,7 +14,7 @@ ustcmirror
 
 # Introduction
 
-Aims to provide effortless management of docker containers on USTC Mirrors
+Aims to provide effortless management of Docker containers on Mirror sites.
 
 # Dependencies
 
