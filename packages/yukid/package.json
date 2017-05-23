@@ -9,10 +9,9 @@
     "dev": "babel -wd dist src",
     "pub": "npm run build && npm publish",
     "lint": "eslint src",
-    "install": "node-gyp rebuild",
     "doc": "apidoc -i src/routes -f api.js",
     "build": "NODE_ENV=production babel -d dist src",
-    "build:dev": "babel -d dist src && node-gyp rebuild",
+    "build:dev": "babel -d dist src",
     "yukid": "NODE_ENV=production dist/index.js",
     "yukid:dev": "NODE_ENV=dev dist/index.js",
     "yukid:test": "NODE_ENV=test dist/index.js"
