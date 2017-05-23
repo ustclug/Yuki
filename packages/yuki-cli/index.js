@@ -2,6 +2,7 @@
 
 'use strict'
 
+require('./patch')
 const fs = require('fs')
 const Url = require('url')
 const path = require('path')
