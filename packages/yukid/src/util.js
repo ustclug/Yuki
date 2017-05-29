@@ -60,14 +60,13 @@ function makeDir(path) {
 
 function myStat(dir, name) {
   const stats = fs.statSync(path.join(dir, name))
-  const time2stamp = (time) => Math.round(time / 1000)
   return {
     name,
     size: stats.size,
-    atime: time2stamp(stats.atime.getTime()),
-    mtime: time2stamp(stats.mtime.getTime()),
-    ctime: time2stamp(stats.ctime.getTime()),
-    birthtime: time2stamp(stats.birthtime.getTime())
+    atime: stats.atime,
+    mtime: stats.mtime,
+    ctime: stats.ctime,
+    birthtime: stats.birthtime
   }
 }
 
