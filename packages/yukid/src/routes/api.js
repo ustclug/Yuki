@@ -240,16 +240,25 @@ routerProxy.get('/repositories', (ctx) => {
     const proj = ctx.state.isLoggedIn ? null : {
       interval: 1, image: 1
     }
-    return Repo.findById(name, proj)
+    return Repo.find({ _id: { $regex: name } }, proj)
       .then((data) => {
-        if (data !== null) {
-          data = data.toJSON()
-          data.scheduled = schedule.isScheduled(name)
-          ctx.body = data
-        } else {
-          ctx.status = 404
+        if (data.length === 0) {
           setErrMsg(ctx, `no such repository: ${ctx.params.name}`)
+          return ctx.status = 404
         }
+        ctx.body = data.map((d, idx, arr) => {
+          d = d.toJSON()
+          d.scheduled = schedule.isScheduled(d._id)
+          if (arr.length > 1) {
+            return {
+              _id: d._id,
+              image: d.image,
+              interval: d.interval,
+              scheduled: d.scheduled
+            }
+          }
+          return d
+        })
       })
       .catch(err => {
         logger.error(`Get repo ${name}: %s`, err)
