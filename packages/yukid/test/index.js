@@ -111,7 +111,7 @@ test.serial('Update repository', t => {
     })
     .then(async res => {
       t.is(res.status, 200)
-      const data = await res.json()
+      const data = (await res.json())[0]
       t.is(data.interval, '48 2 * * *')
       t.is(data.user, 'mirror')
       t.is(data.image, 'ustcmirror/rsync:latest')
@@ -122,7 +122,7 @@ test.serial('Update repository', t => {
 test('Get repository', t => {
   return request.get('repositories/archlinux')
     .then(async res => {
-      const data = await res.json()
+      const data = (await res.json())[0]
       t.is(res.status, 200)
       t.is(data.image, 'ustcmirror/test:latest')
       t.is(data.interval, '1 1 * * *')
@@ -157,7 +157,7 @@ test('Create repository', t => {
     })
     .then(async res => {
       t.is(res.status, 200)
-      const data = await res.json()
+      const data = (await res.json())[0]
       t.is(data.interval, '* 5 * * *')
       t.is(data.image, 'ustcmirror/test:latest')
       t.is(data.storageDir, '/tmp/repos/vim')
