@@ -302,6 +302,9 @@ program
           if (repo.updatedAt) {
             repo.updatedAt = getLocalTime(repo.updatedAt)
           }
+          if (repo.createdAt) {
+            repo.createdAt = getLocalTime(repo.createdAt)
+          }
           console.log(JSON.stringify(repo, null, 2))
         }
       } else {
@@ -399,7 +402,7 @@ program
           for (const ct of data) {
             console.log(`${ct.Names[0]}:`)
             console.log(`\tId: id:${ct.Id.slice(0, 10)}`)
-            console.log(`\tCreated: ${getLocalTime(ct.Created)}`)
+            console.log(`\tCreated: ${getLocalTime(ct.Created * 1000)}`)
             console.log(`\tState: ${ct.State}`)
             console.log(`\tStatus: ${ct.Status}`)
           }
