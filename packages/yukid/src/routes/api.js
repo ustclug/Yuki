@@ -246,8 +246,13 @@ routerProxy.get('/repositories', (ctx) => {
           setErrMsg(ctx, `no such repository: ${ctx.params.name}`)
           return ctx.status = 404
         }
-        ctx.body = data.map((d, idx, arr) => {
-          d = d.toJSON()
+        data = data.map((d) => d.toJSON())
+        const matched = data.find((e) => e._id === name)
+        if (matched) {
+          matched.scheduled = schedule.isScheduled(matched._id)
+          return ctx.body = [matched]
+        }
+        ctx.body = data.map((d, _, arr) => {
           d.scheduled = schedule.isScheduled(d._id)
           if (arr.length > 1) {
             return {
