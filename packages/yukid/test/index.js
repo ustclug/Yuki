@@ -264,6 +264,13 @@ test('Export config', async t => {
     })
 })
 
+test('Reload config', async t => {
+  await request.post('reload', null, adminToken)
+    .then(res => {
+      t.is(res.status, 200)
+    })
+})
+
 test.after('Import config', async t => {
   await Repo.remove()
   await request.get('config', adminToken)
