@@ -21,16 +21,16 @@
   "dependencies": {
     "babel-runtime": "^6.22.0",
     "bluebird": "^3.5.0",
-    "dockerode": "2.4.3",
+    "dockerode": "^2.5.0",
     "is-listening": "^1.0.1",
-    "koa": "^2.1.0",
+    "koa": "^2.3.0",
     "koa-bodyparser": "=3.2.0",
-    "koa-router": "^7.2.0",
+    "koa-router": "^7.2.1",
     "moment": "^2.18.1",
-    "mongoose": "^4.10.1",
-    "node-pty": "^0.6.6",
+    "mongoose": "^4.11.1",
+    "node-pty": "^0.6.9",
     "node-schedule": "^1.2.3",
-    "socket.io": "^2.0.1",
+    "socket.io": "^2.0.3",
     "split": "^1.0.0",
     "winston": "^2.3.1"
   },
@@ -46,17 +46,17 @@
     "node": ">=6"
   },
   "devDependencies": {
-    "ava": "^0.19.1",
+    "ava": "^0.20.0",
     "babel-cli": "^6.24.0",
     "babel-eslint": "^7.2.3",
     "babel-plugin-add-module-exports": "^0.2.1",
     "babel-plugin-transform-runtime": "^6.22.0",
     "babel-preset-babili": "^0.0.12",
-    "babel-preset-env": "^1.5.1",
+    "babel-preset-env": "^1.6.0",
     "babel-register": "^6.24.0",
-    "eslint": "^3.17.1",
-    "eslint-plugin-import": "^2.2.0",
-    "node-fetch": "^1.6.3"
+    "eslint": "^4.2.0",
+    "eslint-plugin-import": "^2.7.0",
+    "node-fetch": "^1.7.1"
   },
   "babel": {
     "presets": [
