@@ -40,7 +40,7 @@ router.use(async function auth(ctx, next) {
   }
 }), (ctx, next) => {
   if (ctx.request.body) {
-    ctx.body$ = ctx.request.body
+    ctx.$body = ctx.request.body
   }
   return next()
 })
