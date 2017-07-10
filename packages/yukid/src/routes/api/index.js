@@ -30,14 +30,6 @@ const routerProxy = { router, url: '/' }
   }
 })
 
-//router.use(function jsonOnly(ctx, next) {
-  //if (ctx.accepts('json') === false) {
-    //setErrMsg(ctx, 'Only JSON is accepted.')
-    //return ctx.status = 400
-  //}
-  //return next()
-//})
-
 containerRoutes(routerProxy)
 repoRoutes(routerProxy)
 userRoutes(routerProxy)
@@ -164,24 +156,24 @@ routerProxy.use('/config', isLoggedIn)
  *
  * @apiUse CommonErr
  */
-.get((ctx) => {
-  const pretty = !!ctx.query.pretty
-  return Repo.find()
-    .sort({ _id: 1 }).exec()
-    .then(docs => {
-      docs = docs.map(d => d.toJSON({ versionKey: false, getters: false }))
-      if (pretty) {
-        ctx.body = JSON.stringify(docs, null, 2)
-      } else {
-        ctx.body = docs
-      }
-    })
-    .catch(err => {
-      logger.error('Export config: %s', err)
-      setErrMsg(ctx, err.message)
-      ctx.status = 500
-    })
-})
+  .get((ctx) => {
+    const pretty = !!ctx.query.pretty
+    return Repo.find()
+      .sort({ _id: 1 }).exec()
+      .then(docs => {
+        docs = docs.map(d => d.toJSON({ versionKey: false, getters: false }))
+        if (pretty) {
+          ctx.body = JSON.stringify(docs, null, 2)
+        } else {
+          ctx.body = docs
+        }
+      })
+      .catch(err => {
+        logger.error('Export config: %s', err)
+        setErrMsg(ctx, err.message)
+        ctx.status = 500
+      })
+  })
 /**
  * @api {post} /config Import config
  * @apiName ImportConfig
@@ -192,21 +184,21 @@ routerProxy.use('/config', isLoggedIn)
  *
  * @apiUse CommonErr
  */
-.post(isAdmin, (ctx) => {
-  const repos = ctx.$body
-  return Repo.create(repos)
-    .then(createMeta)
-    .then(() => {
-      ctx.status = 200
-      ctx.body = {
-        message: 'Data has been successfully imported.'
-      }
-    }, (err) => {
-      logger.error('Import config: %s', err)
-      setErrMsg(ctx, err.message)
-      ctx.status = 500
-    })
-})
+  .post(isAdmin, (ctx) => {
+    const repos = ctx.$body
+    return Repo.create(repos)
+      .then(createMeta)
+      .then(() => {
+        ctx.status = 200
+        ctx.body = {
+          message: 'Data has been successfully imported.'
+        }
+      }, (err) => {
+        logger.error('Import config: %s', err)
+        setErrMsg(ctx, err.message)
+        ctx.status = 500
+      })
+  })
 
 /**
  * @api {post} /reload Reload config
@@ -218,15 +210,15 @@ routerProxy.use('/config', isLoggedIn)
  *
  * @apiUse CommonErr
  */
-.post('/reload', isLoggedIn, isAdmin, (ctx) => {
-  return scheduler.schedRepos()
-    .then(() => {
-      ctx.status = 200
-    }, (err) => {
-      logger.error('Reload config: %s', err)
-      setErrMsg(ctx, err.message)
-      ctx.status = 500
-    })
-})
+  .post('/reload', isLoggedIn, isAdmin, (ctx) => {
+    return scheduler.schedRepos()
+      .then(() => {
+        ctx.status = 200
+      }, (err) => {
+        logger.error('Reload config: %s', err)
+        setErrMsg(ctx, err.message)
+        ctx.status = 500
+      })
+  })
 
 export default router

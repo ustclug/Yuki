@@ -30,21 +30,21 @@ router.use(async function auth(ctx, next) {
   }
   return next()
 })
-.use(bodyParser({
-  onerror: (err, ctx) => {
-    logger.warn('Parsing body: %s', err)
-    ctx.body = {
-      message: 'invalid json'
+  .use(bodyParser({
+    onerror: (err, ctx) => {
+      logger.warn('Parsing body: %s', err)
+      ctx.body = {
+        message: 'invalid json'
+      }
+      ctx.status = 400
     }
-    ctx.status = 400
-  }
-}), (ctx, next) => {
-  if (ctx.request.body) {
-    ctx.$body = ctx.request.body
-  }
-  return next()
-})
+  }), (ctx, next) => {
+    if (ctx.request.body) {
+      ctx.$body = ctx.request.body
+    }
+    return next()
+  })
 
-.use(api.routes(), api.allowedMethods())
+  .use(api.routes(), api.allowedMethods())
 
 export default router.routes()

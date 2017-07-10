@@ -27,7 +27,7 @@ async function bringUp(cfg) {
   const name = cfg.name.substring(PREFIX.length + 1)
 
   insertLog(name)
-  .catch((err) => console.error('%s', err))
+    .catch((err) => console.error('%s', err))
 
   return ct
 }
@@ -67,17 +67,17 @@ function cleanContainers() {
           }
         }
       })
-      .then((cts) => {
-        return Promise.all(
-          cts.map((info) => {
-            const ct = docker.getContainer(info.Id)
-            return ct.remove({
-              v: true,
-              force: true
+        .then((cts) => {
+          return Promise.all(
+            cts.map((info) => {
+              const ct = docker.getContainer(info.Id)
+              return ct.remove({
+                v: true,
+                force: true
+              })
             })
-          })
-        )
-      })
+          )
+        })
     })
   return Promise.all(removing)
 }
