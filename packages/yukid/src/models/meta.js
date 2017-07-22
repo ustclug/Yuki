@@ -48,28 +48,32 @@ virt.getters.unshift(function(repo) {
     return defVal
   }
   const img = repo.image.splitN('/', 1)[1].splitN(':', 1)[0]
+  const { envs } = repo
   switch (img) {
     case 'rsync':
+    case 'debian-cd':
     case 'archvsync': {
-      const host = repo.envs.RSYNC_HOST || '(unknown)'
-      const path = repo.envs.RSYNC_PATH || '(unknown)'
+      const host = envs.RSYNC_HOST || '(unknown)'
+      const path = envs.RSYNC_PATH || envs.RSYNC_MODULE || '(unknown)'
       return urlJoin(`rsync://${host}/`, path)
     }
     case 'lftpsync': {
-      const host = repo.envs.LFTPSYNC_HOST || '(unknown)'
-      const path = repo.envs.LFTPSYNC_PATH || '(unknown)'
+      const host = envs.LFTPSYNC_HOST || '(unknown)'
+      const path = envs.LFTPSYNC_PATH || '(unknown)'
       return urlJoin(`${host}/`, path)
     }
     case 'gitsync':
-      return repo.envs.GITSYNC_URL
+      return envs.GITSYNC_URL
     case 'aptsync':
-      return repo.envs.APTSYNC_URL
+      return envs.APTSYNC_URL
     case 'pypi':
-      return repo.envs.PYPI_MASTER || 'https://pypi.python.org'
+      return envs.PYPI_MASTER || 'https://pypi.python.org'
     case 'homebrew-bottles':
-      return repo.envs.HOMEBREW_BOTTLE_DOMAIN || 'http://homebrew.bintray.com'
+      return envs.HOMEBREW_BOTTLE_DOMAIN || 'http://homebrew.bintray.com'
+    case 'gsutil-rsync':
+      return envs.GS_URL || defVal
     case 'rubygems':
-      return repo.envs.UPSTREAM || 'http://rubygems.org'
+      return envs.UPSTREAM || 'http://rubygems.org'
     default:
       return defVal
   }
