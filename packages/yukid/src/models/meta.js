@@ -63,9 +63,9 @@ virt.getters.unshift(function(repo) {
       return urlJoin(`${host}/`, path)
     }
     case 'gitsync':
-      return envs.GITSYNC_URL
+      return envs.GITSYNC_URL || defVal
     case 'aptsync':
-      return envs.APTSYNC_URL
+      return envs.APTSYNC_URL || defVal
     case 'pypi':
       return envs.PYPI_MASTER || 'https://pypi.python.org'
     case 'homebrew-bottles':
