@@ -13,7 +13,11 @@ import scheduler from './scheduler'
 import fs from './filesystem'
 import { User, Meta } from './models'
 import { createMeta } from './repositories'
-import { cleanImages, cleanContainers, updateImages } from './containers'
+import {
+  cleanImages,
+  cleanContainers,
+  observeRunningContainers,
+  updateImages } from './containers'
 import { IS_TEST, EMITTER } from './globals'
 
 const app = new Koa()
@@ -52,6 +56,7 @@ if (!IS_TEST) {
   logger.info('Cleaning containers')
 
   cleanContainers()
+    .then(observeRunningContainers)
     .then(() => scheduler.schedRepos())
     .catch((err) => logger.error('Cleaning containers: %s', err))
 
@@ -82,7 +87,7 @@ if (!IS_TEST) {
       .catch((e) => logger.error('updateMeta: %s', e))
 
     CONFIG.get('POST_SYNC').forEach((cmd) => {
-      exec(cmd.format(data), { maxBuffer: 1024*1024 }, (e, stdout, stderr) => {
+      exec(cmd.format(data), { maxBuffer: 1024 * 1024 }, (e, stdout, stderr) => {
         if (e) {
           logger.error('postSync: %s', e)
           logger.error(stderr)

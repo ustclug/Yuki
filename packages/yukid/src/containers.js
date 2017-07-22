@@ -24,11 +24,14 @@ async function bringUp(cfg) {
     }
   }
   await ct.start()
+  postSync(cfg.name)
+  return ct
+}
 
-  const name = cfg.name.substring(PREFIX.length + 1)
-
-  ct.wait()
+function postSync(ctname) {
+  return docker.getContainer(ctname).wait()
     .then(async (data) => {
+      const name = ctname.substring(PREFIX.length + 1)
       const repo = await Repo.findById(name, { storageDir: 1 })
       EMITTER.emit('sync-end', {
         exitCode: data.StatusCode,
@@ -36,8 +39,21 @@ async function bringUp(cfg) {
         storageDir: repo.storageDir
       })
     })
+}
 
-  return ct
+function observeRunningContainers() {
+  return docker.listContainers({
+    filters: {
+      label: {
+        syncing: true,
+        [imgTag]: true,
+      },
+      status: {
+        running: true
+      }
+    }
+  })
+    .then((infos) => infos.forEach((info) => postSync(info.Names[0].substr(1))))
 }
 
 function cleanContainers() {
@@ -96,5 +112,6 @@ export default {
   bringUp,
   cleanContainers,
   cleanImages,
+  observeRunningContainers,
   updateImages,
 }
