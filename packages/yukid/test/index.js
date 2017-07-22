@@ -7,13 +7,13 @@ import test from 'ava'
 import mongoose from 'mongoose'
 import DATA from './mock.json'
 import Client from '../lib'
-import { API_PORT } from '../dist/config'
+import CONFIG from '../dist/config'
 import { TOKEN_NAME } from '../dist/globals'
 import { Repository as Repo, User, Log } from '../dist/models'
 import { createHash } from 'crypto'
 
 const request = new Client({
-  baseUrl: `http://localhost:${API_PORT}/api/v1/`
+  baseUrl: `http://localhost:${CONFIG.get('API_PORT')}/api/v1/`
 })
 
 const md5hash = function(text) {

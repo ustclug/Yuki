@@ -10,8 +10,8 @@ import { setErrMsg, isLoggedIn } from './lib'
 
 export default function register(router) {
 
-  const PREFIX = CONFIG.CT_NAME_PREFIX
-  const LABEL = CONFIG.CT_LABEL
+  const PREFIX = CONFIG.get('CT_NAME_PREFIX')
+  const LABEL = CONFIG.get('CT_LABEL')
 
   function getContainer(repo) {
     let spec = ''

@@ -15,7 +15,7 @@ function merge(target, src, prefix = '') {
   })
 }
 
-const setup = () => {
+const readConfig = function() {
   const defaults = {
     DB_USER: '',
     DB_PASSWD: '',
@@ -37,6 +37,7 @@ const setup = () => {
     FILESYSTEM: {
       type: 'fs'
     },
+    POST_SYNC: [],
     LOGLEVEL: '',
   }
 
@@ -45,12 +46,13 @@ const setup = () => {
   for (const fp of fps) {
     let cfg
     try {
+      // TODO: purge cache
       cfg = require(fp)
     } catch (e) {
       if (e.code !== 'MODULE_NOT_FOUND') {
         console.error('Invalid config at:', fp)
         console.error(e)
-        process.exit(1)
+        throw e
       }
       continue
     }
@@ -70,11 +72,11 @@ const setup = () => {
     if (!/(error|warn|info|verbose|debug|silly)/.test(defaults.LOGLEVEL))
     {
       console.error(`Invalid LOGLEVEL: ${defaults.LOGLEVEL}`)
-      process.exit(1)
+      throw new Error('Invalid config')
     }
     if (typeof defaults.FILESYSTEM !== 'object') {
       console.error('Invalid FILESYSTEM: %j', defaults.FILESYSTEM)
-      process.exit(1)
+      throw new Error('Invalid config')
     }
   }
 
@@ -84,4 +86,34 @@ const setup = () => {
   return defaults
 }
 
-export default setup()
+class Config {
+  constructor() {
+    try {
+      this._config = readConfig()
+    } catch (e) {
+      process.exit(1)
+    }
+  }
+
+  reload() {
+    try {
+      this._config = readConfig()
+    } catch (e) {
+      return
+    }
+  }
+
+  get(key) {
+    return this._config[key]
+  }
+
+  set(key, val) {
+    this._config[key] = val
+  }
+
+  list() {
+    return this._config
+  }
+}
+
+export default new Config()

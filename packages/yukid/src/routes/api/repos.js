@@ -241,7 +241,7 @@ export default function register(router) {
       const nth = ctx.query.n || 0
       const stats = !!ctx.query.stats
       const tail = ctx.query.tail || 'all'
-      const logdir = path.join(CONFIG.LOGDIR_ROOT, repo)
+      const logdir = path.join(CONFIG.get('LOGDIR_ROOT'), repo)
       if (!dirExists(logdir)) {
         setErrMsg(ctx, `no such repo ${repo}`)
         return ctx.status = 404
@@ -333,7 +333,7 @@ export default function register(router) {
         return ctx.status = 404
       }
 
-      const logdir = path.join(CONFIG.LOGDIR_ROOT, name)
+      const logdir = path.join(CONFIG.get('LOGDIR_ROOT'), name)
       try {
         makeDir(logdir)
       } catch (e) {

@@ -3,13 +3,17 @@
 'use strict'
 
 import winston from 'winston'
-import { LOGLEVEL, TIMESTAMP, LOGDIR_ROOT } from './config'
+import CONFIG from './config'
 import { IS_TEST } from './globals'
 import moment from 'moment'
 
 const getLocalTime = () => moment().local().format('YYYY-MM-DD HH:mm:ss')
 
 const transports = []
+
+const LOGLEVEL = CONFIG.get('LOGLEVEL')
+const LOGDIR_ROOT = CONFIG.get('LOGDIR_ROOT')
+const TIMESTAMP = CONFIG.get('TIMESTAMP')
 
 if (!IS_TEST) {
   transports.push(new (winston.transports.File)({

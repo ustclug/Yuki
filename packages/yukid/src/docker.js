@@ -11,23 +11,23 @@ import isListening from 'is-listening'
 
 const daemon = new Map()
 daemon.set('tcp', {
-  host: CONFIG.DOCKERD_HOST,
-  port: CONFIG.DOCKERD_PORT,
+  host: CONFIG.get('DOCKERD_HOST'),
+  port: CONFIG.get('DOCKERD_PORT'),
   Promise: Promise
 })
 daemon.set('socket', {
-  socketPath: CONFIG.DOCKERD_SOCKET,
+  socketPath: CONFIG.get('DOCKERD_SOCKET'),
   Promise: Promise
 })
 
 let docker = null
 if (!IS_PROD &&
-    isListening(CONFIG.DOCKERD_PORT, CONFIG.DOCKERD_HOST)) {
+    isListening(CONFIG.get('DOCKERD_PORT'), CONFIG.get('DOCKERD_HOST'))) {
   // Check synchronously if the socket can be connected
   // with native addon
   logger.debug('dockerd: TCP socket connected')
   docker = new Docker(daemon.get('tcp'))
-} else if (isListening(CONFIG.DOCKERD_SOCKET)) {
+} else if (isListening(CONFIG.get('DOCKERD_SOCKET'))) {
   logger.debug('dockerd: UNIX local socket connected')
   docker = new Docker(daemon.get('socket'))
 }

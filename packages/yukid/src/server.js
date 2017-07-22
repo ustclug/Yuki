@@ -27,20 +27,21 @@ app.on('error', (err) => {
 })
 
 const dbopts = {
-  user: CONFIG.DB_USER,
-  pass: CONFIG.DB_PASSWD,
+  useMongoClient: true,
+  user: CONFIG.get('DB_USER'),
+  pass: CONFIG.get('DB_PASSWD'),
   promiseLibrary: Promise,
 }
 mongoose.Promise = Promise
 
 if (IS_TEST) {
-  mongoose.connect('127.0.0.1', 'test')
+  mongoose.connect('mongodb://127.0.0.1/test', { useMongoClient: true })
 } else {
-  mongoose.connect('127.0.0.1', CONFIG.DB_NAME, CONFIG.DB_PORT, dbopts)
+  mongoose.connect('127.0.0.1', CONFIG.get('DB_NAME'), CONFIG.get('DB_PORT'), dbopts)
 }
 logger.info('Connected to MongoDB')
 
-const listening = server.listen(CONFIG.API_PORT, CONFIG.API_ADDR, () => {
+const listening = server.listen(CONFIG.get('API_PORT'), CONFIG.get('API_ADDR'), () => {
   const addr = listening.address()
   logger.info(`listening on ${addr.address}:${addr.port}`)
 })
@@ -52,7 +53,7 @@ if (!IS_TEST) {
     .then(() => scheduler.schedRepos())
     .catch((err) => logger.error('Cleaning containers: %s', err))
 
-  scheduler.addCusJob('updateImages', CONFIG.IMAGES_UPDATE_INTERVAL, () => {
+  scheduler.addCusJob('updateImages', CONFIG.get('IMAGES_UPDATE_INTERVAL'), () => {
     logger.info('Updating images')
     updateImages()
       .then(cleanImages, (err) => {

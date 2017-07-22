@@ -4,11 +4,12 @@
 
 import Promise from 'bluebird'
 import { Repository as Repo, Log, Meta } from './models'
-import { CT_NAME_PREFIX as PREFIX } from './config'
+import CONFIG from './config'
 import docker from './docker'
 import fs from './filesystem'
 
 const imgTag = 'ustcmirror.images'
+const PREFIX = CONFIG.get('CT_NAME_PREFIX')
 
 async function bringUp(cfg) {
   let ct

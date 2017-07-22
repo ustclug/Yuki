@@ -42,7 +42,7 @@ class Scheduler {
         return
       }
 
-      const logdir = path.join(CONFIG.LOGDIR_ROOT, name)
+      const logdir = path.join(CONFIG.get('LOGDIR_ROOT'), name)
       try {
         makeDir(logdir)
       } catch (e) {

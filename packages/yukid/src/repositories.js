@@ -9,15 +9,15 @@ import CONFIG from './config'
 import fs from './filesystem'
 import { Repository as Repo, Meta } from './models'
 
-const PREFIX = CONFIG.CT_NAME_PREFIX
-const LABEL = CONFIG.CT_LABEL
+const PREFIX = CONFIG.get('CT_NAME_PREFIX')
+const LABEL = CONFIG.get('CT_LABEL')
 
 async function queryOpts({ name, debug = false }) {
   const cfg = await Repo.findById(name)
   if (cfg === null) {
     return null
   }
-  const logdir = path.join(CONFIG.LOGDIR_ROOT, name)
+  const logdir = path.join(CONFIG.get('LOGDIR_ROOT'), name)
   const opts = {
     Image: cfg.image,
     Env: [],
@@ -37,7 +37,7 @@ async function queryOpts({ name, debug = false }) {
   }
   opts.Env.push(
     `REPO=${name}`,
-    `OWNER=${cfg.user || CONFIG.OWNER}`
+    `OWNER=${cfg.user || CONFIG.get('OWNER')}`
   )
   for (const [k, v] of Object.entries(cfg.envs)) {
     opts.Env.push(`${k}=${v}`)
@@ -51,7 +51,7 @@ async function queryOpts({ name, debug = false }) {
   if (debug) {
     opts.Env.push('DEBUG=true')
   }
-  const addr = cfg.bindIp || CONFIG.BIND_ADDRESS
+  const addr = cfg.bindIp || CONFIG.get('BIND_ADDRESS')
   if (addr) {
     opts.HostConfig.NetworkMode = 'host'
     opts.Env.push(`BIND_ADDRESS=${addr}`)
