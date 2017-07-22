@@ -5,14 +5,16 @@
 import Koa from 'koa'
 import Promise from 'bluebird'
 import mongoose from 'mongoose'
+import { exec } from 'child_process'
 import routes from './routes'
 import CONFIG from './config'
 import logger from './logger'
 import scheduler from './scheduler'
-import { User } from './models'
+import fs from './filesystem'
+import { User, Meta } from './models'
 import { createMeta } from './repositories'
 import { cleanImages, cleanContainers, updateImages } from './containers'
-import { IS_TEST } from './globals'
+import { IS_TEST, EMITTER } from './globals'
 
 const app = new Koa()
 const server = require('http').createServer(app.callback())
@@ -67,6 +69,25 @@ if (!IS_TEST) {
 
   createMeta()
     .catch((e) => logger.error('createMeta: %s', e))
+
+  EMITTER.on('sync-end', (data) => {
+    const meta = {
+      size: fs.getSize(data.storageDir),
+      lastExitCode: data.exitCode
+    }
+    if (data.exitCode === 0) {
+      meta.lastSuccess = Date.now()
+    }
+    Meta.findByIdAndUpdate(data.name, meta, { upsert: true })
+      .catch((e) => logger.error('updateMeta: %s', e))
+
+    CONFIG.get('POST_SYNC').forEach((cmd) => {
+      exec(cmd.format(data), (e, stdout, stderr) => {
+        logger.error('postSync: %s', e)
+        logger.error(stderr)
+      })
+    })
+  })
 
   User.findOne()
     .then((user) => {

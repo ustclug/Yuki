@@ -13,6 +13,18 @@ if (typeof String.prototype.splitN !== 'function') {
   }
 }
 
+// String interpolation
+if (typeof String.prototype.format !== 'function') {
+  const pattern = /(\${([\w_]+)})/g
+  String.prototype.format = function(params = {}) {
+    return this.replace(pattern, function() {
+      const key = arguments[2]
+      const val = params[key]
+      return (val === undefined || val === null) ? '' : val
+    })
+  }
+}
+
 if (typeof Object.entries !== 'function') {
   Object.entries = function entries(obj) {
     var entrys = []

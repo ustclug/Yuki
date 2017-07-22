@@ -3,10 +3,10 @@
 'use strict'
 
 import Promise from 'bluebird'
-import { Repository as Repo, Log, Meta } from './models'
+import { Repository as Repo } from './models'
+import { EMITTER } from './globals'
 import CONFIG from './config'
 import docker from './docker'
-import fs from './filesystem'
 
 const imgTag = 'ustcmirror.images'
 const PREFIX = CONFIG.get('CT_NAME_PREFIX')
@@ -27,30 +27,17 @@ async function bringUp(cfg) {
 
   const name = cfg.name.substring(PREFIX.length + 1)
 
-  insertLog(name)
-    .catch((err) => console.error('%s', err))
+  ct.wait()
+    .then(async (data) => {
+      const repo = await Repo.findById(name, { storageDir: 1 })
+      EMITTER.emit('sync-end', {
+        exitCode: data.StatusCode,
+        name: repo._id,
+        storageDir: repo.storageDir
+      })
+    })
 
   return ct
-}
-
-async function insertLog(repo) {
-  const cfg = await Repo.findById(repo, { storageDir: 1 })
-  return docker.getContainer(`${PREFIX}-${repo}`)
-    .wait()
-    .then((data) => Log.create({
-      name: repo,
-      exitCode: data.StatusCode
-    }))
-    .then((doc) => {
-      const meta = {
-        size: fs.getSize(cfg.storageDir),
-        lastExitCode: doc.exitCode
-      }
-      if (doc.exitCode === 0) {
-        meta.lastSuccess = Date.now()
-      }
-      return Meta.findByIdAndUpdate(repo, meta, { upsert: true })
-    })
 }
 
 function cleanContainers() {
@@ -109,6 +96,5 @@ export default {
   bringUp,
   cleanContainers,
   cleanImages,
-  insertLog,
   updateImages,
 }
