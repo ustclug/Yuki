@@ -26,7 +26,7 @@ const calToken = (name, pass) => {
 }
 
 test.before(async t => {
-  mongoose.createConnection('mongodb://127.0.0.1/test')
+  mongoose.createConnection('mongodb://127.0.0.1/test', { useMongoClient: true })
   await Repo.remove()
   await Repo.create(DATA)
   await User.remove()
@@ -64,6 +64,13 @@ test('String.prototype.splitN', t => {
   t.deepEqual(s.splitN('=', 1), ['q', '3=4=5'])
   t.deepEqual(s.splitN('=', 2), ['q', '3', '4=5'])
   t.deepEqual(''.splitN('=', 2), [''])
+})
+
+test('String.prototype.format', t => {
+  const s = 'a${foo}${bar}'
+  t.is(s.format({}), 'a')
+  t.is(s.format({ a: 3 }), 'a')
+  t.is(s.format({ foo: 1, bar: 2 }), 'a12')
 })
 
 test('Object.entries', t => {
@@ -164,20 +171,6 @@ test('Create repository', t => {
     })
 })
 
-test('Start a container', t => {
-  return request.post('repositories/archlinux/sync', null)
-    .then(res => {
-      t.is(res.status, 204)
-      return request.post('containers/archlinux/wait', null)
-    })
-    .then(async res => {
-      t.is(res.status, 200)
-      const data = await res.json()
-      t.is(data.StatusCode, 0)
-    })
-
-})
-
 test('List users', async t => {
   await request.get('users', adminToken)
     .then(async res => {
@@ -264,17 +257,49 @@ test('Export config', async t => {
     })
 })
 
-test('Reload config', async t => {
+test('Start a container', t => {
+  return request.post('repositories/archlinux/sync', null)
+    .then(res => {
+      t.is(res.status, 204)
+      return request.post('containers/archlinux/wait', null)
+    })
+    .then(async res => {
+      t.is(res.status, 200)
+      const data = await res.json()
+      t.is(data.StatusCode, 0)
+    })
+})
+
+test.serial('Import config', async t => {
+  const repo = {
+    "_id": "xbmc",
+    "interval": "2 2 * * *",
+    "image": "ustcmirror/test:latest",
+    "storageDir": "/tmp/repos/xbmc.git"
+  }
+  await request.post('config', repo, adminToken)
+    .then(res => {
+      t.is(res.status, 200)
+    })
+})
+
+test.serial('Reload config', async t => {
   await request.post('reload', null, adminToken)
     .then(res => {
       t.is(res.status, 200)
     })
 })
 
-test.after('Import config', async t => {
-  await Repo.remove()
-  await request.get('config', adminToken)
-    .then(res => {
+test.after('List meta', async t => {
+  await request.get('meta')
+    .then(async res => {
       t.is(res.status, 200)
+      const data = await res.json()
+      for (const r of data) {
+        t.not(r.lastSuccess, undefined)
+        t.not(r.lastExitCode, undefined)
+        t.not(r.size, undefined)
+        t.not(r.upstream, undefined)
+      }
     })
 })
