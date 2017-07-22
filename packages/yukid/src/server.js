@@ -82,9 +82,11 @@ if (!IS_TEST) {
       .catch((e) => logger.error('updateMeta: %s', e))
 
     CONFIG.get('POST_SYNC').forEach((cmd) => {
-      exec(cmd.format(data), (e, stdout, stderr) => {
-        logger.error('postSync: %s', e)
-        logger.error(stderr)
+      exec(cmd.format(data), { maxBuffer: 1024*1024 }, (e, stdout, stderr) => {
+        if (e) {
+          logger.error('postSync: %s', e)
+          logger.error(stderr)
+        }
       })
     })
   })

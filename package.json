@@ -12,6 +12,6 @@
   "author": "knight_42 <anonymousknight96@gmail.com>",
   "license": "MIT",
   "devDependencies": {
-    "lerna": "^2.0.0-rc.4"
+    "lerna": "^2.0.0"
   }
 }
