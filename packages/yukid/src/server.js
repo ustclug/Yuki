@@ -29,7 +29,11 @@ io.on('connection', (socket) => {
 
 app.use(routes)
 app.on('error', (err) => {
-  console.error('Uncaught error: ', err)
+  logger.error('Uncaught error in App: %s', err)
+})
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught exception: %s', err)
+  process.exit(1)
 })
 
 const dbopts = {
