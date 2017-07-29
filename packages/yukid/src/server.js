@@ -60,10 +60,11 @@ if (!IS_TEST) {
   logger.info('Cleaning containers')
 
   cleanContainers()
-    .then(observeRunningContainers)
-    .then(() => scheduler.schedRepos())
-    .catch((err) => logger.error('Cleaning containers: %s', err))
+    .then(observeRunningContainers, (err) => {
+      logger.error('Cleaning containers: %s', err)
+    })
 
+  scheduler.schedRepos()
   scheduler.addCusJob('updateImages', CONFIG.get('IMAGES_UPDATE_INTERVAL'), () => {
     logger.info('Updating images')
     updateImages()
@@ -109,14 +110,11 @@ if (!IS_TEST) {
           password: '63a9f0ea7bb98050796b649e85481845',
           admin: true
         })
+          .then(() => {
+            logger.warn('User `root` with password `root` has been created.')
+          }, (err) => {
+            logger.error('Creating user <root> in empty db: %s', err)
+          })
       }
-    })
-    .then((root) => {
-      if (root) {
-        logger.warn('User `root` with password `root` has been created.')
-      }
-    })
-    .catch((err) => {
-      logger.error('Creating user <root> in empty db: %s', err)
     })
 }
