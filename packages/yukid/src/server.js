@@ -33,6 +33,10 @@ app.on('error', (err) => {
 })
 process.on('uncaughtException', (err) => {
   logger.error('Uncaught exception: %s', err)
+  if (err.code === 'EPIPE') {
+    // Ignore EPIPE
+    return
+  }
   process.exit(1)
 })
 
