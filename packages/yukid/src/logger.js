@@ -23,9 +23,16 @@ if (!IS_TEST) {
     maxsize: 1024 * 1024 * 10,
     maxFiles: 30,
     formatter: (options) => {
+      let msg = options.message
+      if (options.meta.stack) {
+        // Error
+        msg += `\n${options.meta.stack}`
+      } else if (options.meta && Object.keys(options.meta).length !== 0) {
+        msg += `\n${JSON.stringify(options.meta, null, 4)}`
+      }
       return TIMESTAMP ?
-        `[${getLocalTime()}] ${options.level.toUpperCase()}: ${options.message}` :
-        `${options.level.toUpperCase()}: ${options.message}`
+        `[${getLocalTime()}] ${options.level.toUpperCase()}: ${msg}` :
+        `${options.level.toUpperCase()}: ${msg}`
     }
   }))
 } else {
