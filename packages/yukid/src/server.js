@@ -3,8 +3,6 @@
 'use strict'
 
 import Koa from 'koa'
-import Promise from 'bluebird'
-import mongoose from 'mongoose'
 import { exec } from 'child_process'
 import routes from './routes'
 import CONFIG from './config'
@@ -39,21 +37,6 @@ process.on('uncaughtException', (err) => {
   }
   process.exit(1)
 })
-
-const dbopts = {
-  useMongoClient: true,
-  user: CONFIG.get('DB_USER'),
-  pass: CONFIG.get('DB_PASSWD'),
-  promiseLibrary: Promise,
-}
-mongoose.Promise = Promise
-
-if (IS_TEST) {
-  mongoose.connect('mongodb://127.0.0.1/test', { useMongoClient: true })
-} else {
-  mongoose.connect('127.0.0.1', CONFIG.get('DB_NAME'), CONFIG.get('DB_PORT'), dbopts)
-}
-logger.info('Connected to MongoDB')
 
 const listening = server.listen(CONFIG.get('API_PORT'), CONFIG.get('API_ADDR'), () => {
   const addr = listening.address()
