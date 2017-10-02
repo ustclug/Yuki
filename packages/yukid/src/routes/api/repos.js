@@ -8,7 +8,7 @@ import { createGunzip } from 'zlib'
 import CONFIG from '../../config'
 import logger from '../../logger'
 import scheduler from '../../scheduler'
-import { Repository as Repo } from '../../models'
+import { Repository as Repo, Meta } from '../../models'
 import { setErrMsg, isLoggedIn } from './lib'
 import { dirExists, makeDir, myStat, tailStream } from '../../util'
 import { bringUp } from '../../containers'
@@ -209,7 +209,10 @@ export default function register(router) {
    */
     .delete(isLoggedIn, (ctx) => {
       const name = ctx.params.name
-      return Repo.findByIdAndRemove(name)
+      return Promise.all([
+        Repo.findByIdAndRemove(name),
+        Meta.findByIdAndRemove(name),
+      ])
         .then(() => {
           scheduler.cancelJob(name)
           ctx.status = 204
