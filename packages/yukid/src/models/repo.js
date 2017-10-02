@@ -46,5 +46,5 @@ schema.virtual('name')
     this._id = name
   })
 
-schema.set('toJSON', { versionKey: false, getters: true })
+schema.set('toJSON', { versionKey: false, getters: false })
 export default mongoose.model('Repository', schema)
