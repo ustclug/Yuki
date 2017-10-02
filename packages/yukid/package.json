@@ -28,7 +28,7 @@
     "koa-router": "^7.2.1",
     "moment": "^2.18.1",
     "mongoose": "^4.11.3",
-    "node-pty": "^0.6.10",
+    "node-pty": "^0.7.0",
     "node-schedule": "^1.2.3",
     "socket.io": "^2.0.3",
     "split": "^1.0.0",
@@ -46,9 +46,9 @@
     "node": ">=6"
   },
   "devDependencies": {
-    "ava": "^0.21.0",
+    "ava": "^0.22.0",
     "babel-cli": "^6.24.0",
-    "babel-eslint": "^7.2.3",
+    "babel-eslint": "^8.0.1",
     "babel-plugin-add-module-exports": "^0.2.1",
     "babel-plugin-transform-runtime": "^6.22.0",
     "babel-preset-babili": "^0.0.12",
