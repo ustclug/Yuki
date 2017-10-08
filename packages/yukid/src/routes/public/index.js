@@ -3,7 +3,7 @@ import R from 'ramda'
 
 import { verify } from '../../authenticator'
 import logger from '../../logger'
-import { jwtsign, NotFound } from '../lib'
+import { jwtsign, NotFound, Created } from '../lib'
 import { TOKEN_NAME } from '../../globals'
 
 import container from './ct'
@@ -25,14 +25,19 @@ router
       return NotFound(ctx, 'Wrong name or password')
     }
 
-    const token = jwtsign({ name }, { noTimestamp: true })
+    const token = jwtsign({ name })
     logger.info(`${name} login`)
 
-    ctx.cookies.set(TOKEN_NAME, token, {
-      path: '/api/v1/',
-      httpOnly: true
-    })
-    ctx.body = { token }
+    if (ctx.query.cookie === '1') {
+      ctx.cookies.set(TOKEN_NAME, token, {
+        path: '/api/v1/',
+        httpOnly: true
+      })
+      ctx.body = ''
+    } else {
+      ctx.body = { token }
+    }
+    return Created(ctx)
   })
 
 export default router
