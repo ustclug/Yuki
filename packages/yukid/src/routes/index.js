@@ -1,42 +1,34 @@
-#!/usr/bin/node
+import koarouter from 'koa-router'
+import koabody from 'koa-body'
+import httpstatus from 'http-status'
 
-'use strict'
-
-import Router from 'koa-router'
-import koaBody from 'koa-body'
-import api from './api'
-import { IS_DEV, IS_TEST, TOKEN_NAME } from '../globals'
-import { User } from '../models'
+import publicRouter from './public'
+import privateRouter from './protected'
+import { IS_DEV } from '../globals'
 import logger from '../logger'
 
-const router = new Router()
+const router = new koarouter()
 
 if (IS_DEV) {
   router.use(async (ctx, next) => {
     await next()
-    logger.debug(ctx.request.method, ctx.status, ctx.request.url)
+    const { name } = ctx.state.user || { name: '$public' }
+    logger.debug(`(${name})`, ctx.request.method, ctx.status, ctx.request.url)
   })
 }
 
-router.use(async function auth(ctx, next) {
-  const token = ctx.header[TOKEN_NAME] || ''
-  const user = await User.findOne({ token })
-  if (user === null) {
-    ctx.state.isLoggedIn = IS_TEST
-  } else {
-    ctx.state.isLoggedIn = true
-    ctx.state.isAdmin = user.admin
-    ctx.state.username = user.name
-  }
-  return next()
-})
-  .use(koaBody({
-    onError: (err, ctx) => {
-      logger.warn('Parsing body: %s', err)
+router
+  .use((ctx, next) => {
+    return next().catch((e) => {
+      ctx.status = e.status || httpstatus.INTERNAL_SERVER_ERROR
       ctx.body = {
-        message: 'invalid json'
+        message: e.message
       }
-      ctx.status = 400
+      logger.warn('Unexpected Error: %s', e.message)
+    })
+  }, koabody({
+    onError: (err, ctx) => {
+      ctx.throw(httpstatus.BAD_REQUEST, `Invalid JSON: ${err.message}`)
     }
   }), (ctx, next) => {
     if (ctx.request.body) {
@@ -45,6 +37,7 @@ router.use(async function auth(ctx, next) {
     return next()
   })
 
-  .use(api.routes(), api.allowedMethods())
+  .use(publicRouter.routes(), publicRouter.allowedMethods())
+  .use(privateRouter.routes(), privateRouter.allowedMethods())
 
 export default router.routes()

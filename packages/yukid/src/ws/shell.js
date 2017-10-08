@@ -1,30 +1,40 @@
-#!/usr/bin/node
-
-'use strict'
+import jwt from 'jsonwebtoken'
+import { spawn } from 'node-pty'
 
 import logger from '../logger'
 import { User } from '../models'
+import CONFIG from '../config'
 
-import { spawn } from 'node-pty'
+const secret = CONFIG.get('JWT_SECRET')
 
 export default function bash(socket) {
   socket.on('shell-auth', async (data) => {
     const token = data.token || ''
-    const user = await User.findOne({ token }, { admin: 1 })
-    if (user === null) {
+    let decoded
+    try {
+      decoded = jwt.verify(token, secret)
+    } catch (e) {
       socket.emit('shell-message', {
         ok: false,
         msg: 'Invalid token.'
       })
       return socket.disconnect(true)
     }
+    const user = await User.findById(decoded.name)
+    if (user === null) {
+      socket.emit('shell-message', {
+        ok: false,
+        msg: 'Cannot find the user.'
+      })
+      return socket.disconnect(true)
+    }
     if (!user.admin) {
-      logger.warn(`shell: unauthorized access: <${user._id}>.`)
+      logger.warn(`Shell: unauthorized access from: <${user._id}>.`)
       socket.emit('shell-message', {
         ok: false,
         msg: 'Remote shell is only available to administrators.'
       })
-      return socket.diconnect(true)
+      return socket.disconnect(true)
     }
     socket.emit('shell-message', { ok: true })
     const shell = spawn('bash', ['-i'], {

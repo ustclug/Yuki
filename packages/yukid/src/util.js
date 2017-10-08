@@ -1,8 +1,5 @@
-#!/usr/bin/node
-
-'use strict'
-
 import fs from 'fs'
+import R from 'ramda'
 import path from 'path'
 import Promise from 'bluebird'
 import split from 'split'
@@ -30,7 +27,7 @@ class Queue {
   }
 }
 
-function tailStream(cnt, stream) {
+export function tailStream(cnt, stream) {
   return new Promise((res, rej) => {
     const q = new Queue(cnt)
     stream.pipe(split(/\r?\n(?=.)/))
@@ -40,7 +37,7 @@ function tailStream(cnt, stream) {
   })
 }
 
-function dirExists(path) {
+export function dirExists(path) {
   if (IS_TEST) return true
 
   let stat
@@ -52,27 +49,24 @@ function dirExists(path) {
   return stat.isDirectory()
 }
 
-function makeDir(path) {
+export function makeDir(path) {
   if (!dirExists(path)) {
     fs.mkdirSync(path)
   }
 }
 
-function myStat(dir, name) {
+export function myStat(dir, name) {
   const stats = fs.statSync(path.join(dir, name))
-  return {
-    name,
-    size: stats.size,
-    atime: stats.atime,
-    mtime: stats.mtime,
-    ctime: stats.ctime,
-    birthtime: stats.birthtime
-  }
+  return R.compose(
+    R.assoc('name', name),
+    R.pick(['size', 'atime', 'mtime', 'ctime', 'birthtime'])
+  )(stats)
 }
 
-export default {
-  dirExists,
-  makeDir,
-  myStat,
-  tailStream,
+export function setBody(ctx) {
+  return (data) => ctx.body = data
+}
+
+export function invoke(method, ...args) {
+  return (obj) => obj[method].apply(obj, args)
 }

@@ -18,10 +18,10 @@
     "node": ">=6"
   },
   "dependencies": {
-    "bluebird": "^3.5.0",
-    "commander": "^2.9.0",
+    "bluebird": "^3.5.1",
+    "commander": "^2.11.0",
     "moment": "^2.18.1",
-    "node-fetch": "^1.6.3",
-    "socket.io-client": "^2.0.1"
+    "node-fetch": "^1.7.3",
+    "socket.io-client": "^2.0.3"
   }
 }

@@ -43,10 +43,6 @@ try {
   }
 })(AUTH_RECORD)
 
-const md5hash = function(text) {
-  return createHash('md5').update(text).digest('hex')
-}
-
 const normalizeUrl = (u) => {
   // not absolute
   if (!/^([a-z][a-z\d\+\-\.]*:)?\/\//i.test(u)) u = `http://${u}`
@@ -73,7 +69,7 @@ const req = function(apiroot, url, body, method = 'get') {
     url,
     body,
     method,
-    headers: { [TOKEN_NAME]: auths[apiroot] || '' }
+    headers: { authorization: `Bearer ${auths[apiroot] || ''}` }
   })
 }
 
@@ -85,9 +81,10 @@ program
   .command('login <username> <password>')
   .description('log in to remote registry')
   .action((username, password, opts) => {
-    password = md5hash(password)
+    const d = `${username}:${password}`
+    const encoded = new Buffer(d).toString('base64')
     const apiroot = normalizeUrl(opts.parent.apiroot)
-    req(apiroot, 'auth', { username, password })
+    req(apiroot, 'token', { auth: encoded })
     .then(async (res) => {
       if (res.ok) {
         const content = await res.json()
@@ -135,7 +132,7 @@ program
   .description('print current user')
   .action((opts) => {
     const apiroot = normalizeUrl(opts.parent.apiroot)
-    req(opts.parent.apiroot, 'auth')
+    req(opts.parent.apiroot, 'me')
     .then(async (res) => {
       if (res.ok) {
         const data = await res.json()
@@ -165,7 +162,7 @@ program
     }
 
     req(opts.parent.apiroot, `users/${opts.name}`, {
-      password: md5hash(opts.pass),
+      password: opts.pass,
       admin: opts.role === 'admin'
     })
     .then(res => {
@@ -221,7 +218,7 @@ program
       payload.admin = opts.role === 'admin'
     }
     if (opts.pass) {
-      payload.password = md5hash(opts.pass)
+      payload.password = opts.pass
     }
     req(opts.parent.apiroot, `users/${name}`, payload, 'PUT')
     .then(res => {
@@ -488,8 +485,8 @@ program
   .option('-v, --verbose', 'debug mode')
   .action((repo, opts) => {
     const url = (opts.verbose) ?
-      `repositories/${repo}/sync?debug=true` :
-      `repositories/${repo}/sync`
+      `containers/${repo}?debug=true` :
+      `containers/${repo}`
 
     req(opts.parent.apiroot, url, null, 'POST')
       .then(res => {

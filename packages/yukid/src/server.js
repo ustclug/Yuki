@@ -70,7 +70,8 @@ if (!IS_TEST) {
   EMITTER.on('sync-end', (data) => {
     const meta = {
       size: fs.getSize(data.storageDir),
-      lastExitCode: data.exitCode
+      lastExitCode: data.exitCode,
+      updatedAt: new Date(),
     }
     if (data.exitCode === 0) {
       meta.lastSuccess = Date.now()
@@ -90,18 +91,19 @@ if (!IS_TEST) {
 
   User.findOne()
     .then((user) => {
-      if (user === null) {
-        return User.create({
-        // root:root
-          name: 'root',
-          password: '63a9f0ea7bb98050796b649e85481845',
-          admin: true
-        })
-          .then(() => {
-            logger.warn('User `root` with password `root` has been created.')
-          }, (err) => {
-            logger.error('Creating user <root> in empty db: %s', err)
-          })
+      if (user !== null) {
+        return
       }
+      return User.create({
+        // root:root
+        name: 'root',
+        password: '63a9f0ea7bb98050796b649e85481845',
+        admin: true
+      })
+        .then(() => {
+          logger.warn('User `root` with password `root` has been created.')
+        }, (err) => {
+          logger.error('Creating user <root> in empty db: %s', err)
+        })
     })
 }

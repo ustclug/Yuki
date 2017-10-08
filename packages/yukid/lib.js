@@ -71,7 +71,6 @@ const defaults = {
 
 export default class Client {
   constructor(cfg) {
-    // assert(typeof cfg === 'object')
     this.common = merge(defaults, cfg)
   }
 
@@ -90,6 +89,7 @@ export default class Client {
         cfg.method = 'post'
       }
     }
+
     return fetch(url, cfg)
       .then(async res => {
         if (!res.ok) {
