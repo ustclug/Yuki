@@ -1,28 +1,19 @@
-#!/usr/bin/node
-
-'use strict'
-
 require('../dist')
 import test from 'ava'
+import jwt from 'jsonwebtoken'
 import mongoose from 'mongoose'
 import DATA from './mock.json'
 import Client from '../lib'
 import CONFIG from '../dist/config'
 import { TOKEN_NAME } from '../dist/globals'
-import { Repository as Repo, User, Log } from '../dist/models'
-import { createHash } from 'crypto'
+import { Repository as Repo, User } from '../dist/models'
 
 const request = new Client({
   baseUrl: `http://localhost:${CONFIG.get('API_PORT')}/api/v1/`
 })
 
-const md5hash = function(text) {
-  return createHash('md5').update(text).digest('hex')
-}
-
-const calToken = (name, pass) => {
-  const hash = createHash('sha1').update(name).update(pass)
-  return hash.digest('hex')
+const calToken = (name) => {
+  return jwt.sign({ name }, 'iamasecret', { noTimestamp: true })
 }
 
 test.before(async t => {
@@ -30,31 +21,29 @@ test.before(async t => {
   await Repo.remove()
   await Repo.create(DATA)
   await User.remove()
-  await Log.remove()
   await User.create([{
     name: 'yuki',
-    password: md5hash('longpass'),
+    password: 'longpass',
     admin: true,
   }, {
     name: 'kiana',
-    password: md5hash('password'),
+    password: 'password',
     admin: false,
   }, {
     name: 'bronya',
-    password: md5hash('homu'),
+    password: 'homu',
     admin: false,
   }])
 })
 
 const adminToken = {
   headers: {
-    [TOKEN_NAME]: calToken('yuki', md5hash('longpass'))
+    authorization: `Bearer ${calToken('yuki')}`
   }
 }
-
 const normalToken = {
   headers: {
-    [TOKEN_NAME]: calToken('kiana', md5hash('password'))
+    cookie: `${TOKEN_NAME}=${calToken('kiana')}`
   }
 }
 
@@ -94,10 +83,10 @@ test.serial('List repositories', t => {
 })
 
 test.serial('Remove repository', t => {
-  return request.delete('repositories/gmt')
+  return request.delete('repositories/gmt', normalToken)
     .then(res => {
       t.is(res.status, 204)
-      return request.get('repositories/gmt')
+      return request.get('repositories/gmt', normalToken)
     })
     .then(res => {
       t.is(res.status, 404)
@@ -111,10 +100,10 @@ test.serial('Update repository', t => {
       '/pypi': '/tmp/repos/BIOC'
     },
     user: 'mirror'
-  })
+  }, normalToken)
     .then(res => {
       t.is(res.status, 204)
-      return request.get('repositories/bioc')
+      return request.get('repositories/bioc', normalToken)
     })
     .then(async res => {
       t.is(res.status, 200)
@@ -122,12 +111,12 @@ test.serial('Update repository', t => {
       t.is(data.interval, '48 2 * * *')
       t.is(data.user, 'mirror')
       t.is(data.image, 'ustcmirror/rsync:latest')
-      t.true(data.volumes['/pypi'].endsWith('BIOC'))
+      t.true(data.volumes['/pypi'] === '/tmp/repos/BIOC')
     })
 })
 
 test('Get repository', t => {
-  return request.get('repositories/archlinux')
+  return request.get('repositories/archlinux', normalToken)
     .then(async res => {
       const data = (await res.json())[0]
       t.is(res.status, 200)
@@ -157,10 +146,10 @@ test('Create repository', t => {
     image: 'ustcmirror/test:latest',
     interval: '* 5 * * *',
     storageDir: '/tmp/repos/vim',
-  })
+  }, normalToken)
     .then(res => {
       t.is(res.status, 201)
-      return request.get('repositories/vim')
+      return request.get('repositories/vim', normalToken)
     })
     .then(async res => {
       t.is(res.status, 200)
@@ -178,7 +167,6 @@ test('List users', async t => {
       const data = await res.json()
       for (const r of data) {
         t.truthy(r._id)
-        t.truthy(r.token)
       }
     })
 
@@ -188,7 +176,6 @@ test('List users', async t => {
       const data = await res.json()
       for (const r of data) {
         t.truthy(r._id)
-        t.falsy(r.token)
       }
     })
 })
@@ -237,11 +224,6 @@ test('Update user profile', async t => {
       t.is(res.status, 204)
     })
 
-  await User.findById('kiana', 'token')
-    .then(data => {
-      t.is(data.token, calToken('kiana', 'asdfqwer'))
-    })
-
   await request.put('users/bronya', {
     admin: true
   }, adminToken)
@@ -251,22 +233,9 @@ test('Update user profile', async t => {
 })
 
 test('Export config', async t => {
-  await request.get('config', null, adminToken)
+  await request.get('config', adminToken)
     .then(res => {
       t.is(res.status, 200)
-    })
-})
-
-test('Start a container', t => {
-  return request.post('repositories/archlinux/sync', null)
-    .then(res => {
-      t.is(res.status, 204)
-      return request.post('containers/archlinux/wait', null)
-    })
-    .then(async res => {
-      t.is(res.status, 200)
-      const data = await res.json()
-      t.is(data.StatusCode, 0)
     })
 })
 
@@ -279,14 +248,27 @@ test.serial('Import config', async t => {
   }
   await request.post('config', repo, adminToken)
     .then(res => {
-      t.is(res.status, 200)
+      t.is(res.status, 201)
     })
 })
 
 test.serial('Reload config', async t => {
   await request.post('reload', null, adminToken)
     .then(res => {
+      t.is(res.status, 204)
+    })
+})
+
+test('Start a container', t => {
+  return request.post('containers/archlinux', null, normalToken)
+    .then(res => {
+      t.is(res.status, 201)
+      return request.post('containers/archlinux/wait', null, normalToken)
+    })
+    .then(async res => {
       t.is(res.status, 200)
+      const data = await res.json()
+      t.is(data.StatusCode, 0)
     })
 })
 
