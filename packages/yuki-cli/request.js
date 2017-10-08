@@ -94,9 +94,18 @@ class Client {
     return fetch(url, cfg)
       .then(async res => {
         if (!res.ok) {
-          res.error = await res.json()
+          try {
+            res.error = await res.json()
+          } catch (e) {
+            console.error('Failed to parse JSON.')
+            console.error(`The server returned ${res.status}.`)
+            process.exit(1)
+          }
         }
         return res
+      }, (e) => {
+        console.error(`Fatal error: ${e.message}.`)
+        process.exit(1)
       })
   }
 }
