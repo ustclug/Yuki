@@ -9,9 +9,7 @@
     "dev": "babel -wd dist src",
     "pub": "npm run build && npm publish",
     "lint": "eslint src",
-    "doc": "apidoc -i src/routes -f api.js",
-    "build": "NODE_ENV=production babel -d dist src",
-    "build:dev": "babel -d dist src",
+    "build": "babel -d dist src",
     "yukid": "NODE_ENV=production dist/index.js",
     "yukid:dev": "NODE_ENV=dev dist/index.js",
     "yukid:test": "NODE_ENV=test dist/index.js"
@@ -22,14 +20,18 @@
     "babel-runtime": "^6.22.0",
     "bluebird": "^3.5.0",
     "dockerode": "^2.5.0",
+    "http-status": "^1.0.1",
     "is-listening": "^1.0.1",
+    "jsonwebtoken": "^8.0.1",
     "koa": "^2.3.0",
     "koa-body": "^2.4.0",
+    "koa-jwt": "^3.2.2",
     "koa-router": "^7.2.1",
     "moment": "^2.18.1",
     "mongoose": "^4.11.3",
     "node-pty": "^0.7.0",
     "node-schedule": "^1.2.3",
+    "ramda": "^0.24.1",
     "socket.io": "^2.0.3",
     "split": "^1.0.0",
     "winston": "^2.3.1"
@@ -51,7 +53,6 @@
     "babel-eslint": "^8.0.1",
     "babel-plugin-add-module-exports": "^0.2.1",
     "babel-plugin-transform-runtime": "^6.22.0",
-    "babel-preset-babili": "^0.0.12",
     "babel-preset-env": "^1.6.0",
     "babel-register": "^6.24.0",
     "eslint": "^4.3.0",
@@ -60,20 +61,8 @@
   },
   "babel": {
     "presets": [
-      [
-        "env",
-        {
-          "node": 6
-        }
-      ]
+      "env"
     ],
-    "env": {
-      "production": {
-        "presets": [
-          "babili"
-        ]
-      }
-    },
     "plugins": [
       "add-module-exports",
       [
