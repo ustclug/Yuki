@@ -1,7 +1,3 @@
-#!/usr/bin/node
-
-'use strict'
-
 import fs from 'fs'
 import path from 'path'
 import Promise from 'bluebird'
@@ -30,7 +26,7 @@ class Queue {
   }
 }
 
-function tailStream(cnt, stream) {
+export function tailStream(cnt, stream) {
   return new Promise((res, rej) => {
     const q = new Queue(cnt)
     stream.pipe(split(/\r?\n(?=.)/))
@@ -40,7 +36,7 @@ function tailStream(cnt, stream) {
   })
 }
 
-function dirExists(path) {
+export function dirExists(path) {
   if (IS_TEST) return true
 
   let stat
@@ -52,13 +48,13 @@ function dirExists(path) {
   return stat.isDirectory()
 }
 
-function makeDir(path) {
+export function makeDir(path) {
   if (!dirExists(path)) {
     fs.mkdirSync(path)
   }
 }
 
-function myStat(dir, name) {
+export function myStat(dir, name) {
   const stats = fs.statSync(path.join(dir, name))
   return {
     name,
@@ -70,9 +66,10 @@ function myStat(dir, name) {
   }
 }
 
-export default {
-  dirExists,
-  makeDir,
-  myStat,
-  tailStream,
+export function setBody(ctx) {
+  return (data) => ctx.body = data
+}
+
+export function invoke(method, ...args) {
+  return (obj) => obj[method].apply(obj, args)
 }

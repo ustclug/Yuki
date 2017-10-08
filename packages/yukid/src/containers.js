@@ -11,7 +11,7 @@ import docker from './docker'
 const imgTag = 'ustcmirror.images'
 const PREFIX = CONFIG.get('CT_NAME_PREFIX')
 
-async function bringUp(cfg) {
+export async function bringUp(cfg) {
   let ct
   try {
     ct = await docker.createContainer(cfg)
@@ -41,7 +41,7 @@ function postSync(ctname) {
     })
 }
 
-function observeRunningContainers() {
+export function observeRunningContainers() {
   return docker.listContainers({
     filters: {
       label: {
@@ -56,7 +56,7 @@ function observeRunningContainers() {
     .then((infos) => infos.forEach((info) => postSync(info.Names[0].substr(1))))
 }
 
-function cleanContainers() {
+export function cleanContainers() {
   const removing = ['created', 'exited', 'dead']
     .map((status) => {
       return docker.listContainers({
@@ -86,13 +86,13 @@ function cleanContainers() {
   return Promise.all(removing)
 }
 
-function updateImages() {
+export function updateImages() {
   return Repo.distinct('image')
-    .then(tags => tags.map((tag) => docker.pull(tag)))
-    .then(ps => Promise.all(ps))
+    .then((tags) => tags.map((tag) => docker.pull(tag)))
+    .then((ps) => Promise.all(ps))
 }
 
-function cleanImages() {
+export function cleanImages() {
   return docker.listImages({
     filters: {
       label: {
@@ -103,15 +103,7 @@ function cleanImages() {
       }
     }
   })
-    .then(images => Promise.all(images.map(info => {
+    .then((images) => Promise.all(images.map((info) => {
       return docker.getImage(info.Id).remove()
     })))
-}
-
-export default {
-  bringUp,
-  cleanContainers,
-  cleanImages,
-  observeRunningContainers,
-  updateImages,
 }

@@ -1,7 +1,3 @@
-#!/usr/bin/node
-
-'use strict'
-
 import path from 'path'
 import Promise from 'bluebird'
 import { IS_TEST } from './globals'
@@ -12,7 +8,7 @@ import { Repository as Repo, Meta } from './models'
 const PREFIX = CONFIG.get('CT_NAME_PREFIX')
 const LABEL = CONFIG.get('CT_LABEL')
 
-async function queryOpts({ name, debug = false }) {
+export async function queryOpts({ name, debug = false }) {
   const cfg = await Repo.findById(name)
   if (cfg === null) {
     return null
@@ -62,11 +58,11 @@ async function queryOpts({ name, debug = false }) {
   return opts
 }
 
-function createMeta(docs) {
+export function createMeta(docs) {
   let data
   if (docs === undefined) {
     data = Repo.find(null, { storageDir: 1 })
-      .then(repos => repos.map(r => r.toJSON()))
+      .then((repos) => repos.map((r) => r.toJSON()))
   } else {
     if (Array.isArray(docs)) {
       data = Promise.resolve(docs)
@@ -75,17 +71,17 @@ function createMeta(docs) {
     }
   }
   return data
-    .then(data =>
-      data.map(doc =>
+    .then((data) =>
+      data.map((doc) =>
         Meta.findByIdAndUpdate(doc._id, {
-          size: fs.getSize(doc.storageDir)
+          $set: {
+            size: fs.getSize(doc.storageDir)
+          },
+          $setOnInsert: {
+            updatedAt: new Date(),
+          }
         }, { upsert: true })
       )
     )
     .then(Promise.all)
-}
-
-export default {
-  createMeta,
-  queryOpts
 }

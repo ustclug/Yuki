@@ -18,11 +18,14 @@ const schema = new mongoose.Schema({
   lastSuccess: {
     type: Date,
     default: new Date(0)
+  },
+  updatedAt: {
+    type: Date,
+    default: new Date()
   }
 }, {
   id: false,
   strict: 'throw',
-  timestamps: true
 })
 
 const virt = schema.virtual('upstream', {
@@ -74,6 +77,8 @@ virt.getters.unshift(function(repo) {
       return envs.GS_URL || defVal
     case 'rubygems':
       return envs.UPSTREAM || 'http://rubygems.org'
+    case 'hackage':
+      return envs.HACKAGE_BASE_URL || 'https://hackage.haskell.org'
     default:
       return defVal
   }

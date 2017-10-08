@@ -9,7 +9,7 @@ import {
 import path from 'path'
 
 function merge(target, src, prefix = '') {
-  Object.keys(target).forEach(k => {
+  Object.keys(target).forEach((k) => {
     if (typeof src[`${prefix}${k}`] !== 'undefined')
       target[k] = src[`${prefix}${k}`]
   })
@@ -24,6 +24,7 @@ const readConfig = function() {
     DB_PORT: 27017,
     API_PORT: 9999,
     API_ADDR: '127.0.0.1',
+    JWT_SECRET: '',
     DOCKERD_PORT: 2375,
     DOCKERD_HOST: '127.0.0.1',
     DOCKERD_SOCKET: '/var/run/docker.sock',
@@ -76,6 +77,10 @@ const readConfig = function() {
     }
     if (typeof defaults.FILESYSTEM !== 'object') {
       console.error('Invalid FILESYSTEM: %j', defaults.FILESYSTEM)
+      throw new Error('Invalid config')
+    }
+    if (!defaults.JWT_SECRET) {
+      console.error('Please provide `JWT_SECRET` in your config')
       throw new Error('Invalid config')
     }
   }
