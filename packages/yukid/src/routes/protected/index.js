@@ -3,7 +3,6 @@ import koarouter from 'koa-router'
 import httpstatus from 'http-status'
 import {
   JWTMiddleware,
-  requireAdmin,
   Unauthorized, ServerError, NoContent
 } from '../lib'
 
@@ -27,7 +26,7 @@ router
     })
   }, JWTMiddleware)
 
-  .post('/reload', requireAdmin, (ctx) => {
+  .post('/reload', (ctx) => {
     return scheduler.schedRepos()
       .then(NoContent(ctx))
       .catch((err) => ServerError(ctx, `Reload config: ${err.message}`))

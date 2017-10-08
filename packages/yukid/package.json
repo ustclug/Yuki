@@ -27,6 +27,7 @@
     "koa-body": "^2.4.0",
     "koa-jwt": "^3.2.2",
     "koa-router": "^7.2.1",
+    "ldapjs": "^1.0.1",
     "moment": "^2.18.1",
     "mongoose": "^4.11.3",
     "node-pty": "^0.7.0",

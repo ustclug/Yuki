@@ -1,4 +1,4 @@
-import { Created, ServerError, requireAdmin } from '../lib'
+import { Created, ServerError } from '../lib'
 import { createMeta } from '../../repositories'
 import { Repository as Repo } from '../../models'
 import { invoke } from '../../util'
@@ -15,7 +15,7 @@ export default function register(router) {
         })
         .catch((err) => ServerError(ctx, `Export config: ${err.message}`))
     })
-    .post('/config', requireAdmin, (ctx) => {
+    .post('/config', (ctx) => {
       const repos = ctx.$body
       return Repo.create(repos)
         .then(createMeta)

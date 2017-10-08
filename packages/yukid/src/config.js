@@ -38,6 +38,12 @@ const readConfig = function() {
     FILESYSTEM: {
       type: 'fs'
     },
+    LDAP: {
+      enabled: false,
+      url: '',
+      searchBase: '',
+      ca: ''
+    },
     POST_SYNC: [],
     LOGLEVEL: '',
   }

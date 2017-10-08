@@ -1,8 +1,8 @@
 import koarouter from 'koa-router'
 import R from 'ramda'
 
+import { verify } from '../../authenticator'
 import logger from '../../logger'
-import { User } from '../../models'
 import { jwtsign, NotFound } from '../lib'
 import { TOKEN_NAME } from '../../globals'
 
@@ -19,9 +19,9 @@ router
     const { auth } = ctx.$body
     const decoded = new Buffer(auth, 'base64').toString('utf8')
     const [ name, password ] = decoded.split(':')
-    const user = await User.findOne({ _id: name, password })
-
-    if (user === null) {
+    try {
+      await verify(name, password)
+    } catch (e) {
       return NotFound(ctx, 'Wrong name or password')
     }
 

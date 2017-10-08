@@ -1,4 +1,5 @@
 import fs from 'fs'
+import R from 'ramda'
 import path from 'path'
 import Promise from 'bluebird'
 import split from 'split'
@@ -56,14 +57,10 @@ export function makeDir(path) {
 
 export function myStat(dir, name) {
   const stats = fs.statSync(path.join(dir, name))
-  return {
-    name,
-    size: stats.size,
-    atime: stats.atime,
-    mtime: stats.mtime,
-    ctime: stats.ctime,
-    birthtime: stats.birthtime
-  }
+  return R.compose(
+    R.assoc('name', name),
+    R.pick(['size', 'atime', 'mtime', 'ctime', 'birthtime'])
+  )(stats)
 }
 
 export function setBody(ctx) {

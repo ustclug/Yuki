@@ -1,12 +1,19 @@
 import R from 'ramda'
 import logger from '../../logger'
+import CONFIG from '../../config'
+import { IS_TEST } from '../../globals'
 import {
   isAdmin, requireAdmin,
   Unauthorized, NotFound, NoContent, Created
 } from '../lib'
 import { User } from '../../models'
 
+const ldapCfg = CONFIG.get('LDAP')
+
 export default function register(router) {
+  if (!IS_TEST && ldapCfg.enabled) {
+    return
+  }
   router
     .get('/me', (ctx) => {
       const { name } = ctx.state.user
