@@ -87,8 +87,7 @@ export default function register(router) {
     .delete('/containers/:repo', (ctx) => {
       const repo = ctx.params.repo
       const ct = getContainer(repo)
-      return ct.stop()
-        .then(() => ct.remove({ v: true, force: true }))
+      return ct.remove({ v: true, force: true })
         .then(NoContent(ctx))
         .catch((err) => {
           const msg = err.json.message
