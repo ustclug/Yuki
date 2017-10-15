@@ -5,6 +5,7 @@ import {
   JWTMiddleware,
   Unauthorized, ServerError, NoContent
 } from '../lib'
+import { updateImages } from '../../containers'
 import { TOKEN_NAME } from '../../globals'
 import scheduler from '../../scheduler'
 
@@ -38,6 +39,14 @@ router
       httpOnly: true
     })
     return NoContent(ctx)
+  })
+
+  .post('/images/update', (ctx) => {
+    return updateImages()
+      .then(NoContent(ctx))
+      .catch((err) => {
+        ctx.throw(err.statusCode, err.json)
+      })
   })
 
 R.juxt([ctRoutes, repoRoutes, cfgRoutes, userRoutes])(router)
