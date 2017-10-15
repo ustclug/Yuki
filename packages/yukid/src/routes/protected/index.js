@@ -45,7 +45,7 @@ router
     return updateImages()
       .then(NoContent(ctx))
       .catch((err) => {
-        ctx.throw(err.statusCode, err.json)
+        ctx.throw(err.statusCode, err.message)
       })
   })
 
