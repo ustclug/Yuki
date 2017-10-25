@@ -1,6 +1,6 @@
 {
   "name": "yuki-cli",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "The command line interface for ustcmirror",
   "main": "index.js",
   "repository": "https://github.com/knight42/Yuki/tree/master/packages/yuki-cli/",

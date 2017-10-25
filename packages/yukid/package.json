@@ -1,6 +1,6 @@
 {
   "name": "yukid",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Aims to provide effortless management of docker containers on USTC Mirrors",
   "main": "dist/index.js",
   "repository": "https://github.com/knight42/Yuki/tree/master/packages/yukid",
