@@ -20,8 +20,8 @@
   "dependencies": {
     "bluebird": "^3.5.1",
     "commander": "^2.11.0",
-    "moment": "^2.18.1",
+    "moment": "^2.19.1",
     "node-fetch": "^1.7.3",
-    "socket.io-client": "^2.0.3"
+    "socket.io-client": "^2.0.4"
   }
 }
