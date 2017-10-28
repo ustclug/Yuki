@@ -1,7 +1,3 @@
-#!/usr/bin/node
-
-'use strict'
-
 import { execSync } from 'child_process'
 import Fs from './base'
 

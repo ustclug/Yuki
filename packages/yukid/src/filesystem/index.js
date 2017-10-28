@@ -1,19 +1,20 @@
-#!/usr/bin/node
-
-'use strict'
-
-import Fs from './base'
-import Zfs from './zfs'
+import FS from './base'
+import ZFS from './zfs'
+import XFS from './xfs'
 import CONFIG from '../config'
 
 let storage = null
 switch (CONFIG.get('FILESYSTEM').type) {
   case 'zfs':
-    storage = new Zfs()
+    storage = new ZFS()
+    break;
+
+  case 'xfs':
+    storage = new XFS()
     break;
 
   default:
-    storage = new Fs()
+    storage = new FS()
 }
 
 export default storage
