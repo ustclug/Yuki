@@ -10,3 +10,4 @@ Environment="NODE_ENV=dev"
 
 [Install]
 WantedBy=multi-user.target
+Alias=yukid.service
