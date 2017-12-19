@@ -12,3 +12,4 @@ reference/
 dist/
 doc/
 build/
+cmd/yukid/yukid
