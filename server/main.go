@@ -1,56 +1,73 @@
 package server
 
 import (
+	"os"
+
 	"github.com/knight42/Yuki/core"
+	"github.com/knight42/Yuki/events"
 	"gopkg.in/labstack/echo.v3"
 )
 
-type ServerConfig struct {
-	*core.ManagerConfig
+type Config struct {
+	*core.Config
+	Owner      string
+	LogDir     string
+	NamePrefix string
 }
 
 var (
-	DefaultServerConfig = ServerConfig{
-		ManagerConfig: &core.ManagerConfig{
+	DefaultServerConfig = Config{
+		Config: &core.Config{
 			Debug:          true,
 			DbURL:          "127.0.0.1:27017",
 			DbName:         "mirror",
 			DockerEndpoint: "unix:///var/run/docker.sock",
-			NamePrefix:     "syncing-",
 		},
+		Owner:      "0:0",
+		LogDir:     "/var/log/ustcmirror/",
+		NamePrefix: "syncing-",
 	}
 )
 
 type Server struct {
-	e *echo.Echo
-	m core.Manager
+	e       *echo.Echo
+	c       *core.Core
+	emitter *events.Emitter
+	config  *Config
 }
 
 func New() (*Server, error) {
 	return NewWithConfig(DefaultServerConfig)
 }
 
-func NewWithConfig(cfg ServerConfig) (*Server, error) {
-	managerCfg := core.ManagerConfig{
+func NewWithConfig(cfg Config) (*Server, error) {
+	if err := os.MkdirAll(cfg.LogDir, os.ModePerm); err != nil {
+		return nil, err
+	}
+	coreCfg := core.Config{
 		Debug:          cfg.Debug,
 		DbURL:          cfg.DbURL,
 		DbName:         cfg.DbName,
-		NamePrefix:     cfg.NamePrefix,
 		DockerEndpoint: cfg.DockerEndpoint,
 	}
-	m, err := core.NewWithConfig(managerCfg)
+	c, err := core.NewWithConfig(coreCfg)
 	if err != nil {
 		return nil, err
 	}
 	s := Server{
-		e: echo.New(),
-		m: m,
+		c:       c,
+		e:       echo.New(),
+		config:  &cfg,
+		emitter: events.NewEmitter(),
 	}
 	s.e.Debug = cfg.Debug
 	s.e.HideBanner = !cfg.Debug
 
+	s.e.GET("/", func(c echo.Context) error {
+		return c.String(200, "Hello World!")
+	})
 	g := s.e.Group("/api/v1/")
-	s.registerAPIs(g)
+	s.RegisterAPIs(g)
 	return &s, nil
 }
 
