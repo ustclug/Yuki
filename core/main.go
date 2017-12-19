@@ -2,47 +2,29 @@ package core
 
 import (
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/knight42/Yuki/events"
 	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
-type Manager interface {
-	GetRepository(name string) (*Repository, error)
-	AddRepository(repo *Repository) error
-	UpdateRepository(name string, update bson.M) error
-	RemoveRepository(name string) error
-	ListRepositories(query, proj bson.M) []Repository
-
-	//Sync(name string) error
-
-	//CleanContainers() error
-	//StartContainer(name string) error
-	//StopContainer(name string) error
-	//RemoveContainer() error
-	//ListContainers() error
-
-	//ImportConfig() error
-	//ExportConfig() error
-}
-
-type ManagerConfig struct {
-	Debug          bool
+type Config struct {
+	Debug bool
+	// DbURL contains username and password
 	DbURL          string
 	DbName         string
 	DockerEndpoint string
-	NamePrefix     string
 }
 
-type Yukid struct {
-	NamePrefix string
-	Docker     *docker.Client
-	DB         *mgo.Database
-	repoColl   *mgo.Collection
-	metaColl   *mgo.Collection
-	userColl   *mgo.Collection
+type Core struct {
+	DB      *mgo.Database
+	Docker  *docker.Client
+	Emitter *events.Emitter
+
+	repoColl *mgo.Collection
+	metaColl *mgo.Collection
+	userColl *mgo.Collection
 }
 
-func NewWithConfig(c ManagerConfig) (Manager, error) {
+func NewWithConfig(c Config) (*Core, error) {
 	mgo.SetDebug(c.Debug)
 	sess, err := mgo.Dial(c.DbURL)
 	if err != nil {
@@ -57,11 +39,10 @@ func NewWithConfig(c ManagerConfig) (Manager, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	m := Yukid{
-		NamePrefix: c.NamePrefix,
-		DB:         sess.DB(c.DbName),
-		Docker:     d,
+	m := Core{
+		DB:      sess.DB(c.DbName),
+		Docker:  d,
+		Emitter: events.NewEmitter(),
 	}
 	m.repoColl = m.DB.C("repositories")
 	m.metaColl = m.DB.C("metas")
