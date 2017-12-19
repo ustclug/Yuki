@@ -2,7 +2,6 @@ package core
 
 import (
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/knight42/Yuki/events"
 	"gopkg.in/mgo.v2"
 )
 
@@ -17,7 +16,6 @@ type Config struct {
 type Core struct {
 	DB      *mgo.Database
 	Docker  *docker.Client
-	Emitter *events.Emitter
 
 	repoColl *mgo.Collection
 	metaColl *mgo.Collection
@@ -42,7 +40,6 @@ func NewWithConfig(c Config) (*Core, error) {
 	m := Core{
 		DB:      sess.DB(c.DbName),
 		Docker:  d,
-		Emitter: events.NewEmitter(),
 	}
 	m.repoColl = m.DB.C("repositories")
 	m.metaColl = m.DB.C("metas")
