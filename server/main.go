@@ -5,7 +5,8 @@ import (
 
 	"github.com/knight42/Yuki/core"
 	"github.com/knight42/Yuki/events"
-	"gopkg.in/labstack/echo.v3"
+	"github.com/labstack/echo"
+	"github.com/labstack/echo/middleware"
 )
 
 type Config struct {
@@ -13,6 +14,7 @@ type Config struct {
 	Owner      string
 	LogDir     string
 	NamePrefix string
+	AllowOrigins []string
 }
 
 var (
@@ -26,6 +28,7 @@ var (
 		Owner:      "0:0",
 		LogDir:     "/var/log/ustcmirror/",
 		NamePrefix: "syncing-",
+		AllowOrigins: []string{"*"},
 	}
 )
 
@@ -62,12 +65,16 @@ func NewWithConfig(cfg Config) (*Server, error) {
 	}
 	s.e.Debug = cfg.Debug
 	s.e.HideBanner = !cfg.Debug
-
 	s.e.GET("/", func(c echo.Context) error {
 		return c.String(200, "Hello World!")
 	})
 	g := s.e.Group("/api/v1/")
 	s.RegisterAPIs(g)
+
+	// middlewares
+	corsCfg := middleware.DefaultCORSConfig
+	corsCfg.AllowOrigins = cfg.AllowOrigins
+	s.e.Use(middleware.CORSWithConfig(corsCfg))
 	return &s, nil
 }
 

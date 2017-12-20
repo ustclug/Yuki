@@ -9,7 +9,7 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/knight42/Yuki/core"
-	"gopkg.in/labstack/echo.v3"
+	"github.com/labstack/echo"
 	"gopkg.in/mgo.v2/bson"
 )
 
