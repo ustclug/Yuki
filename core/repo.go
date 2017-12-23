@@ -9,18 +9,18 @@ import (
 type M map[string]string
 
 type Repository struct {
-	Name        string    `bson:"_id,omitempty" json:"name,omitempty"`
-	Interval    string    `bson:"interval,omitempty" json:"interval,omitempty"`
-	Image       string    `bson:"image,omitempty" json:"image,omitempty"`
-	StorageDir  string    `bson:"storageDir,omitempty" json:"storageDir,omitempty"`
-	LogRotCycle uint      `bson:"logRotCycle,omitempty" json:"logRotCycle,omitempty"`
-	Envs        M         `bson:"envs,omitempty" json:"envs,omitempty"`
-	Volumes     M         `bson:"volumes,omitempty" json:"volumes,omitempty"`
-	User        string    `bson:"user,omitempty" json:"user,omitempty"`
-	BindIp      string    `bson:"bindIp,omitempty" json:"bindIp,omitempty"`
-	Retry       int       `bson:"retry,omitempty" json:"retry,omitempty"`
-	CreatedAt   time.Time `bson:"createdAt,omitempty" json:"createdAt,omitempty"`
-	UpdatedAt   time.Time `bson:"updatedAt,omitempty" json:"updatedAt,omitempty"`
+	Name        string `bson:"_id,omitempty" json:"name,omitempty"`
+	Interval    string `bson:"interval,omitempty" json:"interval,omitempty"`
+	Image       string `bson:"image,omitempty" json:"image,omitempty"`
+	StorageDir  string `bson:"storageDir,omitempty" json:"storageDir,omitempty"`
+	LogRotCycle uint   `bson:"logRotCycle,omitempty" json:"logRotCycle,omitempty"`
+	Envs        M      `bson:"envs,omitempty" json:"envs,omitempty"`
+	Volumes     M      `bson:"volumes,omitempty" json:"volumes,omitempty"`
+	User        string `bson:"user,omitempty" json:"user,omitempty"`
+	BindIp      string `bson:"bindIp,omitempty" json:"bindIp,omitempty"`
+	Retry       int    `bson:"retry,omitempty" json:"retry,omitempty"`
+	CreatedAt   int64  `bson:"createdAt,omitempty" json:"createdAt,omitempty"`
+	UpdatedAt   int64  `bson:"updatedAt,omitempty" json:"updatedAt,omitempty"`
 }
 
 func (y *Core) GetRepository(name string) (*Repository, error) {
@@ -32,15 +32,15 @@ func (y *Core) GetRepository(name string) (*Repository, error) {
 }
 
 func (y *Core) AddRepository(repo *Repository) error {
-	repo.CreatedAt = time.Now()
-	repo.UpdatedAt = time.Now()
+	repo.CreatedAt = time.Now().Unix()
+	repo.UpdatedAt = time.Now().Unix()
 	return y.repoColl.Insert(*repo)
 }
 
 func (y *Core) UpdateRepository(name string, update bson.M) error {
+	update["updatedAt"] = time.Now().Unix()
 	return y.repoColl.UpdateId(name, bson.M{
 		"$set":         update,
-		"$currentDate": bson.M{"updatedAt": true},
 	})
 }
 

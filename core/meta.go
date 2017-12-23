@@ -9,20 +9,20 @@ import (
 )
 
 type Meta struct {
-	Name         string    `bson:"_id,omitempty" json:"name,omitempty"`
-	Upstream     string    `bson:",omitempty" json:"upstream,omitempty"`
-	Size         int       `bson:"size,omitempty" json:"size,omitempty"`
-	LastExitCode int       `bson:"lastExitCode,omitempty" json:"lastExitCode,omitempty"`
-	LastSuccess  time.Time `bson:"lastSuccess,omitempty" json:"lastSuccess,omitempty"`
-	CreatedAt    time.Time `bson:"createdAt,omitempty" json:"createdAt,omitempty"`
-	UpdatedAt    time.Time `bson:"updatedAt,omitempty" json:"updatedAt,omitempty"`
+	Name         string `bson:"_id,omitempty" json:"name,omitempty"`
+	Upstream     string `bson:",omitempty" json:"upstream,omitempty"`
+	Size         int    `bson:"size,omitempty" json:"size,omitempty"`
+	LastExitCode int    `bson:"lastExitCode,omitempty" json:"lastExitCode,omitempty"`
+	LastSuccess  int64  `bson:"lastSuccess,omitempty" json:"lastSuccess,omitempty"`
+	CreatedAt    int64  `bson:"createdAt,omitempty" json:"createdAt,omitempty"`
+	UpdatedAt    int64  `bson:"updatedAt,omitempty" json:"updatedAt,omitempty"`
 }
 
 func getUpstream(t string, envs M) (upstream string) {
-	if v, ok := envs["$upstream"]; ok {
-		return v
-	}
 	var ok bool
+	if upstream, ok := envs["$UPSTREAM"]; ok {
+		return upstream
+	}
 	switch t {
 	case "archvsync":
 	case "rsync":
@@ -71,7 +71,7 @@ func (c *Core) transformMeta(m *Meta) {
 	if r, err := c.GetRepository(m.Name); err == nil {
 		image := strings.Split(r.Image, ":")[0]
 		t := strings.Split(image, "/")
-		m.Upstream = getUpstream(t[len(t) - 1], r.Envs)
+		m.Upstream = getUpstream(t[len(t)-1], r.Envs)
 	}
 	if m.Upstream == "" {
 		m.Upstream = "unknown"
@@ -88,15 +88,15 @@ func (c *Core) GetMeta(name string) (*Meta, error) {
 }
 
 func (c *Core) AddMeta(m *Meta) error {
-	m.CreatedAt = time.Now()
-	m.UpdatedAt = time.Now()
+	m.CreatedAt = time.Now().Unix()
+	m.UpdatedAt = time.Now().Unix()
 	return c.metaColl.Insert(*m)
 }
 
 func (c *Core) UpdateMeta(name string, update bson.M) error {
+	update["updatedAt"] = time.Now().Unix()
 	return c.metaColl.UpdateId(name, bson.M{
-		"$set": update,
-		"$currentDate": bson.M{"updatedAt": true},
+		"$set":         update,
 	})
 }
 
