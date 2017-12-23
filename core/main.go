@@ -6,25 +6,30 @@ import (
 )
 
 type Config struct {
-	Debug bool
+	Debug bool `json:"debug,omitempty"`
 	// DbURL contains username and password
-	DbURL          string
-	DbName         string
-	DockerEndpoint string
+	DbURL          string `json:"db_url,omitempty"`
+	DbName         string `json:"db_name,omitempty"`
+	DockerEndpoint string `json:"docker_endpoint,omitempty"`
 }
 
 type Core struct {
-	DB      *mgo.Database
-	Docker  *docker.Client
+	DB     *mgo.Database
+	Docker *docker.Client
 
 	repoColl *mgo.Collection
 	metaColl *mgo.Collection
 	userColl *mgo.Collection
 }
 
-func NewWithConfig(c Config) (*Core, error) {
-	mgo.SetDebug(c.Debug)
-	sess, err := mgo.Dial(c.DbURL)
+func NewWithConfig(cfg Config) (*Core, error) {
+	d, err := docker.NewClient(cfg.DockerEndpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	mgo.SetDebug(cfg.Debug)
+	sess, err := mgo.Dial(cfg.DbURL)
 	if err != nil {
 		return nil, err
 	}
@@ -33,16 +38,12 @@ func NewWithConfig(c Config) (*Core, error) {
 	}
 	sess.SetMode(mgo.Monotonic, true)
 
-	d, err := docker.NewClient(c.DockerEndpoint)
-	if err != nil {
-		return nil, err
+	c := Core{
+		DB:     sess.DB(cfg.DbName),
+		Docker: d,
 	}
-	m := Core{
-		DB:      sess.DB(c.DbName),
-		Docker:  d,
-	}
-	m.repoColl = m.DB.C("repositories")
-	m.metaColl = m.DB.C("metas")
-	m.userColl = m.DB.C("users")
-	return &m, nil
+	c.repoColl = c.DB.C("repositories")
+	c.metaColl = c.DB.C("metas")
+	c.userColl = c.DB.C("users")
+	return &c, nil
 }
