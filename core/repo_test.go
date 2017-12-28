@@ -7,6 +7,7 @@ import (
 )
 
 func TestAddRepository(t *testing.T) {
+	t.Parallel()
 	name := "test-add-repo"
 	as := assert.New(t)
 	C.AddRepository(&Repository{
@@ -22,6 +23,7 @@ func TestAddRepository(t *testing.T) {
 }
 
 func TestUpdateRepository(t *testing.T) {
+	t.Parallel()
 	name := "test-update-repo"
 	as := assert.New(t)
 	err := C.AddRepository(&Repository{
@@ -42,6 +44,7 @@ func TestUpdateRepository(t *testing.T) {
 }
 
 func TestRemoveRepository(t *testing.T) {
+	t.Parallel()
 	name := "test-remove-repo"
 	as := assert.New(t)
 	err := C.AddRepository(&Repository{

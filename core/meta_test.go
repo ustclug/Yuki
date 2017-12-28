@@ -7,6 +7,7 @@ import (
 )
 
 func TestGetMeta(t *testing.T) {
+	t.Parallel()
 	name := "test-get-meta"
 	as := assert.New(t)
 	C.AddRepository(&Repository{
@@ -36,6 +37,7 @@ func TestGetMeta(t *testing.T) {
 }
 
 func TestUpdateMeta(t *testing.T) {
+	t.Parallel()
 	name := "test-update-meta"
 	as := assert.New(t)
 	err := C.AddMeta(&Meta{
@@ -55,6 +57,7 @@ func TestUpdateMeta(t *testing.T) {
 }
 
 func TestRemoveMeta(t *testing.T) {
+	t.Parallel()
 	name := "test-remove-meta"
 	as := assert.New(t)
 	err := C.AddMeta(&Meta{
