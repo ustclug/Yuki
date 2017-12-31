@@ -63,7 +63,7 @@ func getUpstream(t string, envs M) (upstream string) {
 			return "http://rubygems.org/"
 		}
 	case "stackage":
-		upstream = ""
+		upstream = "https://github.com/commercialhaskell/"
 	}
 	return
 }
