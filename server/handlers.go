@@ -9,8 +9,10 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/knight42/Yuki/core"
@@ -28,14 +30,15 @@ func (s *Server) listRepos(c echo.Context) error {
 }
 
 func (s *Server) addRepo(c echo.Context) error {
-	repo := core.Repository{}
-	if err := c.Bind(&repo); err != nil {
-		s.logger.Warn(err)
+	repo := new(core.Repository)
+	if err := c.Bind(repo); err != nil {
 		return BadRequest(err.Error())
 	}
-	err := s.c.AddRepository(&repo)
+	if err := c.Validate(repo); err != nil {
+		return BadRequest(err.Error())
+	}
+	err := s.c.AddRepository(repo)
 	if err != nil {
-		s.logger.Error(err)
 		if mgo.IsDup(err) {
 			return Conflict(err.Error())
 		} else {
@@ -49,7 +52,6 @@ func (s *Server) getRepo(c echo.Context) error {
 	name := c.Param("name")
 	repo, err := s.c.GetRepository(name)
 	if err != nil {
-		s.logger.Error(err)
 		return NotFound(err.Error())
 	}
 	return c.JSON(http.StatusOK, repo)
@@ -57,20 +59,19 @@ func (s *Server) getRepo(c echo.Context) error {
 
 func (s *Server) getRepoLogs(c echo.Context) error {
 	type repoLogsOptions struct {
-		N    int `query:"n"`
-		Tail int `query:"tail"`
+		N     int  `query:"n"`
+		Tail  int  `query:"tail"`
+		Stats bool `query:"stats"`
+	}
+	type fileInfo struct {
+		Name  string    `json:"name"`
+		Size  int64     `json:"size"`
+		Mtime time.Time `json:"mtime"`
 	}
 
 	opts := repoLogsOptions{}
 	if err := c.Bind(&opts); err != nil {
 		return err
-	}
-
-	if opts.Tail < 0 {
-		opts.Tail = 0
-	}
-	if opts.Tail > 64 {
-		opts.Tail = 64
 	}
 
 	logdir := path.Join(s.config.LogDir, c.Param("name"))
@@ -81,6 +82,32 @@ func (s *Server) getRepoLogs(c echo.Context) error {
 	files, err := ioutil.ReadDir(logdir)
 	if err != nil {
 		return err
+	}
+
+	if opts.Stats {
+		infos := []fileInfo{}
+		for _, f := range files {
+			name := f.Name()
+			if !strings.HasPrefix(name, "result.log.") {
+				continue
+			}
+			infos = append(infos, fileInfo{
+				Name:  name,
+				Size:  f.Size(),
+				Mtime: f.ModTime(),
+			})
+		}
+		sort.Slice(infos, func(i, j int) bool {
+			return infos[j].Mtime.After(infos[i].Mtime)
+		})
+		return c.JSON(http.StatusOK, infos)
+	}
+
+	if opts.Tail < 0 {
+		opts.Tail = 0
+	}
+	if opts.Tail > 64 {
+		opts.Tail = 64
 	}
 
 	wantedName := fmt.Sprintf("result.log.%d", opts.N)
@@ -96,7 +123,7 @@ func (s *Server) getRepoLogs(c echo.Context) error {
 	}
 
 	if fileName == "" {
-		return NotFound(fmt.Errorf("no such file: %s", wantedName))
+		return NotFound(fmt.Sprintf("no such file: %s", wantedName))
 	}
 
 	content, err := os.Open(path.Join(logdir, fileName))
@@ -115,7 +142,6 @@ func (s *Server) getRepoLogs(c echo.Context) error {
 		}
 		defer gr.Close()
 		reader = gr
-
 	default:
 		reader = content
 	}
@@ -131,27 +157,50 @@ func (s *Server) getRepoLogs(c echo.Context) error {
 	return nil
 }
 
+func convertUpdate(update bson.M) bson.M {
+	if _, ok := update["$set"]; !ok {
+		update["$set"] = make(map[string]interface{})
+	}
+	set := update["$set"].(map[string]interface{})
+	for k, v := range update {
+		if !strings.HasPrefix(k, "$") {
+			set[k] = v
+			delete(update, k)
+		}
+	}
+	return update
+}
+
 func (s *Server) updateRepo(c echo.Context) error {
 	t := bson.M{}
 	decoder := json.NewDecoder(c.Request().Body)
 	if err := decoder.Decode(&t); err != nil {
-		s.logger.Warn(err)
+		return BadRequest(err.Error())
+	}
+	t = convertUpdate(t)
+	set := t["$set"].(map[string]interface{})
+	myva := s.e.Validator.(*myValidator)
+	if err := myva.CheckMap(set, core.Repository{}); err != nil {
 		return BadRequest(err.Error())
 	}
 	name := c.Param("name")
 	if err := s.c.UpdateRepository(name, t); err != nil {
-		s.logger.Error(err)
 		return err
 	}
 	r, _ := s.c.GetRepository(name)
-	s.cron.AddJob(r.Name, r.Interval, s.newJob(r.Name))
+	s.logger.Infof("Rescheduled %s", name)
+	if err := s.cron.AddJob(r.Name, r.Interval, s.newJob(r.Name)); err != nil {
+		s.logger.Error(err.Error())
+	}
 	return c.NoContent(http.StatusNoContent)
 }
 
 func (s *Server) removeRepo(c echo.Context) error {
 	name := c.Param("name")
 	if err := s.c.RemoveRepository(name); err != nil {
-		s.logger.Error(err)
+		return err
+	}
+	if err := s.c.RemoveMeta(name); err != nil {
 		return err
 	}
 	return c.NoContent(http.StatusNoContent)
@@ -174,7 +223,6 @@ func (s *Server) listCts(c echo.Context) error {
 	}
 	apiCts, err := s.c.Docker.ListContainers(opts)
 	if err != nil {
-		s.logger.Warn(err)
 		return err
 	}
 	cts := []container{}
@@ -208,21 +256,8 @@ func (s *Server) sync(c echo.Context) error {
 		BindIP:     s.config.BindIP,
 	})
 	if err != nil {
-		s.logger.Error(err)
 		if err == docker.ErrContainerAlreadyExists {
 			return Conflict(err.Error())
-		}
-		return err
-	}
-	if debug {
-		fw := NewFlushWriter(c.Response())
-		if err = s.c.GetContainerLogs(core.LogsOptions{
-			ID:     s.config.NamePrefix + name,
-			Stream: fw,
-			Tail:   "all",
-			Follow: true,
-		}); err != nil {
-			s.logger.Warn(err)
 		}
 		return err
 	}
@@ -254,7 +289,6 @@ func (s *Server) getCtLogs(c echo.Context) error {
 func (s *Server) stopCt(c echo.Context) error {
 	name := c.Param("name")
 	if err := s.c.StopContainer(s.config.NamePrefix + name); err != nil {
-		s.logger.Error(err)
 		return err
 	}
 	return c.NoContent(http.StatusNoContent)
@@ -264,7 +298,6 @@ func (s *Server) removeCt(c echo.Context) error {
 	name := c.Param("name")
 	err := s.c.RemoveContainer(s.config.NamePrefix + name)
 	if err != nil {
-		s.logger.Error(err)
 		return err
 	}
 	return c.NoContent(http.StatusNoContent)
@@ -278,7 +311,6 @@ func (s *Server) getMeta(c echo.Context) error {
 	name := c.Param("name")
 	m, err := s.c.GetMeta(name)
 	if err != nil {
-		s.logger.Error(err)
 		return NotFound(err.Error())
 	}
 	return c.JSON(http.StatusOK, m)
