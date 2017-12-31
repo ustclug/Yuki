@@ -17,10 +17,23 @@ const (
 
 var (
 	ErrNotAFunc = errors.New("The type of listener is not a function")
+	globalEmitter *Emitter
 )
 
 type Emitter struct {
 	listeners map[interface{}][]reflect.Value
+}
+
+func init() {
+	globalEmitter = NewEmitter()
+}
+
+func On(events, listener interface{}) *Emitter {
+	return globalEmitter.On(events, listener)
+}
+
+func Emit(evt interface{}, payload ...interface{}) *Emitter {
+	return globalEmitter.Emit(evt, payload...)
 }
 
 func (e *Emitter) On(events, listener interface{}) *Emitter {
