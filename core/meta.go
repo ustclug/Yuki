@@ -10,7 +10,7 @@ import (
 
 type Meta struct {
 	Name         string `bson:"_id,omitempty" json:"name,omitempty"`
-	Upstream     string `bson:",omitempty" json:"upstream,omitempty"`
+	Upstream     string `bson:"-" json:"upstream,omitempty"`
 	Size         int    `bson:"size,omitempty" json:"size,omitempty"`
 	LastExitCode int    `bson:"lastExitCode,omitempty" json:"lastExitCode,omitempty"`
 	LastSuccess  int64  `bson:"lastSuccess,omitempty" json:"lastSuccess,omitempty"`
@@ -25,6 +25,7 @@ func getUpstream(t string, envs M) (upstream string) {
 	}
 	switch t {
 	case "archvsync":
+		fallthrough
 	case "rsync":
 		return fmt.Sprintf("rsync://%s/%s/", envs["RSYNC_HOST"], envs["RSYNC_PATH"])
 	case "aptsync":
@@ -93,11 +94,42 @@ func (c *Core) AddMeta(m *Meta) error {
 	return c.metaColl.Insert(*m)
 }
 
-func (c *Core) UpdateMeta(name string, update bson.M) error {
-	update["updatedAt"] = time.Now().Unix()
-	return c.metaColl.UpdateId(name, bson.M{
-		"$set":         update,
+func (c *Core) InitMetas() {
+	repos := c.ListRepositories(nil, nil)
+	now := time.Now().Unix()
+	for _, r := range repos {
+		go func(id, dir string) {
+			size := c.fs.GetSize(dir)
+			c.metaColl.UpsertId(id, bson.M{
+				"$set": bson.M{
+					"size": size,
+				},
+				"$setOnInsert": bson.M{
+					"createdAt": now,
+					"lastExitCode": -1,
+				},
+			})
+		}(r.Name, r.StorageDir)
+	}
+}
+
+func (c *Core) UpsertRepoMeta(r *Repository, code int) error {
+	now := time.Now().Unix()
+	set := bson.M{
+		"lastExitCode": code,
+		"updatedAt": now,
+		"size": c.fs.GetSize(r.StorageDir),
+	}
+	if code == 0 {
+		set["lastSuccess"] = now
+	}
+	_, err := c.metaColl.UpsertId(r.Name, bson.M{
+		"$set": set,
+		"$setOnInsert": bson.M{
+			"createdAt": now,
+		},
 	})
+	return err
 }
 
 func (c *Core) RemoveMeta(name string) error {

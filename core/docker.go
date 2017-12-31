@@ -5,6 +5,8 @@ import (
 	"io"
 	"os"
 	"path"
+	"strings"
+	"sync"
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
@@ -40,6 +42,50 @@ func (c *Core) GetContainerLogs(opts LogsOptions) error {
 	})
 }
 
+func (c *Core) UpgradeImages() {
+	var images []string
+	err := c.repoColl.Find(nil).Distinct("image", &images)
+	if err != nil {
+		return
+	}
+	var wg sync.WaitGroup
+	wg.Add(len(images))
+	for _, i := range images {
+		go func(i string) {
+			defer wg.Done()
+			c.PullImage(i, time.Second*10)
+		}(i)
+	}
+	wg.Wait()
+}
+
+func (c *Core) CleanImages() {
+	imgs, err := c.Docker.ListImages(docker.ListImagesOptions{
+		All: true,
+		Filters: map[string][]string{
+			"dangling": {"true"},
+			"label":    {"ustcmirror.images"},
+		},
+	})
+	if err != nil {
+		return
+	}
+	for _, i := range imgs {
+		go func(id string) {
+			c.Docker.RemoveImage(i.ID)
+		}(i.ID)
+	}
+}
+
+func (c *Core) PullImage(img string, timeout time.Duration) error {
+	repo, tag := docker.ParseRepositoryTag(img)
+	return c.Docker.PullImage(docker.PullImageOptions{
+		InactivityTimeout: timeout,
+		Repository:        repo,
+		Tag:               tag,
+	}, docker.AuthConfiguration{})
+}
+
 func (c *Core) StopContainer(id string) error {
 	return c.Docker.StopContainer(id, 10)
 }
@@ -51,6 +97,53 @@ func (c *Core) RemoveContainer(id string) error {
 		RemoveVolumes: true,
 	}
 	return c.Docker.RemoveContainer(opts)
+}
+
+func (c *Core) WaitRunningContainers(prefix string) {
+	opts := docker.ListContainersOptions{
+		All: true,
+		Filters: map[string][]string{
+			"label":  {"ustcmirror.images"},
+			"status": {"running"},
+		},
+	}
+	cts, err := c.Docker.ListContainers(opts)
+	if err != nil {
+		return
+	}
+	for _, ct := range cts {
+		go func(id string) {
+			code, err := c.Docker.WaitContainer(id)
+			if err != nil {
+				return
+			}
+
+			c.RemoveContainer(id)
+			name := strings.TrimPrefix(id, prefix)
+			if r, err := c.GetRepository(name); err == nil {
+				c.UpsertRepoMeta(r, code)
+			}
+		}(ct.Names[0][1:])
+	}
+}
+
+func (c *Core) CleanDeadContainers() {
+	opts := docker.ListContainersOptions{
+		All: true,
+		Filters: map[string][]string{
+			"label":  {"ustcmirror.images"},
+			"status": {"created", "exited", "dead"},
+		},
+	}
+	cts, err := c.Docker.ListContainers(opts)
+	if err != nil {
+		return
+	}
+	for _, ct := range cts {
+		go func(id string) {
+			c.RemoveContainer(id)
+		}(ct.ID)
+	}
 }
 
 func (c *Core) Sync(opts SyncOptions) error {
@@ -100,7 +193,6 @@ func (c *Core) Sync(opts SyncOptions) error {
 		Config: &docker.Config{
 			Image:     r.Image,
 			OpenStdin: true,
-			User:      r.User,
 			Env:       envs,
 		},
 		HostConfig: &docker.HostConfig{
@@ -113,13 +205,7 @@ func (c *Core) Sync(opts SyncOptions) error {
 	ct, err = c.Docker.CreateContainer(createOpts)
 	if err != nil {
 		if err == docker.ErrNoSuchImage {
-			repo, tag := docker.ParseRepositoryTag(r.Image)
-			err := c.Docker.PullImage(docker.PullImageOptions{
-				InactivityTimeout: time.Second * 5,
-				Repository:        repo,
-				Tag:               tag,
-			}, docker.AuthConfiguration{})
-			if err != nil {
+			if err = c.PullImage(r.Image, time.Second*5); err != nil {
 				return err
 			}
 			ct, err = c.Docker.CreateContainer(createOpts)
@@ -128,5 +214,25 @@ func (c *Core) Sync(opts SyncOptions) error {
 		}
 	}
 
-	return c.Docker.StartContainer(ct.ID, nil)
+	if err := c.Docker.StartContainer(ct.ID, nil); err != nil {
+		return err
+	}
+
+	go func() {
+		var code int
+		code, _ = c.Docker.WaitContainer(ct.ID)
+		if code != 0 {
+			for i := 0; i < r.Retry; i++ {
+				c.Docker.StartContainer(ct.ID, nil)
+				code, _ = c.Docker.WaitContainer(ct.ID)
+				if code == 0 {
+					break
+				}
+			}
+		}
+		c.RemoveContainer(ct.ID)
+		c.UpsertRepoMeta(r, code)
+	}()
+
+	return nil
 }
