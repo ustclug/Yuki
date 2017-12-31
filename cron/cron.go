@@ -42,7 +42,9 @@ func (jobs *scheduledJobs) Set(name string, id cron.EntryID) {
 }
 
 func New() *Cron {
-	return &Cron{cron.New()}
+	c := cron.New()
+	c.Start()
+	return &Cron{c}
 }
 
 func (c *Cron) AddJob(name, spec string, cmd FuncJob) error {
