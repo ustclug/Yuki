@@ -12,7 +12,7 @@ type scheduledJobs struct {
 type Cron struct {
 	*cron.Cron
 }
-type FuncJob = cron.FuncJob
+type FuncJob cron.FuncJob
 
 var ScheduledJobs scheduledJobs
 
