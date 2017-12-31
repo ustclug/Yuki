@@ -4,9 +4,13 @@ import (
 	"os"
 	"log"
 	"testing"
+	"io/ioutil"
 )
 
-var C *Core
+var (
+	C *Core
+	LogDir string
+)
 
 func TestMain(m *testing.M) {
 	var err error
@@ -18,6 +22,11 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	LogDir, err = ioutil.TempDir("", "yuki")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.RemoveAll(LogDir)
 	C.repoColl.RemoveAll(nil)
 	C.metaColl.RemoveAll(nil)
 	os.Exit(m.Run())

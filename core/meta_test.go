@@ -36,26 +36,6 @@ func TestGetMeta(t *testing.T) {
 	as.Equal("http://homebrew.bintray.com/" , m.Upstream)
 }
 
-func TestUpdateMeta(t *testing.T) {
-	t.Parallel()
-	name := "test-update-meta"
-	as := assert.New(t)
-	err := C.AddMeta(&Meta{
-		Name: name,
-		Size: -1,
-		LastExitCode: -1,
-	})
-	as.Nil(err)
-
-	err = C.UpdateMeta(name, bson.M{"size": 1024})
-	as.Nil(err)
-
-	m, err := C.GetMeta(name)
-	as.Nil(err)
-
-	as.Equal(1024, m.Size)
-}
-
 func TestRemoveMeta(t *testing.T) {
 	t.Parallel()
 	name := "test-remove-meta"

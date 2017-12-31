@@ -35,12 +35,16 @@ func TestUpdateRepository(t *testing.T) {
 	})
 	as.Nil(err)
 
-	err = C.UpdateRepository(name, bson.M{"logRotCycle": 20})
+	err = C.UpdateRepository(name, bson.M{
+		"$set": bson.M{
+			"logRotCycle": 20,
+		},
+	})
 	as.Nil(err)
 
 	repo, err := C.GetRepository(name)
 	as.Nil(err)
-	as.Equal(uint(20), repo.LogRotCycle)
+	as.Equal(20, repo.LogRotCycle)
 }
 
 func TestRemoveRepository(t *testing.T) {
