@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"path"
-	"strings"
 	"sync"
 	"time"
 
@@ -24,7 +23,7 @@ type SyncOptions struct {
 	Debug      bool
 	MountDir   bool
 	// FIXME: Not sure whether we should add this param. If a container timed out and got removed, the problem may be hidden.
-	Timeout    time.Duration
+	Timeout time.Duration
 }
 
 // LogsOptions provides params to the GetContainerLogs function.
@@ -71,7 +70,7 @@ func (c *Core) CleanImages() {
 	ctx, cancel := context.WithTimeout(c.ctx, time.Second*10)
 	defer cancel()
 	imgs, err := c.Docker.ListImages(docker.ListImagesOptions{
-		All: true,
+		All:     true,
 		Context: ctx,
 		Filters: map[string][]string{
 			"dangling": {"true"},
@@ -117,14 +116,14 @@ func (c *Core) RemoveContainer(id string) error {
 }
 
 // WaitRunningContainers waits for all syncing containers to stop and remove them.
-func (c *Core) WaitRunningContainers(prefix string) {
+func (c *Core) WaitRunningContainers() {
 	ctx, cancel := context.WithTimeout(c.ctx, time.Second*10)
 	defer cancel()
 	opts := docker.ListContainersOptions{
-		All: true,
+		All:     true,
 		Context: ctx,
 		Filters: map[string][]string{
-			"label":  {"ustcmirror.images"},
+			"label":  {"org.ustcmirror.syncing=true"},
 			"status": {"running"},
 		},
 	}
@@ -133,18 +132,22 @@ func (c *Core) WaitRunningContainers(prefix string) {
 		return
 	}
 	for _, ct := range cts {
-		go func(id string) {
+		name, ok := ct.Labels["org.ustcmirror.name"]
+		if !ok {
+			continue
+		}
+		dir, ok := ct.Labels["org.ustcmirror.storage-dir"]
+		if !ok {
+			continue
+		}
+		go func(id, name, dir string) {
 			code, err := c.Docker.WaitContainer(id)
 			if err != nil {
 				return
 			}
-
+			c.UpsertRepoMeta(name, dir, code)
 			c.RemoveContainer(id)
-			name := strings.TrimPrefix(id, prefix)
-			if r, err := c.GetRepository(name); err == nil {
-				c.UpsertRepoMeta(r, code)
-			}
-		}(ct.Names[0][1:])
+		}(ct.ID, name, dir)
 	}
 }
 
@@ -156,7 +159,7 @@ func (c *Core) CleanDeadContainers() {
 		Context: ctx,
 		All:     true,
 		Filters: map[string][]string{
-			"label":  {"ustcmirror.images"},
+			"label":  {"org.ustcmirror.syncing=true"},
 			"status": {"created", "exited", "dead"},
 		},
 	}
@@ -213,15 +216,17 @@ func (c *Core) Sync(opts SyncOptions) error {
 		}
 		binds = append(binds, fmt.Sprintf("%s:/data/", r.StorageDir), fmt.Sprintf("%s:/log/", logdir))
 	}
-	ctx, cancel := context.WithTimeout(c.ctx, time.Second*10)
-	defer cancel()
 	createOpts := docker.CreateContainerOptions{
-		Name: opts.NamePrefix + opts.Name,
-		Context: ctx,
+		Name:    opts.NamePrefix + opts.Name,
 		Config: &docker.Config{
 			Image:     r.Image,
 			OpenStdin: true,
 			Env:       envs,
+			Labels: M{
+				"org.ustcmirror.syncing":    "true",
+				"org.ustcmirror.name":       r.Name,
+				"org.ustcmirror.storage-dir": r.StorageDir,
+			},
 		},
 		HostConfig: &docker.HostConfig{
 			Binds:       binds,
@@ -232,32 +237,29 @@ func (c *Core) Sync(opts SyncOptions) error {
 	var ct *docker.Container
 	ct, err = c.Docker.CreateContainer(createOpts)
 	if err != nil {
-		switch err {
-		case docker.ErrNoSuchImage:
-			if err = c.PullImage(r.Image); err != nil {
-				return err
+		if err == docker.ErrNoSuchImage {
+			if err = c.PullImage(r.Image); err == nil {
+				ct, err = c.Docker.CreateContainer(createOpts)
 			}
-			if ct, err = c.Docker.CreateContainer(createOpts); err != nil {
-				return err
-			}
-		default:
+		}
+		if err != nil {
 			return err
 		}
 	}
 
-	if err := c.Docker.StartContainer(ct.ID, nil); err != nil {
+	if err = c.Docker.StartContainer(ct.ID, nil); err != nil {
 		return err
 	}
 
-	go func() {
-		code, err := c.Docker.WaitContainer(ct.ID)
+	go func(id, name, dir string, retry int) {
+		code, err := c.Docker.WaitContainer(id)
 		if err != nil {
 			return
 		}
 		if code != 0 {
-			for i := 0; i < r.Retry; i++ {
-				c.Docker.StartContainer(ct.ID, nil)
-				code, err = c.Docker.WaitContainer(ct.ID)
+			for i := 0; i < retry; i++ {
+				c.Docker.StartContainer(id, nil)
+				code, err = c.Docker.WaitContainer(id)
 				if err != nil {
 					return
 				}
@@ -266,9 +268,9 @@ func (c *Core) Sync(opts SyncOptions) error {
 				}
 			}
 		}
-		c.RemoveContainer(ct.ID)
-		c.UpsertRepoMeta(r, code)
-	}()
+		c.RemoveContainer(id)
+		c.UpsertRepoMeta(name, dir, code)
+	}(ct.ID, r.Name, r.StorageDir, r.Retry)
 
 	return nil
 }

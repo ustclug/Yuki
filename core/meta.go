@@ -117,17 +117,17 @@ func (c *Core) InitMetas() {
 }
 
 // UpsertRepoMeta updates the metadata of the given Repository.
-func (c *Core) UpsertRepoMeta(r *Repository, code int) error {
+func (c *Core) UpsertRepoMeta(name, dir string, code int) error {
 	now := time.Now().Unix()
 	set := bson.M{
 		"lastExitCode": code,
 		"updatedAt": now,
-		"size": c.fs.GetSize(r.StorageDir),
+		"size": c.fs.GetSize(dir),
 	}
 	if code == 0 {
 		set["lastSuccess"] = now
 	}
-	_, err := c.metaColl.UpsertId(r.Name, bson.M{
+	_, err := c.metaColl.UpsertId(name, bson.M{
 		"$set": set,
 		"$setOnInsert": bson.M{
 			"createdAt": now,

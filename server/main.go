@@ -95,7 +95,7 @@ func NewWithConfig(cfg Config) (*Server, error) {
 	s.logger.Info("Cleaning dead containers")
 	s.c.CleanDeadContainers()
 
-	s.c.WaitRunningContainers(s.config.NamePrefix)
+	s.c.WaitRunningContainers()
 
 	s.schedRepos()
 	s.c.InitMetas()
