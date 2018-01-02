@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"github.com/knight42/Yuki/common"
 )
 
+// SyncOptions provides params to the Sync function.
 type SyncOptions struct {
 	Name       string
 	LogDir     string
@@ -24,6 +26,7 @@ type SyncOptions struct {
 	Timeout    time.Duration
 }
 
+// LogsOptions provides params to the GetContainerLogs function.
 type LogsOptions struct {
 	ID     string
 	Stream io.Writer
@@ -31,6 +34,7 @@ type LogsOptions struct {
 	Follow bool
 }
 
+// GetContainerLogs gets all stdout and stderr logs from the given container.
 func (c *Core) GetContainerLogs(opts LogsOptions) error {
 	return c.Docker.Logs(docker.LogsOptions{
 		Stdout:       true,
@@ -43,6 +47,7 @@ func (c *Core) GetContainerLogs(opts LogsOptions) error {
 	})
 }
 
+// UpgradeImages pulls all in use Docker images.
 func (c *Core) UpgradeImages() {
 	var images []string
 	err := c.repoColl.Find(nil).Distinct("image", &images)
@@ -54,15 +59,19 @@ func (c *Core) UpgradeImages() {
 	for _, i := range images {
 		go func(i string) {
 			defer wg.Done()
-			c.PullImage(i, time.Second*10)
+			c.PullImage(i)
 		}(i)
 	}
 	wg.Wait()
 }
 
+// CleanImages remove unused Docker images with `ustcmirror.images` label.
 func (c *Core) CleanImages() {
+	ctx, cancel := context.WithTimeout(c.ctx, time.Second*10)
+	defer cancel()
 	imgs, err := c.Docker.ListImages(docker.ListImagesOptions{
 		All: true,
+		Context: ctx,
 		Filters: map[string][]string{
 			"dangling": {"true"},
 			"label":    {"ustcmirror.images"},
@@ -78,21 +87,27 @@ func (c *Core) CleanImages() {
 	}
 }
 
-func (c *Core) PullImage(img string, timeout time.Duration) error {
+// PullImage pulls an image from remote registry.
+func (c *Core) PullImage(img string) error {
 	repo, tag := docker.ParseRepositoryTag(img)
 	return c.Docker.PullImage(docker.PullImageOptions{
-		InactivityTimeout: timeout,
-		Repository:        repo,
 		Tag:               tag,
+		Repository:        repo,
+		InactivityTimeout: time.Second * 10,
 	}, docker.AuthConfiguration{})
 }
 
+// StopContainer stops the given container.
 func (c *Core) StopContainer(id string) error {
 	return c.Docker.StopContainer(id, 10)
 }
 
+// RemoveContainer removes the given container.
 func (c *Core) RemoveContainer(id string) error {
+	ctx, cancel := context.WithTimeout(c.ctx, time.Second*20)
+	defer cancel()
 	opts := docker.RemoveContainerOptions{
+		Context:       ctx,
 		Force:         true,
 		ID:            id,
 		RemoveVolumes: true,
@@ -100,9 +115,13 @@ func (c *Core) RemoveContainer(id string) error {
 	return c.Docker.RemoveContainer(opts)
 }
 
+// WaitRunningContainers waits for all syncing containers to stop and remove them.
 func (c *Core) WaitRunningContainers(prefix string) {
+	ctx, cancel := context.WithTimeout(c.ctx, time.Second*10)
+	defer cancel()
 	opts := docker.ListContainersOptions{
 		All: true,
+		Context: ctx,
 		Filters: map[string][]string{
 			"label":  {"ustcmirror.images"},
 			"status": {"running"},
@@ -128,9 +147,13 @@ func (c *Core) WaitRunningContainers(prefix string) {
 	}
 }
 
+// CleanDeadContainers removes containers which status are `created`, `exited` or `dead`.
 func (c *Core) CleanDeadContainers() {
+	ctx, cancel := context.WithTimeout(c.ctx, time.Second*10)
+	defer cancel()
 	opts := docker.ListContainersOptions{
-		All: true,
+		Context: ctx,
+		All:     true,
 		Filters: map[string][]string{
 			"label":  {"ustcmirror.images"},
 			"status": {"created", "exited", "dead"},
@@ -147,6 +170,7 @@ func (c *Core) CleanDeadContainers() {
 	}
 }
 
+// Sync creates and starts a predefined container to sync local repository.
 func (c *Core) Sync(opts SyncOptions) error {
 	r, err := c.GetRepository(opts.Name)
 	if err != nil {
@@ -188,9 +212,11 @@ func (c *Core) Sync(opts SyncOptions) error {
 		}
 		binds = append(binds, fmt.Sprintf("%s:/data/", r.StorageDir), fmt.Sprintf("%s:/log/", logdir))
 	}
-
+	ctx, cancel := context.WithTimeout(c.ctx, time.Second*10)
+	defer cancel()
 	createOpts := docker.CreateContainerOptions{
 		Name: opts.NamePrefix + opts.Name,
+		Context: ctx,
 		Config: &docker.Config{
 			Image:     r.Image,
 			OpenStdin: true,
@@ -205,12 +231,15 @@ func (c *Core) Sync(opts SyncOptions) error {
 	var ct *docker.Container
 	ct, err = c.Docker.CreateContainer(createOpts)
 	if err != nil {
-		if err == docker.ErrNoSuchImage {
-			if err = c.PullImage(r.Image, time.Second*5); err != nil {
+		switch err {
+		case docker.ErrNoSuchImage:
+			if err = c.PullImage(r.Image); err != nil {
 				return err
 			}
-			ct, err = c.Docker.CreateContainer(createOpts)
-		} else {
+			if ct, err = c.Docker.CreateContainer(createOpts); err != nil {
+				return err
+			}
+		default:
 			return err
 		}
 	}
@@ -220,12 +249,17 @@ func (c *Core) Sync(opts SyncOptions) error {
 	}
 
 	go func() {
-		var code int
-		code, _ = c.Docker.WaitContainer(ct.ID)
+		code, err := c.Docker.WaitContainer(ct.ID)
+		if err != nil {
+			return
+		}
 		if code != 0 {
 			for i := 0; i < r.Retry; i++ {
 				c.Docker.StartContainer(ct.ID, nil)
-				code, _ = c.Docker.WaitContainer(ct.ID)
+				code, err = c.Docker.WaitContainer(ct.ID)
+				if err != nil {
+					return
+				}
 				if code == 0 {
 					break
 				}

@@ -8,6 +8,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+// Meta represents the metadata of a Repository.
 type Meta struct {
 	Name         string `bson:"_id,omitempty" json:"name,omitempty"`
 	Upstream     string `bson:"-" json:"upstream,omitempty"`
@@ -79,6 +80,7 @@ func (c *Core) transformMeta(m *Meta) {
 	}
 }
 
+// GetMeta returns the metadata of the given Repository.
 func (c *Core) GetMeta(name string) (*Meta, error) {
 	m := new(Meta)
 	if err := c.metaColl.FindId(name).One(m); err != nil {
@@ -88,11 +90,13 @@ func (c *Core) GetMeta(name string) (*Meta, error) {
 	return m, nil
 }
 
+// AddMeta adds metadata.
 func (c *Core) AddMeta(m *Meta) error {
 	m.CreatedAt = time.Now().Unix()
 	return c.metaColl.Insert(m)
 }
 
+// InitMetas creates metadata of each Repositories.
 func (c *Core) InitMetas() {
 	repos := c.ListRepositories(nil, nil)
 	now := time.Now().Unix()
@@ -112,6 +116,7 @@ func (c *Core) InitMetas() {
 	}
 }
 
+// UpsertRepoMeta updates the metadata of the given Repository.
 func (c *Core) UpsertRepoMeta(r *Repository, code int) error {
 	now := time.Now().Unix()
 	set := bson.M{
@@ -131,10 +136,12 @@ func (c *Core) UpsertRepoMeta(r *Repository, code int) error {
 	return err
 }
 
+// RemoveMeta removes the metadata of the given Repository.
 func (c *Core) RemoveMeta(name string) error {
 	return c.metaColl.RemoveId(name)
 }
 
+// ListMetas returns the list of metadata of all Repositories.
 func (c *Core) ListMetas(query, proj bson.M) []Meta {
 	result := []Meta{}
 	m := Meta{}

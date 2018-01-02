@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"fmt"
 
 	docker "github.com/fsouza/go-dockerclient"
@@ -8,6 +9,7 @@ import (
 	"gopkg.in/mgo.v2"
 )
 
+// Config contains a list of options used when creating `Core`.
 type Config struct {
 	Debug bool
 	// DbURL contains username and password
@@ -17,16 +19,19 @@ type Config struct {
 	DockerEndpoint string
 }
 
+// Core is the basic type of this package. It provides methods for interaction with MongoDB and Docker API.
 type Core struct {
 	DB     *mgo.Database
 	Docker *docker.Client
 
 	fs       fs.GetSizer
+	ctx      context.Context
 	repoColl *mgo.Collection
 	metaColl *mgo.Collection
 	userColl *mgo.Collection
 }
 
+// NewWithConfig returns a `Core` instance with specified config.
 func NewWithConfig(cfg Config) (*Core, error) {
 	d, err := docker.NewClient(cfg.DockerEndpoint)
 	if err != nil {
@@ -46,6 +51,8 @@ func NewWithConfig(cfg Config) (*Core, error) {
 	c := Core{
 		DB:     sess.DB(cfg.DbName),
 		Docker: d,
+
+		ctx: context.Background(),
 	}
 
 	switch cfg.FileSystem {

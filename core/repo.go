@@ -6,8 +6,10 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+// M is an alias for a map[string]string map.
 type M map[string]string
 
+// Repository contains a list of syncing options.
 type Repository struct {
 	Name        string `bson:"_id,omitempty" json:"name,omitempty" validate:"-"`
 	Interval    string `bson:"interval,omitempty" json:"interval,omitempty" validate:"required,cron"`
@@ -23,6 +25,7 @@ type Repository struct {
 	UpdatedAt   int64  `bson:"updatedAt,omitempty" json:"updatedAt,omitempty" validate:"-"`
 }
 
+// GetRepository returns the Repository with the given name.
 func (c *Core) GetRepository(name string) (*Repository, error) {
 	r := new(Repository)
 	if err := c.repoColl.FindId(name).One(r); err != nil {
@@ -31,6 +34,7 @@ func (c *Core) GetRepository(name string) (*Repository, error) {
 	return r, nil
 }
 
+// AddRepository adds the specified Repository.
 func (c *Core) AddRepository(repo *Repository) error {
 	now := time.Now().Unix()
 	repo.CreatedAt = now
@@ -38,6 +42,7 @@ func (c *Core) AddRepository(repo *Repository) error {
 	return c.repoColl.Insert(repo)
 }
 
+// UpdateRepository updates the syncing options of the given Repository.
 func (c *Core) UpdateRepository(name string, update bson.M) error {
 	var set bson.M
 	switch v := update["$set"].(type) {
@@ -52,10 +57,12 @@ func (c *Core) UpdateRepository(name string, update bson.M) error {
 	return c.repoColl.UpdateId(name, update)
 }
 
+// RemoveRepository removes the Repository with given name.
 func (c *Core) RemoveRepository(name string) error {
 	return c.repoColl.RemoveId(name)
 }
 
+// ListRepositories returns all Repositories.
 func (c *Core) ListRepositories(query, proj bson.M) []Repository {
 	result := []Repository{}
 	c.repoColl.Find(query).Select(proj).Sort("_id").All(&result)
