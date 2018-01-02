@@ -22,6 +22,30 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+func BadRequest(msg ...interface{}) error {
+	return echo.NewHTTPError(http.StatusBadRequest, msg...)
+}
+
+func NotFound(msg ...interface{}) error {
+	return echo.NewHTTPError(http.StatusNotFound, msg...)
+}
+
+func NotAcceptable(msg ...interface{}) error {
+	return echo.NewHTTPError(http.StatusNotAcceptable, msg...)
+}
+
+func Conflict(msg ...interface{}) error {
+	return echo.NewHTTPError(http.StatusConflict, msg...)
+}
+
+func Forbidden(msg ...interface{}) error {
+	return echo.NewHTTPError(http.StatusForbidden, msg...)
+}
+
+func ServerError(msg ...interface{}) error {
+	return echo.NewHTTPError(http.StatusInternalServerError, msg...)
+}
+
 func (s *Server) listRepos(c echo.Context) error {
 	return c.JSON(http.StatusOK, s.c.ListRepositories(nil, bson.M{
 		"interval": 1,
@@ -41,9 +65,8 @@ func (s *Server) addRepo(c echo.Context) error {
 	if err != nil {
 		if mgo.IsDup(err) {
 			return Conflict(err.Error())
-		} else {
-			return err
 		}
+		return err
 	}
 	return c.NoContent(http.StatusCreated)
 }
@@ -275,15 +298,12 @@ func (s *Server) getCtLogs(c echo.Context) error {
 		return BadRequest(err.Error())
 	}
 	fw := NewFlushWriter(c.Response())
-	if err := s.c.GetContainerLogs(core.LogsOptions{
+	return s.c.GetContainerLogs(core.LogsOptions{
 		ID:     name,
 		Stream: fw,
 		Tail:   opts.Tail,
 		Follow: opts.Follow,
-	}); err != nil {
-		return err
-	}
-	return nil
+	})
 }
 
 func (s *Server) stopCt(c echo.Context) error {

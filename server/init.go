@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	IsTest bool = false
+	IsTest bool
 )
 
 func init() {
