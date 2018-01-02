@@ -23,6 +23,7 @@ type SyncOptions struct {
 	NamePrefix string
 	Debug      bool
 	MountDir   bool
+	// FIXME: Not sure whether we should add this param. If a container timed out and got removed, the problem may be hidden.
 	Timeout    time.Duration
 }
 
