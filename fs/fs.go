@@ -11,10 +11,10 @@ import (
 	"github.com/knight42/Yuki/common"
 )
 
-type FsType byte
+type Type byte
 
 const (
-	DEFAULT FsType = iota
+	DEFAULT Type = iota
 	XFS
 	ZFS
 )
@@ -23,7 +23,7 @@ type GetSizer interface {
 	GetSize(string) int64
 }
 
-func New(ty FsType) GetSizer {
+func New(ty Type) GetSizer {
 	switch ty {
 	case XFS:
 		return &xfs{}
