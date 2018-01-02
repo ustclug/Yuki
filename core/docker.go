@@ -15,12 +15,13 @@ import (
 
 type SyncOptions struct {
 	Name       string
-	NamePrefix string
 	LogDir     string
 	Owner      string
-	MountDir   bool
-	Debug      bool
 	BindIP     string
+	NamePrefix string
+	Debug      bool
+	MountDir   bool
+	Timeout    time.Duration
 }
 
 type LogsOptions struct {
@@ -156,15 +157,15 @@ func (c *Core) Sync(opts SyncOptions) error {
 	for k, v := range r.Envs {
 		envs.Set(k, v)
 	}
-	if r.BindIp == "" {
-		r.BindIp = opts.BindIP
+	if r.BindIP == "" {
+		r.BindIP = opts.BindIP
 	}
 	if r.User == "" {
 		r.User = opts.Owner
 	}
 	envs.Set("REPO", r.Name)
 	envs.Set("OWNER", r.User)
-	envs.Set("BIND_ADDRESS", r.BindIp)
+	envs.Set("BIND_ADDRESS", r.BindIP)
 	envs.SetInt("LOG_ROTATE_CYCLE", int(r.LogRotCycle))
 	if opts.Debug {
 		envs.Set("DEBUG", "true")

@@ -90,8 +90,7 @@ func (c *Core) GetMeta(name string) (*Meta, error) {
 
 func (c *Core) AddMeta(m *Meta) error {
 	m.CreatedAt = time.Now().Unix()
-	m.UpdatedAt = time.Now().Unix()
-	return c.metaColl.Insert(*m)
+	return c.metaColl.Insert(m)
 }
 
 func (c *Core) InitMetas() {

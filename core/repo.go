@@ -17,7 +17,7 @@ type Repository struct {
 	Envs        M      `bson:"envs,omitempty" json:"envs,omitempty" validate:"omitempty,dive,keys,required,endkeys,required"`
 	Volumes     M      `bson:"volumes,omitempty" json:"volumes,omitempty" validate:"omitempty,dive,keys,required,endkeys,required"`
 	User        string `bson:"user,omitempty" json:"user,omitempty" validate:"-"`
-	BindIp      string `bson:"bindIp,omitempty" json:"bindIp,omitempty" validate:"omitempty,ip"`
+	BindIP      string `bson:"bindIP,omitempty" json:"bindIP,omitempty" validate:"omitempty,ip"`
 	Retry       int    `bson:"retry,omitempty" json:"retry,omitempty" validate:"omitempty,min=1,max=3"`
 	CreatedAt   int64  `bson:"createdAt,omitempty" json:"createdAt,omitempty" validate:"-"`
 	UpdatedAt   int64  `bson:"updatedAt,omitempty" json:"updatedAt,omitempty" validate:"-"`
@@ -32,9 +32,10 @@ func (c *Core) GetRepository(name string) (*Repository, error) {
 }
 
 func (c *Core) AddRepository(repo *Repository) error {
-	repo.CreatedAt = time.Now().Unix()
-	repo.UpdatedAt = time.Now().Unix()
-	return c.repoColl.Insert(*repo)
+	now := time.Now().Unix()
+	repo.CreatedAt = now
+	repo.UpdatedAt = now
+	return c.repoColl.Insert(repo)
 }
 
 func (c *Core) UpdateRepository(name string, update bson.M) error {
