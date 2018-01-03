@@ -1,3 +1,4 @@
+// Package queue is designed to save the last N lines from a Reader.
 package queue
 
 import (
@@ -5,18 +6,21 @@ import (
 	"io"
 )
 
+// LinesQueue save the last N lines.
 type LinesQueue struct {
 	next int
 	len  int
 	buf  []string
 }
 
+// New returns an instance of LinesQueue with a fixed capacity.
 func New(cap int) LinesQueue {
 	return LinesQueue{
 		buf: make([]string, cap),
 	}
 }
 
+// Push appends a new line to the queue and pops the oldest one if the queue is already full.
 func (q *LinesQueue) Push(s string) {
 	q.buf[q.next] = s
 	cap := len(q.buf)
@@ -26,13 +30,16 @@ func (q *LinesQueue) Push(s string) {
 	}
 }
 
-func (q *LinesQueue) ReadFrom(r io.Reader) {
+// ReadFrom reads from a Reader line by line and saves the last N lines.
+func (q *LinesQueue) ReadFrom(r io.Reader) error {
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		q.Push(scanner.Text())
 	}
+	return scanner.Err()
 }
 
+// WriteTo writes all the lines to the Writer.
 func (q *LinesQueue) WriteTo(w io.Writer) (n int, err error) {
 	if q.len == 0 {
 		return 0, nil
