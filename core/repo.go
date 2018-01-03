@@ -34,12 +34,16 @@ func (c *Core) GetRepository(name string) (*Repository, error) {
 	return r, nil
 }
 
-// AddRepository adds the specified Repository.
-func (c *Core) AddRepository(repo *Repository) error {
+// AddRepository creates one or more Repositories.
+func (c *Core) AddRepository(repos ...*Repository) error {
 	now := time.Now().Unix()
-	repo.CreatedAt = now
-	repo.UpdatedAt = now
-	return c.repoColl.Insert(repo)
+	rs := make([]interface{}, len(repos))
+	for i, r := range repos {
+		r.CreatedAt = now
+		r.UpdatedAt = now
+		rs[i] = r
+	}
+	return c.repoColl.Insert(rs...)
 }
 
 // UpdateRepository updates the syncing options of the given Repository.

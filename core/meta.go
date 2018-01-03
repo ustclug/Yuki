@@ -90,13 +90,18 @@ func (c *Core) GetMeta(name string) (*Meta, error) {
 	return m, nil
 }
 
-// AddMeta adds metadata.
-func (c *Core) AddMeta(m *Meta) error {
-	m.CreatedAt = time.Now().Unix()
-	return c.metaColl.Insert(m)
+// AddMeta inserts one or more Metas.
+func (c *Core) AddMeta(ms ...*Meta) error {
+	now := time.Now().Unix()
+	docs := make([]interface{}, len(ms))
+	for i, m := range ms {
+		m.CreatedAt = now
+		docs[i] = m
+	}
+	return c.metaColl.Insert(docs...)
 }
 
-// InitMetas creates metadata of each Repositories.
+// InitMetas creates metadata for each Repository.
 func (c *Core) InitMetas() {
 	repos := c.ListRepositories(nil, nil)
 	now := time.Now().Unix()
