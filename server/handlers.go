@@ -61,6 +61,10 @@ func (s *Server) addRepo(c echo.Context) error {
 	if err := c.Validate(repo); err != nil {
 		return BadRequest(err.Error())
 	}
+	name := c.Param("name")
+	if repo.Name == "" {
+		repo.Name = name
+	}
 	err := s.c.AddRepository(repo)
 	if err != nil {
 		if mgo.IsDup(err) {
@@ -344,6 +348,13 @@ func (s *Server) exportConfig(c echo.Context) error {
 }
 
 func (s *Server) importConfig(c echo.Context) error {
+	var repos []*core.Repository
+	if err := c.Bind(&repos); err != nil {
+		return err
+	}
+	if err := s.c.AddRepository(repos...); err != nil {
+		return err
+	}
 	return c.NoContent(http.StatusNoContent)
 }
 
