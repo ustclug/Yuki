@@ -11,7 +11,14 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/knight42/Yuki/common"
+	"github.com/knight42/Yuki/events"
 )
+
+// Container provides the ID and labels of a container.
+type Container struct {
+	ID     string
+	Labels map[string]string
+}
 
 // SyncOptions provides params to the Sync function.
 type SyncOptions struct {
@@ -117,11 +124,8 @@ func (c *Core) RemoveContainer(id string) error {
 
 // WaitRunningContainers waits for all syncing containers to stop and remove them.
 func (c *Core) WaitRunningContainers() {
-	ctx, cancel := context.WithTimeout(c.ctx, time.Second*10)
-	defer cancel()
 	opts := docker.ListContainersOptions{
-		All:     true,
-		Context: ctx,
+		All: true,
 		Filters: map[string][]string{
 			"label":  {"org.ustcmirror.syncing=true"},
 			"status": {"running"},
@@ -132,22 +136,12 @@ func (c *Core) WaitRunningContainers() {
 		return
 	}
 	for _, ct := range cts {
-		name, ok := ct.Labels["org.ustcmirror.name"]
-		if !ok {
-			continue
-		}
-		dir, ok := ct.Labels["org.ustcmirror.storage-dir"]
-		if !ok {
-			continue
-		}
-		go func(id, name, dir string) {
-			code, err := c.Docker.WaitContainer(id)
-			if err != nil {
-				return
-			}
-			c.UpsertRepoMeta(name, dir, code)
-			c.RemoveContainer(id)
-		}(ct.ID, name, dir)
+		go func(ct docker.APIContainers) {
+			c.WaitForSync(Container{
+				ID:     ct.ID,
+				Labels: ct.Labels,
+			}, 0)
+		}(ct)
 	}
 }
 
@@ -175,10 +169,10 @@ func (c *Core) CleanDeadContainers() {
 }
 
 // Sync creates and starts a predefined container to sync local repository.
-func (c *Core) Sync(opts SyncOptions) error {
+func (c *Core) Sync(opts SyncOptions) (*Container, error) {
 	r, err := c.GetRepository(opts.Name)
 	if err != nil {
-		return fmt.Errorf("could not find %s in DB", opts.Name)
+		return nil, fmt.Errorf("could not find %s in DB", opts.Name)
 	}
 
 	envs := docker.Env{}
@@ -209,24 +203,25 @@ func (c *Core) Sync(opts SyncOptions) error {
 	if opts.MountDir {
 		logdir := path.Join(opts.LogDir, opts.Name)
 		if err := os.MkdirAll(logdir, os.ModePerm); err != nil {
-			return fmt.Errorf("not a directory: %s", logdir)
+			return nil, fmt.Errorf("not a directory: %s", logdir)
 		}
 		if !common.DirExists(r.StorageDir) {
-			return fmt.Errorf("not a directory: %s", r.StorageDir)
+			return nil, fmt.Errorf("not a directory: %s", r.StorageDir)
 		}
 		binds = append(binds, fmt.Sprintf("%s:/data/", r.StorageDir), fmt.Sprintf("%s:/log/", logdir))
 	}
+	labels := M{
+		"org.ustcmirror.syncing":     "true",
+		"org.ustcmirror.name":        r.Name,
+		"org.ustcmirror.storage-dir": r.StorageDir,
+	}
 	createOpts := docker.CreateContainerOptions{
-		Name:    opts.NamePrefix + opts.Name,
+		Name: opts.NamePrefix + opts.Name,
 		Config: &docker.Config{
 			Image:     r.Image,
 			OpenStdin: true,
 			Env:       envs,
-			Labels: M{
-				"org.ustcmirror.syncing":    "true",
-				"org.ustcmirror.name":       r.Name,
-				"org.ustcmirror.storage-dir": r.StorageDir,
-			},
+			Labels:    labels,
 		},
 		HostConfig: &docker.HostConfig{
 			Binds:       binds,
@@ -243,34 +238,58 @@ func (c *Core) Sync(opts SyncOptions) error {
 			}
 		}
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	if err = c.Docker.StartContainer(ct.ID, nil); err != nil {
+		return nil, err
+	}
+	return &Container{ct.ID, labels}, nil
+}
+
+// WaitForSync blocks until the container really stops. It may restart the container multiple times depending on the `retry` param.
+func (c *Core) WaitForSync(ct Container, retry int) error {
+	code, err := c.Docker.WaitContainer(ct.ID)
+	if err != nil {
 		return err
 	}
+	if code != 0 {
+		for i := 0; i < retry; i++ {
+			err = c.Docker.StartContainer(ct.ID, nil)
+			if err != nil {
+				return err
+			}
 
-	go func(id, name, dir string, retry int) {
-		code, err := c.Docker.WaitContainer(id)
-		if err != nil {
-			return
-		}
-		if code != 0 {
-			for i := 0; i < retry; i++ {
-				c.Docker.StartContainer(id, nil)
-				code, err = c.Docker.WaitContainer(id)
-				if err != nil {
-					return
-				}
-				if code == 0 {
-					break
-				}
+			code, err = c.Docker.WaitContainer(ct.ID)
+			if err != nil {
+				return err
+			}
+
+			if code == 0 {
+				break
 			}
 		}
-		c.RemoveContainer(id)
-		c.UpsertRepoMeta(name, dir, code)
-	}(ct.ID, r.Name, r.StorageDir, r.Retry)
+	}
+
+	name, ok := ct.Labels["org.ustcmirror.name"]
+	if !ok {
+		return fmt.Errorf("missing label: org.ustcmirror.name")
+	}
+	dir, ok := ct.Labels["org.ustcmirror.storage-dir"]
+	if !ok {
+		return fmt.Errorf("missing label: org.ustcmirror.storage-dir")
+	}
+
+	events.Emit(events.Payload{
+		Evt: events.SyncEnd,
+		Attrs: events.M{
+			"ID":       ct.ID,
+			"Name":     name,
+			"Dir":      dir,
+			"ExitCode": code,
+		},
+	})
 
 	return nil
 }
