@@ -21,15 +21,15 @@ func TestSync(t *testing.T) {
 		LogRotCycle: 10,
 	})
 	prefix := "syncing-"
-	err := C.Sync(SyncOptions{
+	ct, err := C.Sync(SyncOptions{
 		LogDir: LogDir,
 		MountDir: false,
 		Name: name,
 		NamePrefix: prefix,
 	})
 	as.Nil(err)
-	code, err := C.Docker.WaitContainer(prefix + name)
-	defer C.RemoveContainer(prefix + name)
+	code, err := C.Docker.WaitContainer(ct.ID)
+	defer C.RemoveContainer(ct.ID)
 	as.Nil(err)
 	as.Equal(0, code)
 }
