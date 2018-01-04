@@ -9,7 +9,6 @@ import (
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type Server struct {
@@ -99,6 +98,7 @@ func NewWithConfig(cfg Config) (*Server, error) {
 
 	s.schedRepos()
 	s.c.InitMetas()
+	s.registerPostSync()
 
 	s.cron.AddFunc(cfg.ImagesUpgradeInterval, func() {
 		s.logger.Info("Upgrading images")
@@ -111,7 +111,7 @@ func NewWithConfig(cfg Config) (*Server, error) {
 		return c.String(200, "Hello World!")
 	})
 	g := s.e.Group("/api/v1/")
-	s.RegisterAPIs(g)
+	s.registerAPIs(g)
 
 	// middlewares
 	secureCfg := middleware.DefaultSecureConfig
@@ -126,25 +126,30 @@ func NewWithConfig(cfg Config) (*Server, error) {
 }
 
 func (s *Server) schedRepos() {
-	repos := s.c.ListRepositories(nil, bson.M{"interval": 1})
+	repos := s.c.ListRepositories(nil, nil)
 	s.logger.Infof("Scheduling %d repositories", len(repos))
 	for _, r := range repos {
-		if err := s.cron.AddJob(r.Name, r.Interval, s.newJob(r.Name)); err != nil {
+		if err := s.cron.AddJob(r.Name, r.Interval, s.newJob(&r)); err != nil {
 			s.logger.Error(err.Error())
 		}
 	}
 }
 
-func (s *Server) newJob(name string) cron.FuncJob {
+func (s *Server) newJob(r *core.Repository) cron.FuncJob {
 	return func() {
+		name := r.Name
 		s.logger.Infof("Syncing %s", name)
-		if err := s.c.Sync(core.SyncOptions{
+		ct, err := s.c.Sync(core.SyncOptions{
 			LogDir:     s.config.LogDir,
 			Owner:      s.config.Owner,
 			NamePrefix: s.config.NamePrefix,
 			Name:       name,
 			MountDir:   !IsTest,
-		}); err != nil {
+		})
+		if err != nil {
+			s.logger.Error(err.Error())
+		}
+		if err := s.c.WaitForSync(*ct, r.Retry); err != nil {
 			s.logger.Error(err.Error())
 		}
 	}

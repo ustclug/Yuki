@@ -42,7 +42,7 @@ func Forbidden(msg ...interface{}) error {
 	return echo.NewHTTPError(http.StatusForbidden, msg...)
 }
 
-func ServerError(msg ...interface{}) error {
+func InternalServerError(msg ...interface{}) error {
 	return echo.NewHTTPError(http.StatusInternalServerError, msg...)
 }
 
@@ -179,7 +179,9 @@ func (s *Server) getRepoLogs(c echo.Context) error {
 	}
 
 	q := queue.New(opts.Tail)
-	q.ReadFrom(reader)
+	if err = q.ReadFrom(reader); err != nil {
+		return err
+	}
 	q.WriteTo(c.Response())
 	return nil
 }
@@ -216,7 +218,7 @@ func (s *Server) updateRepo(c echo.Context) error {
 	}
 	r, _ := s.c.GetRepository(name)
 	s.logger.Infof("Rescheduled %s", name)
-	if err := s.cron.AddJob(r.Name, r.Interval, s.newJob(r.Name)); err != nil {
+	if err := s.cron.AddJob(r.Name, r.Interval, s.newJob(r)); err != nil {
 		s.logger.Error(err.Error())
 	}
 	return c.NoContent(http.StatusNoContent)
@@ -245,7 +247,7 @@ func (s *Server) listCts(c echo.Context) error {
 	opts := docker.ListContainersOptions{
 		All: true,
 		Filters: map[string][]string{
-			"label": {"ustcmirror.images"},
+			"label": {"org.ustcmirror.syncing=true"},
 		},
 	}
 	apiCts, err := s.c.Docker.ListContainers(opts)
@@ -255,7 +257,7 @@ func (s *Server) listCts(c echo.Context) error {
 	cts := []container{}
 	for _, ct := range apiCts {
 		cts = append(cts, container{
-			ID:      "id:" + ct.ID[:10],
+			ID:      ct.ID[:10],
 			Image:   ct.Image,
 			Created: ct.Created,
 			State:   ct.State,
@@ -273,7 +275,7 @@ func (s *Server) sync(c echo.Context) error {
 		debug = false
 	}
 
-	err = s.c.Sync(core.SyncOptions{
+	ct, err := s.c.Sync(core.SyncOptions{
 		Name:       name,
 		NamePrefix: s.config.NamePrefix,
 		LogDir:     s.config.LogDir,
@@ -288,6 +290,11 @@ func (s *Server) sync(c echo.Context) error {
 		}
 		return err
 	}
+
+	go func() {
+		s.c.WaitForSync(*ct, 0)
+	}()
+
 	return c.NoContent(http.StatusCreated)
 }
 
@@ -358,7 +365,7 @@ func (s *Server) importConfig(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-func (s *Server) RegisterAPIs(g *echo.Group) {
+func (s *Server) registerAPIs(g *echo.Group) {
 	g.GET("repositories", s.listRepos)
 	g.POST("repositories/:name", s.addRepo)
 	g.GET("repositories/:name", s.getRepo)
@@ -376,6 +383,5 @@ func (s *Server) RegisterAPIs(g *echo.Group) {
 	g.GET("metas/:name", s.getMeta)
 
 	g.GET("config", s.exportConfig)
-	// FIXME
 	g.POST("config", s.importConfig)
 }
