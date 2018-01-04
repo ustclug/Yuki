@@ -32,7 +32,6 @@ func New(ty Type) GetSizer {
 	default:
 		return &defaultFs{}
 	}
-	return &defaultFs{}
 }
 
 type defaultFs struct{}

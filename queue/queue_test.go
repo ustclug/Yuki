@@ -13,7 +13,7 @@ func TestQueue(t *testing.T) {
 	q.Push("3")
 	q.Push("4")
 	buf := bytes.NewBufferString("")
-	q.WriteTo(buf)
+	q.WriteAll(buf)
 	assert.Equal(t, "3\n4\n", buf.String())
 }
 

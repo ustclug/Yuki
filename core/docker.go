@@ -89,7 +89,7 @@ func (c *Core) CleanImages() {
 	}
 	for _, i := range imgs {
 		go func(id string) {
-			c.Docker.RemoveImage(i.ID)
+			c.Docker.RemoveImage(id)
 		}(i.ID)
 	}
 }

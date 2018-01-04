@@ -30,8 +30,8 @@ func (q *LinesQueue) Push(s string) {
 	}
 }
 
-// ReadFrom reads from a Reader line by line and saves the last N lines.
-func (q *LinesQueue) ReadFrom(r io.Reader) error {
+// ReadAll reads from a Reader line by line and saves the last N lines.
+func (q *LinesQueue) ReadAll(r io.Reader) error {
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		q.Push(scanner.Text())
@@ -39,8 +39,8 @@ func (q *LinesQueue) ReadFrom(r io.Reader) error {
 	return scanner.Err()
 }
 
-// WriteTo writes all the lines to the Writer.
-func (q *LinesQueue) WriteTo(w io.Writer) (n int, err error) {
+// WriteAll writes all the lines to the Writer.
+func (q *LinesQueue) WriteAll(w io.Writer) (n int, err error) {
 	if q.len == 0 {
 		return 0, nil
 	}

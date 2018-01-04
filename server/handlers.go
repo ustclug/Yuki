@@ -179,10 +179,10 @@ func (s *Server) getRepoLogs(c echo.Context) error {
 	}
 
 	q := queue.New(opts.Tail)
-	if err = q.ReadFrom(reader); err != nil {
+	if err = q.ReadAll(reader); err != nil {
 		return err
 	}
-	q.WriteTo(c.Response())
+	q.WriteAll(c.Response())
 	return nil
 }
 

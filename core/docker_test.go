@@ -1,9 +1,9 @@
 package core
 
 import (
+	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestSync(t *testing.T) {
@@ -13,23 +13,23 @@ func TestSync(t *testing.T) {
 	d := "/tmp/" + name
 	os.MkdirAll(d, os.ModePerm)
 	defer os.RemoveAll(d)
-	C.AddRepository(&Repository{
-		Name: name,
-		Interval: "1 * * * *",
-		Image: "ustcmirror/test:latest",
-		StorageDir: d,
+	c.AddRepository(&Repository{
+		Name:        name,
+		Interval:    "1 * * * *",
+		Image:       "ustcmirror/test:latest",
+		StorageDir:  d,
 		LogRotCycle: 10,
 	})
 	prefix := "syncing-"
-	ct, err := C.Sync(SyncOptions{
-		LogDir: LogDir,
-		MountDir: false,
-		Name: name,
+	ct, err := c.Sync(SyncOptions{
+		LogDir:     logDir,
+		MountDir:   false,
+		Name:       name,
 		NamePrefix: prefix,
 	})
 	as.Nil(err)
-	code, err := C.Docker.WaitContainer(ct.ID)
-	defer C.RemoveContainer(ct.ID)
+	code, err := c.Docker.WaitContainer(ct.ID)
+	defer c.RemoveContainer(ct.ID)
 	as.Nil(err)
 	as.Equal(0, code)
 }
