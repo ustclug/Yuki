@@ -1,12 +1,11 @@
 package events
 
 import (
-	"errors"
-	"reflect"
 	"sync"
 )
 
 type Event int
+type M map[string]interface{}
 
 const (
 	SyncStart Event = iota
@@ -15,53 +14,44 @@ const (
 	ExportConfig
 )
 
+type Payload struct {
+	Evt   Event
+	Attrs M
+}
+
+type Listener func(data Payload)
+
 var (
-	ErrNotAFunc = errors.New("The type of listener is not a function")
 	globalEmitter *Emitter
 )
 
 type Emitter struct {
-	listeners map[interface{}][]reflect.Value
+	listeners map[Event][]Listener
 }
 
 func init() {
 	globalEmitter = NewEmitter()
 }
 
-func On(events, listener interface{}) *Emitter {
-	return globalEmitter.On(events, listener)
+func On(evt Event, listener Listener) *Emitter {
+	return globalEmitter.On(evt, listener)
 }
 
-func Emit(evt interface{}, payload ...interface{}) *Emitter {
-	return globalEmitter.Emit(evt, payload...)
+func Emit(payload Payload) *Emitter {
+	return globalEmitter.Emit(payload)
 }
 
-func (e *Emitter) On(events, listener interface{}) *Emitter {
-	fn := reflect.ValueOf(listener)
-
-	if reflect.Func != fn.Kind() {
-		panic(ErrNotAFunc)
-	}
-
-	evs := reflect.ValueOf(events)
-	if reflect.Array == evs.Kind() || reflect.Slice == evs.Kind() {
-		len := evs.Len()
-		for i := 0; i < len; i++ {
-			ev := evs.Index(i).Interface()
-			e.listeners[ev] = append(e.listeners[ev], fn)
-		}
-	} else {
-		e.listeners[events] = append(e.listeners[events], fn)
-	}
-
+func (e *Emitter) On(evt Event, listener Listener) *Emitter {
+	e.listeners[evt] = append(e.listeners[evt], listener)
 	return e
 }
 
-func (e *Emitter) Emit(evt interface{}, payload ...interface{}) *Emitter {
+func (e *Emitter) Emit(payload Payload) *Emitter {
 	var (
 		wg sync.WaitGroup
 	)
 
+	evt := payload.Evt
 	listeners, ok := e.listeners[evt]
 	if !ok {
 		return e
@@ -70,13 +60,9 @@ func (e *Emitter) Emit(evt interface{}, payload ...interface{}) *Emitter {
 	wg.Add(len(listeners))
 
 	for _, fn := range listeners {
-		go func(fn reflect.Value) {
+		go func(fn Listener) {
 			defer wg.Done()
-			var vals []reflect.Value
-			for _, arg := range payload {
-				vals = append(vals, reflect.ValueOf(arg))
-			}
-			fn.Call(vals)
+			fn(payload)
 		}(fn)
 	}
 
@@ -87,6 +73,6 @@ func (e *Emitter) Emit(evt interface{}, payload ...interface{}) *Emitter {
 
 func NewEmitter() *Emitter {
 	e := new(Emitter)
-	e.listeners = make(map[interface{}][]reflect.Value)
+	e.listeners = make(map[Event][]Listener)
 	return e
 }

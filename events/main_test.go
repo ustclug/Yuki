@@ -2,34 +2,37 @@ package events
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestEmitter(t *testing.T) {
-	type EvtPayload struct {
-		name      string
-		createdAt string
-	}
+	t.Parallel()
+	as := assert.New(t)
 	e := NewEmitter()
 	e.
-		On(SyncEnd, func(data *EvtPayload) {
-			if data.name != "debian" {
-				t.Error("Unexpected name")
-			}
-			if data.createdAt != "19700101" {
-				t.Error("Unexpected createdAt")
-			}
+		On(SyncEnd, func(data Payload) {
+			t.Log("SyncEnd")
+			as.Equal("debian", data.Attrs["name"])
+			as.Equal("19700101", data.Attrs["createdAt"])
 		}).
-		On(SyncStart, func() {
+		On(SyncStart, func(data Payload) {
 			t.Log("SyncStart")
 		}).
-		On([]Event{ImportConfig, ExportConfig}, func() {
-			t.Log("Import or Export")
+		On(ExportConfig, func(data Payload) {
+			t.Log("Export")
 		}).
-		Emit(SyncStart).
-		Emit(SyncEnd, &EvtPayload{
-			name:      "debian",
-			createdAt: "19700101",
+		On(ImportConfig, func(data Payload) {
+			t.Log("Import")
 		}).
-		Emit(ImportConfig).
-		Emit(ExportConfig)
+		Emit(Payload{SyncStart, nil}).
+		Emit(Payload{
+			Evt: SyncEnd,
+			Attrs: M{
+				"name":      "debian",
+				"createdAt": "19700101",
+			},
+		}).
+		Emit(Payload{ImportConfig, nil}).
+		Emit(Payload{ExportConfig, nil})
 }
