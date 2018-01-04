@@ -22,6 +22,10 @@ func init() {
 	}
 }
 
+func Parse(spec string) (cron.Schedule, error) {
+	return cron.Parse(spec)
+}
+
 func (jobs *scheduledJobs) Get(name string) (cron.EntryID, bool) {
 	jobs.RLock()
 	defer jobs.RUnlock()
