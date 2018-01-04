@@ -23,7 +23,8 @@ type AppConfig struct {
 	BindIP                string   `mapstructure:"bind_ip,omitempty" validate:"omitempty,ip"`
 	NamePrefix            string   `mapstructure:"name_prefix,omitempty" validate:"-"`
 	SyncTimeout           string   `mapstructure:"sync_timeout,omitempty" validate:"omitempty,duration"`
-	AllowOrigins          []string `mapstructure:"allow_origins,omitempty" validate:"unique"`
+	PostSync              []string `mapstructure:"post_sync,omitempty" validate:"-"`
+	AllowOrigins          []string `mapstructure:"allow_origins,omitempty" validate:"-"`
 	ImagesUpgradeInterval string   `mapstructure:"images_upgrade_interval,omitempty" validate:"required,cron"`
 }
 
@@ -37,6 +38,7 @@ type Config struct {
 	NamePrefix            string
 	SyncTimeout           time.Duration
 	AllowOrigins          []string
+	PostSync              []string
 	ImagesUpgradeInterval string
 }
 
@@ -85,6 +87,7 @@ func LoadConfig() (*Config, error) {
 		BindIP:                appCfg.BindIP,
 		NamePrefix:            appCfg.NamePrefix,
 		AllowOrigins:          appCfg.AllowOrigins,
+		PostSync:              appCfg.PostSync,
 		ImagesUpgradeInterval: appCfg.ImagesUpgradeInterval,
 	}
 
