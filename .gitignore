@@ -9,7 +9,7 @@ node_modules/
 coverage
 .nyc_output
 reference/
-dist/
 doc/
 build/
+bin/
 cmd/yukid/yukid
