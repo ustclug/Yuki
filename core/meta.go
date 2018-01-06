@@ -2,21 +2,26 @@ package core
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
 	"gopkg.in/mgo.v2/bson"
 )
 
+var (
+	re = regexp.MustCompile("([^:])//+")
+)
+
 // Meta represents the metadata of a Repository.
 type Meta struct {
-	Name         string `bson:"_id,omitempty" json:"name,omitempty"`
-	Upstream     string `bson:"-" json:"upstream,omitempty"`
-	Size         int    `bson:"size,omitempty" json:"size,omitempty"`
-	LastExitCode int    `bson:"lastExitCode,omitempty" json:"lastExitCode,omitempty"`
-	LastSuccess  int64  `bson:"lastSuccess,omitempty" json:"lastSuccess,omitempty"`
-	CreatedAt    int64  `bson:"createdAt,omitempty" json:"createdAt,omitempty"`
-	UpdatedAt    int64  `bson:"updatedAt,omitempty" json:"updatedAt,omitempty"`
+	Name        string `bson:"_id,omitempty" json:"name,omitempty"`
+	Upstream    string `bson:"-" json:"upstream,omitempty"`
+	Size        int    `bson:"size,omitempty" json:"size,omitempty"`
+	ExitCode    int    `bson:"exitCode,omitempty" json:"exitCode,omitempty"`
+	LastSuccess int64  `bson:"lastSuccess,omitempty" json:"lastSuccess,omitempty"`
+	CreatedAt   int64  `bson:"createdAt,omitempty" json:"createdAt,omitempty"`
+	UpdatedAt   int64  `bson:"updatedAt,omitempty" json:"updatedAt,omitempty"`
 }
 
 func getUpstream(t string, envs M) (upstream string) {
@@ -73,7 +78,8 @@ func (c *Core) transformMeta(m *Meta) {
 	if r, err := c.GetRepository(m.Name); err == nil {
 		image := strings.Split(r.Image, ":")[0]
 		t := strings.Split(image, "/")
-		m.Upstream = getUpstream(t[len(t)-1], r.Envs)
+		// remove extra slashes
+		m.Upstream = re.ReplaceAllString(getUpstream(t[len(t)-1], r.Envs), "${1}/")
 	}
 	if m.Upstream == "" {
 		m.Upstream = "unknown"
@@ -114,7 +120,7 @@ func (c *Core) InitMetas() {
 				},
 				"$setOnInsert": bson.M{
 					"createdAt": now,
-					"lastExitCode": -1,
+					"exitCode":  -1,
 				},
 			})
 		}(r.Name, r.StorageDir)
@@ -125,9 +131,9 @@ func (c *Core) InitMetas() {
 func (c *Core) UpsertRepoMeta(name, dir string, code int) error {
 	now := time.Now().Unix()
 	set := bson.M{
-		"lastExitCode": code,
+		"exitCode":  code,
 		"updatedAt": now,
-		"size": c.fs.GetSize(dir),
+		"size":      c.fs.GetSize(dir),
 	}
 	if code == 0 {
 		set["lastSuccess"] = now

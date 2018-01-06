@@ -1,9 +1,10 @@
 package core
 
 import (
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgo.v2/bson"
-	"testing"
 )
 
 func TestGetMeta(t *testing.T) {
@@ -18,9 +19,9 @@ func TestGetMeta(t *testing.T) {
 		LogRotCycle: 10,
 	})
 	err := c.AddMeta(&Meta{
-		Name:         name,
-		Size:         -1,
-		LastExitCode: -1,
+		Name:     name,
+		Size:     -1,
+		ExitCode: -1,
 	})
 	as.Nil(err)
 
@@ -41,9 +42,9 @@ func TestRemoveMeta(t *testing.T) {
 	name := "test-remove-meta"
 	as := assert.New(t)
 	err := c.AddMeta(&Meta{
-		Name:         name,
-		Size:         -1,
-		LastExitCode: -1,
+		Name:     name,
+		Size:     -1,
+		ExitCode: -1,
 	})
 	as.Nil(err)
 
