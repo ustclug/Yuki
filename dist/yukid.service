@@ -1,0 +1,11 @@
+[Unit]
+Description=RESTful API Server for Administering Docker Containers on Mirrors
+After=docker.service
+Requires=docker.service
+
+[Service]
+User=mirror
+ExecStart=/usr/local/bin/yukid
+
+[Install]
+WantedBy=multi-user.target
