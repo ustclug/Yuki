@@ -1,5 +1,5 @@
 [Unit]
-Description=RESTful API Server for Administering Docker Containers on Mirrors
+Description=Sync Local Repos With Remote
 After=docker.service
 Requires=docker.service
 

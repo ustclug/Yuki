@@ -8,10 +8,14 @@ if [[ -z $TRAVIS_TAG ]]; then
     TRAVIS_TAG=$(git describe --abbrev=0 --tags)
 fi
 
-root=$(pwd)
-stage=$(mktemp -d)
+HERE=$(pwd)
+NAME=${NAME:-yuki}
+
+export GOOS=${GOOS:-$(go env GOOS)} GOARCH=${GOARCH:-$(go env GOARCH)}
+
+stage="/tmp/$NAME-$TRAVIS_TAG-$GOOS-$GOARCH/"
+rm -rf "$stage"
 
 go build -o "$stage/yukid" ./cmd/yukid
-cp dist/{daemon.toml,yukid.service} "$stage"
-cd "$stage" || exit 1
-tar czf "$root/yukid-$TRAVIS_TAG.tar.gz" -- *
+cp LICENSE dist/{daemon.toml,yukid.service} "$stage"
+tar -czf "$HERE/$NAME-$TRAVIS_TAG-$GOOS-$GOARCH.tar.gz" -C /tmp -- "${stage#/tmp/}"
