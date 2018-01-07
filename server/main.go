@@ -1,6 +1,7 @@
 package server
 
 import (
+	"io/ioutil"
 	"os"
 	"path"
 
@@ -83,6 +84,9 @@ func NewWithConfig(cfg Config) (*Server, error) {
 
 	s.e.Debug = cfg.Debug
 	s.e.HideBanner = true
+
+	s.e.HTTPErrorHandler = s.HTTPErrorHandler
+	s.e.Logger.SetOutput(ioutil.Discard)
 
 	logfile, err := os.OpenFile(path.Join(cfg.LogDir, "yukid.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {

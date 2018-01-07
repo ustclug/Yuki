@@ -18,6 +18,7 @@ import (
 	"github.com/knight42/Yuki/core"
 	"github.com/knight42/Yuki/queue"
 	"github.com/labstack/echo"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -98,7 +99,7 @@ func (s *Server) getRepoLogs(c echo.Context) error {
 
 	opts := repoLogsOptions{}
 	if err := c.Bind(&opts); err != nil {
-		return err
+		return BadRequest(err.Error())
 	}
 
 	logdir := path.Join(s.config.LogDir, c.Param("name"))
@@ -275,6 +276,7 @@ func (s *Server) sync(c echo.Context) error {
 		debug = false
 	}
 
+	s.logger.Infof("Syncing %s", name)
 	ct, err := s.c.Sync(core.SyncOptions{
 		Name:       name,
 		NamePrefix: s.config.NamePrefix,
@@ -384,4 +386,48 @@ func (s *Server) registerAPIs(g *echo.Group) {
 
 	g.GET("config", s.exportConfig)
 	g.POST("config", s.importConfig)
+}
+
+func (s *Server) HTTPErrorHandler(err error, c echo.Context) {
+	var (
+		code    = http.StatusInternalServerError
+		msg     string
+		respMsg echo.Map
+	)
+
+	if he, ok := err.(*echo.HTTPError); ok {
+		code = he.Code
+		msg = fmt.Sprintf("%v", he.Message)
+		if he.Inner != nil {
+			msg = fmt.Sprintf("%v, %v", err, he.Inner)
+		}
+	} else if de, ok := err.(*docker.Error); ok {
+		code = de.Status
+		msg = de.Message
+	} else {
+		msg = err.Error()
+	}
+	respMsg = echo.Map{"message": msg}
+
+	s.logger.WithFields(log.Fields{
+		"remote_ip": c.RealIP(),
+		"status":    code,
+		"method":    c.Request().Method,
+		"uri":       c.Request().RequestURI,
+	}).Error(msg)
+
+	// Send response
+	if !c.Response().Committed {
+		if c.Request().Method == echo.HEAD { // Issue echo#608
+			err = c.NoContent(code)
+		} else {
+			err = c.JSON(code, respMsg)
+		}
+		if err != nil {
+			s.logger.WithFields(log.Fields{
+				"method": c.Request().Method,
+				"uri":    c.Request().RequestURI,
+			}).Error(err.Error())
+		}
+	}
 }

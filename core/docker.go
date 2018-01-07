@@ -172,7 +172,7 @@ func (c *Core) CleanDeadContainers() {
 func (c *Core) Sync(opts SyncOptions) (*Container, error) {
 	r, err := c.GetRepository(opts.Name)
 	if err != nil {
-		return nil, fmt.Errorf("could not find %s in DB", opts.Name)
+		return nil, fmt.Errorf("cannot find <%s> in the DB", opts.Name)
 	}
 
 	envs := docker.Env{}
