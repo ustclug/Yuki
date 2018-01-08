@@ -4,12 +4,9 @@
 *~
 *.bac
 *.tgz
-__pycache__/
-node_modules/
 coverage
 .nyc_output
-reference/
-doc/
 build/
 bin/
+vendor/
 cmd/yukid/yukid
