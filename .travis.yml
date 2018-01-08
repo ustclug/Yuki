@@ -7,7 +7,7 @@ services:
 
 env:
   global:
-    - NAME=yuki
+    - NAME=yuki DEP_VERSION=0.3.2
   matrix:
     - GOOS=linux GOARCH=amd64
 
@@ -19,17 +19,21 @@ matrix:
   allow_failures:
     - go: master
 
+before_install:
+  - curl -L -s https://github.com/golang/dep/releases/download/v${DEP_VERSION}/dep-linux-amd64 -o $GOPATH/bin/dep
+  - chmod +x $GOPATH/bin/dep
+install:
+  - dep ensure
+
 before_script:
   - go get github.com/stretchr/testify/assert
   - go get -u github.com/golang/lint/golint
   - docker pull ustcmirror/test
-
 script:
   - ci/script.sh
 
 before_deploy:
   - ci/build.sh
-
 deploy:
   provider: releases
   skip_cleanup: true
