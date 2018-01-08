@@ -1,0 +1,24 @@
+# Maintainer: Jian Zeng <anonymousknight96 AT gmail.com>
+
+pkgname=yuki-bin
+_pkgname=yuki
+pkgver=0.0.2
+pkgrel=1
+pkgdesc='Sync local repos with remote.'
+install=yuki.install
+arch=('x86_64')
+url='https://github.com/knight42/Yuki'
+license=('GPL2')
+backup=('etc/yuki/daemon.toml')
+source=(yuki.install)
+source_x86_64=("$url/releases/download/v$pkgver/$_pkgname-v$pkgver-linux-amd64.tar.gz")
+sha256sums=('ec512abfa0726694019885896730e0acac8752a1392cb36101112aa41c35e8e5')
+sha256sums_x86_64=('5ab0f6b8dfd30299db954b19bc5e0c8e8671d39660d97b82ba627c456ce60c19')
+
+package() {
+    cd "$_pkgname-v$pkgver-linux-amd64" || exit 1
+    install -Dm644 daemon.toml "$pkgdir/etc/yuki/daemon.toml"
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/yuki/LICENSE"
+    install -Dm644 yukid.service "$pkgdir/usr/lib/systemd/system/yukid.service"
+    install -Dm755 yukid "$pkgdir/usr/local/bin/yukid"
+}
