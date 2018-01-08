@@ -26,7 +26,6 @@ install:
   - dep ensure
 
 before_script:
-  - go get github.com/stretchr/testify/assert
   - go get -u github.com/golang/lint/golint
   - docker pull ustcmirror/test
 script:
