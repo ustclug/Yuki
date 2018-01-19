@@ -123,6 +123,8 @@ func NewWithConfig(cfg Config) (*Server, error) {
 	corsCfg.AllowOrigins = cfg.AllowOrigins
 	s.e.Use(middleware.CORSWithConfig(corsCfg))
 
+	s.e.Use(middleware.BodyLimit("2M"))
+
 	return &s, nil
 }
 
