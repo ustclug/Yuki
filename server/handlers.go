@@ -361,7 +361,15 @@ func (s *Server) getMeta(c echo.Context) error {
 }
 
 func (s *Server) exportConfig(c echo.Context) error {
-	repos := s.c.ListRepositories(nil, bson.M{
+	var query bson.M
+	names := c.QueryParam("names")
+	if names != "" {
+		nameLst := strings.Split(names, ",")
+		query = bson.M{
+			"_id": bson.M{"$in": nameLst},
+		}
+	}
+	repos := s.c.ListRepositories(query, bson.M{
 		"updatedAt": 0,
 	})
 	return c.JSON(http.StatusOK, repos)
