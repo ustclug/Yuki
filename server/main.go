@@ -1,9 +1,12 @@
 package server
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
+	"os/signal"
 	"path"
+	"time"
 
 	"github.com/knight42/Yuki/core"
 	"github.com/knight42/Yuki/cron"
@@ -161,5 +164,18 @@ func (s *Server) newJob(r core.Repository) cron.FuncJob {
 
 func (s *Server) Start() error {
 	s.logger.Infof("Listening at %s", s.config.ListenAddr)
-	return s.e.Start(s.config.ListenAddr)
+	go func() {
+		if err := s.e.Start(s.config.ListenAddr); err != nil {
+			s.logger.Infof("Shutting down the server: %v", err)
+		}
+	}()
+
+	// Wait for interrupt signal to gracefully shutdown the server with
+	// a timeout of 10 seconds.
+	quit := make(chan os.Signal)
+	signal.Notify(quit, os.Interrupt)
+	<-quit
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	return s.e.Shutdown(ctx)
 }
