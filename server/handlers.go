@@ -23,28 +23,39 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-func BadRequest(msg ...interface{}) error {
-	return echo.NewHTTPError(http.StatusBadRequest, msg...)
+func badRequest(msg interface{}) error {
+	return &echo.HTTPError{
+		Code:    http.StatusBadRequest,
+		Message: msg,
+	}
 }
 
-func NotFound(msg ...interface{}) error {
-	return echo.NewHTTPError(http.StatusNotFound, msg...)
+func notFound(msg interface{}) error {
+	return &echo.HTTPError{
+		Code:    http.StatusNotFound,
+		Message: msg,
+	}
 }
 
-func NotAcceptable(msg ...interface{}) error {
-	return echo.NewHTTPError(http.StatusNotAcceptable, msg...)
+func notAcceptable(msg interface{}) error {
+	return &echo.HTTPError{
+		Code:    http.StatusNotAcceptable,
+		Message: msg,
+	}
 }
 
-func Conflict(msg ...interface{}) error {
-	return echo.NewHTTPError(http.StatusConflict, msg...)
+func conflict(msg interface{}) error {
+	return &echo.HTTPError{
+		Code:    http.StatusConflict,
+		Message: msg,
+	}
 }
 
-func Forbidden(msg ...interface{}) error {
-	return echo.NewHTTPError(http.StatusForbidden, msg...)
-}
-
-func InternalServerError(msg ...interface{}) error {
-	return echo.NewHTTPError(http.StatusInternalServerError, msg...)
+func forbidden(msg interface{}) error {
+	return &echo.HTTPError{
+		Code:    http.StatusForbidden,
+		Message: msg,
+	}
 }
 
 func (s *Server) listRepos(c echo.Context) error {
@@ -57,10 +68,10 @@ func (s *Server) listRepos(c echo.Context) error {
 func (s *Server) addRepo(c echo.Context) error {
 	repo := new(core.Repository)
 	if err := c.Bind(repo); err != nil {
-		return BadRequest(err.Error())
+		return badRequest(err)
 	}
 	if err := c.Validate(repo); err != nil {
-		return BadRequest(err.Error())
+		return badRequest(err)
 	}
 	name := c.Param("name")
 	if repo.Name == "" {
@@ -69,7 +80,7 @@ func (s *Server) addRepo(c echo.Context) error {
 	err := s.c.AddRepository(repo)
 	if err != nil {
 		if mgo.IsDup(err) {
-			return Conflict(err.Error())
+			return conflict(err)
 		}
 		return err
 	}
@@ -80,7 +91,7 @@ func (s *Server) getRepo(c echo.Context) error {
 	name := c.Param("name")
 	repo, err := s.c.GetRepository(name)
 	if err != nil {
-		return NotFound(err.Error())
+		return notFound(err)
 	}
 	return c.JSON(http.StatusOK, repo)
 }
@@ -99,7 +110,7 @@ func (s *Server) getRepoLogs(c echo.Context) error {
 
 	opts := repoLogsOptions{}
 	if err := c.Bind(&opts); err != nil {
-		return BadRequest(err.Error())
+		return badRequest(err)
 	}
 
 	logdir := path.Join(s.config.LogDir, c.Param("name"))
@@ -151,7 +162,7 @@ func (s *Server) getRepoLogs(c echo.Context) error {
 	}
 
 	if fileName == "" {
-		return NotFound(fmt.Sprintf("no such file: %s", wantedName))
+		return notFound(fmt.Sprintf("no such file: %s", wantedName))
 	}
 
 	content, err := os.Open(path.Join(logdir, fileName))
@@ -205,13 +216,13 @@ func (s *Server) updateRepo(c echo.Context) error {
 	t := bson.M{}
 	decoder := json.NewDecoder(c.Request().Body)
 	if err := decoder.Decode(&t); err != nil {
-		return BadRequest(err.Error())
+		return badRequest(err)
 	}
 	t = convertUpdate(t)
 	set := t["$set"].(map[string]interface{})
 	myva := s.e.Validator.(*myValidator)
 	if err := myva.CheckMap(set, core.Repository{}); err != nil {
-		return BadRequest(err.Error())
+		return badRequest(err)
 	}
 	name := c.Param("name")
 	if err := s.c.UpdateRepository(name, t); err != nil {
@@ -220,7 +231,7 @@ func (s *Server) updateRepo(c echo.Context) error {
 	r, _ := s.c.GetRepository(name)
 	s.logger.Infof("Rescheduled %s", name)
 	if err := s.cron.AddJob(r.Name, r.Interval, s.newJob(r)); err != nil {
-		s.logger.Error(err.Error())
+		s.logger.Errorln(err)
 	}
 	return c.NoContent(http.StatusNoContent)
 }
@@ -288,7 +299,7 @@ func (s *Server) sync(c echo.Context) error {
 	})
 	if err != nil {
 		if err == docker.ErrContainerAlreadyExists {
-			return Conflict(err.Error())
+			return conflict(err)
 		}
 		return err
 	}
@@ -308,7 +319,7 @@ func (s *Server) getCtLogs(c echo.Context) error {
 	name := s.config.NamePrefix + c.Param("name")
 	opts := logsOptions{}
 	if err := c.Bind(&opts); err != nil {
-		return BadRequest(err.Error())
+		return badRequest(err)
 	}
 	fw := NewFlushWriter(c.Response())
 	return s.c.GetContainerLogs(core.LogsOptions{
@@ -344,7 +355,7 @@ func (s *Server) getMeta(c echo.Context) error {
 	name := c.Param("name")
 	m, err := s.c.GetMeta(name)
 	if err != nil {
-		return NotFound(err.Error())
+		return notFound(err)
 	}
 	return c.JSON(http.StatusOK, m)
 }
@@ -427,7 +438,7 @@ func (s *Server) HTTPErrorHandler(err error, c echo.Context) {
 			s.logger.WithFields(log.Fields{
 				"method": c.Request().Method,
 				"uri":    c.Request().RequestURI,
-			}).Error(err.Error())
+			}).Errorln(err)
 		}
 	}
 }

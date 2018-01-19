@@ -5,6 +5,7 @@ import (
 	"os/exec"
 
 	"github.com/knight42/Yuki/events"
+	"github.com/sirupsen/logrus"
 )
 
 func (s *Server) registerPostSync() {
@@ -13,12 +14,7 @@ func (s *Server) registerPostSync() {
 		attrs := data.Attrs
 		var env []string
 		for k, v := range attrs {
-			switch v.(type) {
-			case string:
-				env = append(env, fmt.Sprintf("%s=%s", k, v))
-			case int:
-				env = append(env, fmt.Sprintf("%s=%d", k, v))
-			}
+			env = append(env, fmt.Sprintf("%s=%v", k, v))
 		}
 		id := attrs["ID"].(string)
 		name := attrs["Name"].(string)
@@ -31,7 +27,9 @@ func (s *Server) registerPostSync() {
 			prog := exec.Command("sh", "-c", cmd)
 			prog.Env = env
 			if err := prog.Run(); err != nil {
-				s.logger.Error(err.Error())
+				s.logger.WithFields(logrus.Fields{
+					"command": cmd,
+				}).Errorln(err)
 			}
 		}
 	})

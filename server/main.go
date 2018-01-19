@@ -111,9 +111,6 @@ func NewWithConfig(cfg Config) (*Server, error) {
 		s.c.CleanImages()
 	})
 
-	s.e.GET("/", func(c echo.Context) error {
-		return c.String(200, "Hello World!")
-	})
 	g := s.e.Group("/api/v1/")
 	s.registerAPIs(g)
 
@@ -134,7 +131,7 @@ func (s *Server) schedRepos() {
 	s.logger.Infof("Scheduling %d repositories", len(repos))
 	for _, r := range repos {
 		if err := s.cron.AddJob(r.Name, r.Interval, s.newJob(&r)); err != nil {
-			s.logger.Error(err.Error())
+			s.logger.Errorln(err)
 		}
 	}
 }
@@ -151,10 +148,11 @@ func (s *Server) newJob(r *core.Repository) cron.FuncJob {
 			MountDir:   !IsTest,
 		})
 		if err != nil {
-			s.logger.Error(err.Error())
+			s.logger.Errorln(err)
+			return
 		}
 		if err := s.c.WaitForSync(*ct, r.Retry); err != nil {
-			s.logger.Error(err.Error())
+			s.logger.Errorln(err)
 		}
 	}
 }
