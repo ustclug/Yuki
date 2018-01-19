@@ -2,7 +2,8 @@ package cron
 
 import (
 	"sync"
-	"gopkg.in/robfig/cron.v2"
+
+	"gopkg.in/knight42/cron.v3"
 )
 
 type scheduledJobs struct {
