@@ -132,13 +132,13 @@ func (s *Server) schedRepos() {
 	repos := s.c.ListRepositories(nil, nil)
 	s.logger.Infof("Scheduling %d repositories", len(repos))
 	for _, r := range repos {
-		if err := s.cron.AddJob(r.Name, r.Interval, s.newJob(&r)); err != nil {
+		if err := s.cron.AddJob(r.Name, r.Interval, s.newJob(r)); err != nil {
 			s.logger.Errorln(err)
 		}
 	}
 }
 
-func (s *Server) newJob(r *core.Repository) cron.FuncJob {
+func (s *Server) newJob(r core.Repository) cron.FuncJob {
 	return func() {
 		name := r.Name
 		s.logger.Infof("Syncing %s", name)

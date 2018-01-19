@@ -230,7 +230,7 @@ func (s *Server) updateRepo(c echo.Context) error {
 	}
 	r, _ := s.c.GetRepository(name)
 	s.logger.Infof("Rescheduled %s", name)
-	if err := s.cron.AddJob(r.Name, r.Interval, s.newJob(r)); err != nil {
+	if err := s.cron.AddJob(r.Name, r.Interval, s.newJob(*r)); err != nil {
 		s.logger.Errorln(err)
 	}
 	return c.NoContent(http.StatusNoContent)
