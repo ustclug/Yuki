@@ -6,44 +6,20 @@ import (
 	"gopkg.in/knight42/cron.v3"
 )
 
-type scheduledJobs struct {
-	sync.RWMutex
-	items map[string]cron.EntryID
-}
 type Cron struct {
 	*cron.Cron
 }
+
 type FuncJob cron.FuncJob
 
-var ScheduledJobs scheduledJobs
+var scheduledJobs sync.Map
 
 func init() {
-	ScheduledJobs = scheduledJobs{
-		items: make(map[string]cron.EntryID),
-	}
+	scheduledJobs = sync.Map{}
 }
 
 func Parse(spec string) (cron.Schedule, error) {
 	return cron.Parse(spec)
-}
-
-func (jobs *scheduledJobs) Get(name string) (cron.EntryID, bool) {
-	jobs.RLock()
-	defer jobs.RUnlock()
-	id, ok := jobs.items[name]
-	return id, ok
-}
-
-func (jobs *scheduledJobs) Remove(name string) {
-	jobs.Lock()
-	defer jobs.Unlock()
-	delete(jobs.items, name)
-}
-
-func (jobs *scheduledJobs) Set(name string, id cron.EntryID) {
-	jobs.Lock()
-	defer jobs.Unlock()
-	jobs.items[name] = id
 }
 
 func New() *Cron {
@@ -58,13 +34,13 @@ func (c *Cron) AddJob(name, spec string, cmd FuncJob) error {
 	if err != nil {
 		return err
 	}
-	ScheduledJobs.Set(name, id)
+	scheduledJobs.Store(name, id)
 	return nil
 }
 
 func (c *Cron) RemoveJob(name string) {
-	if id, ok := ScheduledJobs.Get(name); ok {
-		c.Cron.Remove(id)
-		ScheduledJobs.Remove(name)
+	if v, ok := scheduledJobs.Load(name); ok {
+		c.Cron.Remove(v.(cron.EntryID))
+		scheduledJobs.Delete(name)
 	}
 }
