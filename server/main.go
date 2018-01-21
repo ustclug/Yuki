@@ -20,6 +20,7 @@ type Server struct {
 	c      *core.Core
 	config *Config
 	cron   *cron.Cron
+	quit   chan struct{}
 	logger *log.Logger
 }
 
@@ -80,6 +81,7 @@ func NewWithConfig(cfg Config) (*Server, error) {
 		cron:   cron.New(),
 		config: &cfg,
 		logger: log.New(),
+		quit:   make(chan struct{}),
 	}
 	s.e.Validator = &myValidator{NewValidator()}
 
@@ -156,26 +158,59 @@ func (s *Server) newJob(r core.Repository) cron.FuncJob {
 			s.logger.Errorln(err)
 			return
 		}
-		if err := s.c.WaitForSync(*ct, r.Retry); err != nil {
+		if err := s.c.WaitForSync(*ct); err != nil {
 			s.logger.Errorln(err)
 		}
 	}
 }
 
-func (s *Server) Start() error {
+func (s *Server) Start() {
 	s.logger.Infof("Listening at %s", s.config.ListenAddr)
 	go func() {
 		if err := s.e.Start(s.config.ListenAddr); err != nil {
-			s.logger.Infof("Shutting down the server: %v", err)
+			s.logger.Warnf("Shutting down the server: %v", err)
+		}
+	}()
+
+	go func() {
+		c := time.Tick(time.Second * 20)
+		fail := 0
+		const threshold int = 3
+		for range c {
+			if err := s.c.DB.Session.Ping(); err != nil {
+				fail++
+				if fail > threshold {
+					s.logger.Errorln("Failed to connect to MongoDB, exit...")
+					s.quit <- struct{}{}
+					return
+				}
+				s.logger.Warnf("Failed to connect to MongoDB: %d", fail)
+				s.c.DB.Session.Refresh()
+				s.logger.Warnln("MongoDB session refreshed")
+			} else {
+				fail = 0
+			}
 		}
 	}()
 
 	// Wait for interrupt signal to gracefully shutdown the server with
 	// a timeout of 10 seconds.
-	quit := make(chan os.Signal)
-	signal.Notify(quit, os.Interrupt)
-	<-quit
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	signals := make(chan os.Signal)
+	signal.Notify(signals, os.Interrupt)
+
+	select {
+	case <-signals:
+	case <-s.quit:
+	}
+	s.teardown()
+}
+
+func (s *Server) teardown() {
+	//s.auth.Cleanup()
+	s.c.DB.Session.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
-	return s.e.Shutdown(ctx)
+	if err := s.e.Shutdown(ctx); err != nil {
+		s.logger.Errorln(err)
+	}
 }

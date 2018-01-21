@@ -140,7 +140,7 @@ func (c *Core) WaitRunningContainers() {
 			c.WaitForSync(Container{
 				ID:     ct.ID,
 				Labels: ct.Labels,
-			}, 0)
+			})
 		}(ct)
 	}
 }
@@ -188,6 +188,7 @@ func (c *Core) Sync(opts SyncOptions) (*Container, error) {
 	envs.Set("REPO", r.Name)
 	envs.Set("OWNER", r.User)
 	envs.Set("BIND_ADDRESS", r.BindIP)
+	envs.SetInt("RETRY", r.Retry)
 	envs.SetInt("LOG_ROTATE_CYCLE", int(r.LogRotCycle))
 	if opts.Debug {
 		envs.Set("DEBUG", "true")
@@ -248,28 +249,11 @@ func (c *Core) Sync(opts SyncOptions) (*Container, error) {
 	return &Container{ct.ID, labels}, nil
 }
 
-// WaitForSync blocks until the container really stops. It may restart the container multiple times depending on the `retry` param.
-func (c *Core) WaitForSync(ct Container, retry int) error {
+// WaitForSync blocks until the container stops and emit the `SyncEnd` event.
+func (c *Core) WaitForSync(ct Container) error {
 	code, err := c.Docker.WaitContainer(ct.ID)
 	if err != nil {
 		return err
-	}
-	if code != 0 {
-		for i := 0; i < retry; i++ {
-			err = c.Docker.StartContainer(ct.ID, nil)
-			if err != nil {
-				return err
-			}
-
-			code, err = c.Docker.WaitContainer(ct.ID)
-			if err != nil {
-				return err
-			}
-
-			if code == 0 {
-				break
-			}
-		}
 	}
 
 	name, ok := ct.Labels["org.ustcmirror.name"]

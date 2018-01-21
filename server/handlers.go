@@ -305,7 +305,7 @@ func (s *Server) sync(c echo.Context) error {
 	}
 
 	go func() {
-		s.c.WaitForSync(*ct, 0)
+		s.c.WaitForSync(*ct)
 	}()
 
 	return c.NoContent(http.StatusCreated)

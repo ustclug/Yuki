@@ -43,9 +43,6 @@ func NewWithConfig(cfg Config) (*Core, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to the MongoDB at %s", cfg.DbURL)
 	}
-	if err = sess.Ping(); err != nil {
-		return nil, err
-	}
 	sess.SetMode(mgo.Monotonic, true)
 
 	c := Core{
