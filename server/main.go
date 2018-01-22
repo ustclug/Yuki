@@ -177,7 +177,7 @@ func (s *Server) Start() {
 		fail := 0
 		const threshold int = 3
 		for range c {
-			if err := s.c.DB.Session.Ping(); err != nil {
+			if err := s.c.MgoSess.Ping(); err != nil {
 				fail++
 				if fail > threshold {
 					s.logger.Errorln("Failed to connect to MongoDB, exit...")
@@ -185,9 +185,8 @@ func (s *Server) Start() {
 					return
 				}
 				s.logger.Warnf("Failed to connect to MongoDB: %d", fail)
-				s.c.DB.Session.Refresh()
-				s.logger.Warnln("MongoDB session refreshed")
-			} else {
+			} else if fail != 0 {
+				s.logger.Warnln("Reconnected to MongoDB")
 				fail = 0
 			}
 		}
@@ -207,7 +206,7 @@ func (s *Server) Start() {
 
 func (s *Server) teardown() {
 	//s.auth.Cleanup()
-	s.c.DB.Session.Close()
+	s.c.MgoSess.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 	if err := s.e.Shutdown(ctx); err != nil {

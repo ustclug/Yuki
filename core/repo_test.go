@@ -1,9 +1,10 @@
 package core
 
 import (
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/mgo.v2/bson"
 	"testing"
+
+	"github.com/globalsign/mgo/bson"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestAddRepository(t *testing.T) {

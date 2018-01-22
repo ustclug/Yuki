@@ -3,7 +3,7 @@ package core
 import (
 	"time"
 
-	"gopkg.in/mgo.v2/bson"
+	"github.com/globalsign/mgo/bson"
 )
 
 // M is an alias for a map[string]string map.
@@ -27,8 +27,10 @@ type Repository struct {
 
 // GetRepository returns the Repository with the given name.
 func (c *Core) GetRepository(name string) (*Repository, error) {
+	sess := c.MgoSess.Copy()
+	defer sess.Close()
 	r := new(Repository)
-	if err := c.repoColl.FindId(name).One(r); err != nil {
+	if err := c.repoColl.With(sess).FindId(name).One(r); err != nil {
 		return nil, err
 	}
 	return r, nil
@@ -36,6 +38,8 @@ func (c *Core) GetRepository(name string) (*Repository, error) {
 
 // AddRepository creates one or more Repositories.
 func (c *Core) AddRepository(repos ...*Repository) error {
+	sess := c.MgoSess.Copy()
+	defer sess.Close()
 	now := time.Now().Unix()
 	rs := make([]interface{}, len(repos))
 	for i, r := range repos {
@@ -43,12 +47,14 @@ func (c *Core) AddRepository(repos ...*Repository) error {
 		r.UpdatedAt = now
 		rs[i] = r
 	}
-	return c.repoColl.Insert(rs...)
+	return c.repoColl.With(sess).Insert(rs...)
 }
 
 // UpdateRepository updates the syncing options of the given Repository.
 func (c *Core) UpdateRepository(name string, update bson.M) error {
 	var set bson.M
+	sess := c.MgoSess.Copy()
+	defer sess.Close()
 	switch v := update["$set"].(type) {
 	case map[string]interface{}:
 		set = bson.M(v)
@@ -58,17 +64,21 @@ func (c *Core) UpdateRepository(name string, update bson.M) error {
 		set = bson.M{}
 	}
 	set["updatedAt"] = time.Now().Unix()
-	return c.repoColl.UpdateId(name, update)
+	return c.repoColl.With(sess).UpdateId(name, update)
 }
 
 // RemoveRepository removes the Repository with given name.
 func (c *Core) RemoveRepository(name string) error {
-	return c.repoColl.RemoveId(name)
+	sess := c.MgoSess.Copy()
+	defer sess.Close()
+	return c.repoColl.With(sess).RemoveId(name)
 }
 
 // ListRepositories returns all Repositories.
 func (c *Core) ListRepositories(query, proj bson.M) []Repository {
+	sess := c.MgoSess.Copy()
+	defer sess.Close()
 	result := []Repository{}
-	c.repoColl.Find(query).Select(proj).Sort("_id").All(&result)
+	c.repoColl.With(sess).Find(query).Select(proj).Sort("_id").All(&result)
 	return result
 }

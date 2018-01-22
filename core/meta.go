@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"gopkg.in/mgo.v2/bson"
+	"github.com/globalsign/mgo/bson"
 )
 
 var (
@@ -89,7 +89,9 @@ func (c *Core) transformMeta(m *Meta) {
 // GetMeta returns the metadata of the given Repository.
 func (c *Core) GetMeta(name string) (*Meta, error) {
 	m := new(Meta)
-	if err := c.metaColl.FindId(name).One(m); err != nil {
+	sess := c.MgoSess.Copy()
+	defer sess.Close()
+	if err := c.metaColl.With(sess).FindId(name).One(m); err != nil {
 		return nil, err
 	}
 	c.transformMeta(m)
@@ -104,17 +106,21 @@ func (c *Core) AddMeta(ms ...*Meta) error {
 		m.CreatedAt = now
 		docs[i] = m
 	}
-	return c.metaColl.Insert(docs...)
+	sess := c.MgoSess.Copy()
+	defer sess.Close()
+	return c.metaColl.With(sess).Insert(docs...)
 }
 
 // InitMetas creates metadata for each Repository.
 func (c *Core) InitMetas() {
 	repos := c.ListRepositories(nil, nil)
+	sess := c.MgoSess.Copy()
+	defer sess.Close()
 	now := time.Now().Unix()
 	for _, r := range repos {
 		go func(id, dir string) {
 			size := c.fs.GetSize(dir)
-			c.metaColl.UpsertId(id, bson.M{
+			c.metaColl.With(sess).UpsertId(id, bson.M{
 				"$set": bson.M{
 					"size": size,
 				},
@@ -138,7 +144,9 @@ func (c *Core) UpsertRepoMeta(name, dir string, code int) error {
 	if code == 0 {
 		set["lastSuccess"] = now
 	}
-	_, err := c.metaColl.UpsertId(name, bson.M{
+	sess := c.MgoSess.Copy()
+	defer sess.Close()
+	_, err := c.metaColl.With(sess).UpsertId(name, bson.M{
 		"$set": set,
 		"$setOnInsert": bson.M{
 			"createdAt": now,
@@ -149,14 +157,18 @@ func (c *Core) UpsertRepoMeta(name, dir string, code int) error {
 
 // RemoveMeta removes the metadata of the given Repository.
 func (c *Core) RemoveMeta(name string) error {
-	return c.metaColl.RemoveId(name)
+	sess := c.MgoSess.Copy()
+	defer sess.Close()
+	return c.metaColl.With(sess).RemoveId(name)
 }
 
 // ListMetas returns the list of metadata of all Repositories.
 func (c *Core) ListMetas(query, proj bson.M) []Meta {
+	sess := c.MgoSess.Copy()
+	defer sess.Close()
 	result := []Meta{}
 	m := Meta{}
-	iter := c.metaColl.Find(query).Select(proj).Sort("_id").Iter()
+	iter := c.metaColl.With(sess).Find(query).Select(proj).Sort("_id").Iter()
 	defer iter.Close()
 	for iter.Next(&m) {
 		c.transformMeta(&m)

@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/globalsign/mgo"
 	"github.com/knight42/Yuki/fs"
-	"gopkg.in/mgo.v2"
 )
 
 // Config contains a list of options used when creating `Core`.
@@ -21,8 +21,8 @@ type Config struct {
 
 // Core is the basic type of this package. It provides methods for interaction with MongoDB and Docker API.
 type Core struct {
-	DB     *mgo.Database
-	Docker *docker.Client
+	Docker  *docker.Client
+	MgoSess *mgo.Session
 
 	fs       fs.GetSizer
 	ctx      context.Context
@@ -45,9 +45,10 @@ func NewWithConfig(cfg Config) (*Core, error) {
 	}
 	sess.SetMode(mgo.Monotonic, true)
 
+	db := sess.DB(cfg.DbName)
 	c := Core{
-		DB:     sess.DB(cfg.DbName),
-		Docker: d,
+		Docker:  d,
+		MgoSess: sess,
 
 		ctx: context.Background(),
 	}
@@ -61,8 +62,8 @@ func NewWithConfig(cfg Config) (*Core, error) {
 		c.fs = fs.New(fs.DEFAULT)
 	}
 
-	c.repoColl = c.DB.C("repositories")
-	c.metaColl = c.DB.C("metas")
-	c.userColl = c.DB.C("users")
+	c.repoColl = db.C("repositories")
+	c.metaColl = db.C("metas")
+	c.userColl = db.C("users")
 	return &c, nil
 }

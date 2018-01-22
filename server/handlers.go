@@ -15,12 +15,12 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 	"github.com/knight42/Yuki/core"
 	"github.com/knight42/Yuki/queue"
 	"github.com/labstack/echo"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func badRequest(msg interface{}) error {

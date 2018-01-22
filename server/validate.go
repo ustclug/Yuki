@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/globalsign/mgo"
 	"github.com/knight42/Yuki/cron"
 	"gopkg.in/go-playground/validator.v9"
-	"gopkg.in/mgo.v2"
 )
 
 func isNum(k reflect.Kind) bool {
