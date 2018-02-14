@@ -4,7 +4,6 @@ cd "$HERE/../" || exit 1
 
 set -ex
 
-pkgs=$(go list ./... | grep -v /vendor/)
-go test $pkgs
-go vet $pkgs
+go test ./...
+go vet ./...
 golint -set_exit_status core queue
