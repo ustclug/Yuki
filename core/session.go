@@ -40,11 +40,7 @@ func (c *Core) CreateSession(name string) (token string, err error) {
 func (c *Core) LookupToken(token string) error {
 	sess := c.MgoSess.Copy()
 	defer sess.Close()
-	s := new(Session)
-	if err := c.sessColl.With(sess).FindId(token).One(&s); err != nil {
-		return err
-	}
-	return nil
+	return c.sessColl.With(sess).FindId(token).One(&Session{})
 }
 
 // RemoveSession removes the session containing the given token.
