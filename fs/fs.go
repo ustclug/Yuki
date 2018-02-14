@@ -70,7 +70,7 @@ func (f *xfs) GetSize(d string) int64 {
 	}
 
 	var buf bytes.Buffer
-	cmd := exec.Command("sudo", "xfs_quota", "-c", fmt.Sprintf("quota -pN %s", d))
+	cmd := exec.Command("sudo", "-n", "xfs_quota", "-c", fmt.Sprintf("quota -pN %s", d))
 	cmd.Stdout = &buf
 	if err := cmd.Run(); err != nil {
 		return -1
