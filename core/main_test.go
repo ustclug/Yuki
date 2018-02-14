@@ -27,7 +27,8 @@ func TestMain(m *testing.M) {
 		log.Fatal(err)
 	}
 	defer os.RemoveAll(logDir)
-	c.repoColl.RemoveAll(nil)
-	c.metaColl.RemoveAll(nil)
+	c.repoColl.DropCollection()
+	c.metaColl.DropCollection()
+	c.sessColl.DropCollection()
 	os.Exit(m.Run())
 }
