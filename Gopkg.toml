@@ -1,6 +1,6 @@
 # Gopkg.toml example
 #
-# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
+# Refer to https://golang.github.io/dep/docs/Gopkg.toml.html
 # for detailed Gopkg.toml documentation.
 #
 # required = ["github.com/user/thing/cmd/thing"]
@@ -16,8 +16,13 @@
 #   source = "github.com/myfork/project2"
 #
 # [[override]]
-#  name = "github.com/x/y"
-#  version = "2.4.0"
+#   name = "github.com/x/y"
+#   version = "2.4.0"
+#
+# [prune]
+#   non-go = false
+#   go-tests = true
+#   unused-packages = true
 
 
 [[constraint]]
@@ -25,8 +30,20 @@
   version = "1.1.0"
 
 [[constraint]]
+  branch = "master"
+  name = "github.com/globalsign/mgo"
+
+[[constraint]]
+  name = "github.com/gorilla/sessions"
+  version = "1.1.0"
+
+[[constraint]]
   name = "github.com/labstack/echo"
   version = "3.2.6"
+
+[[constraint]]
+  name = "github.com/labstack/echo-contrib"
+  version = "0.4.1"
 
 [[constraint]]
   name = "github.com/sirupsen/logrus"
@@ -38,16 +55,20 @@
 
 [[constraint]]
   name = "github.com/stretchr/testify"
-  version = "1.2.0"
+  version = "1.2.1"
 
 [[constraint]]
   name = "gopkg.in/go-playground/validator.v9"
-  version = "9.9.2"
+  version = "9.9.4"
 
 [[constraint]]
-  branch = "v2"
-  name = "gopkg.in/mgo.v2"
+  branch = "v3"
+  name = "gopkg.in/knight42/cron.v3"
 
 [[constraint]]
-  branch = "v2"
-  name = "gopkg.in/robfig/cron.v2"
+  name = "gopkg.in/ldap.v2"
+  version = "2.5.1"
+
+[prune]
+  go-tests = true
+  unused-packages = true
