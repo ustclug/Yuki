@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/gorilla/sessions"
-	"github.com/knight42/Yuki/auth"
 	"github.com/knight42/Yuki/core"
 	"github.com/knight42/Yuki/cron"
 	"github.com/labstack/echo"
@@ -21,7 +20,6 @@ import (
 type Server struct {
 	e      *echo.Echo
 	c      *core.Core
-	auth   auth.Authenticator
 	config *Config
 	cron   *cron.Cron
 	quit   chan struct{}
@@ -212,7 +210,7 @@ func (s *Server) Start() {
 }
 
 func (s *Server) teardown() {
-	s.auth.Cleanup()
+	s.config.Authenticator.Cleanup()
 	s.c.MgoSess.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
