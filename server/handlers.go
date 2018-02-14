@@ -17,15 +17,25 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
+	"github.com/gorilla/sessions"
+	"github.com/knight42/Yuki/auth"
 	"github.com/knight42/Yuki/core"
 	"github.com/knight42/Yuki/queue"
 	"github.com/labstack/echo"
-	log "github.com/sirupsen/logrus"
+	"github.com/labstack/echo-contrib/session"
+	"github.com/sirupsen/logrus"
 )
 
 func badRequest(msg interface{}) error {
 	return &echo.HTTPError{
 		Code:    http.StatusBadRequest,
+		Message: msg,
+	}
+}
+
+func unauthorized(msg interface{}) error {
+	return &echo.HTTPError{
+		Code:    http.StatusUnauthorized,
 		Message: msg,
 	}
 }
@@ -228,7 +238,10 @@ func (s *Server) updateRepo(c echo.Context) error {
 	if err := s.c.UpdateRepository(name, t); err != nil {
 		return err
 	}
-	r, _ := s.c.GetRepository(name)
+	r, err := s.c.GetRepository(name)
+	if err != nil {
+		return err
+	}
 	s.logger.Infof("Rescheduled %s", name)
 	if err := s.cron.AddJob(r.Name, r.Interval, s.newJob(*r)); err != nil {
 		s.logger.Errorln(err)
@@ -386,7 +399,70 @@ func (s *Server) importConfig(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
+func fromBrowser(c echo.Context) bool {
+	return strings.Contains(c.Request().UserAgent(), "Mozilla")
+}
+
+func (s *Server) createSession(c echo.Context) error {
+	name := c.Get("user").(string)
+	s.logger.WithField("name", name).Infoln("login")
+	if fromBrowser(c) {
+		// web browser
+		sess, _ := session.Get("session", c)
+		sess.Options = &sessions.Options{
+			Domain:   s.config.CookieDomain,
+			Path:     "/api/v1/",
+			HttpOnly: true,
+			MaxAge:   int(s.config.SessionAge / time.Second),
+			Secure:   s.config.SecureCookie,
+		}
+		now := time.Now()
+		sess.Values["expireAt"] = now.Add(s.config.SessionAge).Unix()
+		sess.Values["user"] = name
+		sess.Save(c.Request(), c.Response())
+		return c.NoContent(http.StatusCreated)
+	} else {
+		type token struct {
+			Token string `json:"token"`
+		}
+		tok, err := s.c.CreateSession(name)
+		if err != nil {
+			return err
+		}
+		return c.JSON(http.StatusCreated, token{tok})
+	}
+}
+
+func (s *Server) removeSession(c echo.Context) error {
+	if fromBrowser(c) {
+		sess, _ := session.Get("session", c)
+		sess.Options = &sessions.Options{
+			Secure:   s.config.SecureCookie,
+			Domain:   s.config.CookieDomain,
+			Path:     "/api/v1/",
+			HttpOnly: true,
+			MaxAge:   -1,
+		}
+		sess.Save(c.Request(), c.Response())
+	} else {
+		tok := c.Get("user").(string)
+		if err := s.c.RemoveSession(tok); err != nil {
+			return err
+		}
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
 func (s *Server) registerAPIs(g *echo.Group) {
+	cfg := auth.Config{
+		Validator:   s.config.Authenticator.Authenticate,
+		LookupToken: s.c.LookupToken,
+	}
+
+	g.GET("metas", s.listMetas)
+	g.GET("metas/:name", s.getMeta)
+
+	g.Use(auth.Middleware(cfg))
 	g.GET("repositories", s.listRepos)
 	g.POST("repositories/:name", s.addRepo)
 	g.GET("repositories/:name", s.getRepo)
@@ -400,11 +476,11 @@ func (s *Server) registerAPIs(g *echo.Group) {
 	g.DELETE("containers/:name", s.removeCt)
 	g.GET("containers/:name/logs", s.getCtLogs)
 
-	g.GET("metas", s.listMetas)
-	g.GET("metas/:name", s.getMeta)
-
 	g.GET("config", s.exportConfig)
 	g.POST("config", s.importConfig)
+
+	g.POST("sessions", s.createSession)
+	g.DELETE("sessions", s.removeSession)
 }
 
 func (s *Server) HTTPErrorHandler(err error, c echo.Context) {
@@ -428,7 +504,7 @@ func (s *Server) HTTPErrorHandler(err error, c echo.Context) {
 	}
 	respMsg = echo.Map{"message": msg}
 
-	s.logger.WithFields(log.Fields{
+	s.logger.WithFields(logrus.Fields{
 		"remote_ip": c.RealIP(),
 		"status":    code,
 		"method":    c.Request().Method,
@@ -443,7 +519,7 @@ func (s *Server) HTTPErrorHandler(err error, c echo.Context) {
 			err = c.JSON(code, respMsg)
 		}
 		if err != nil {
-			s.logger.WithFields(log.Fields{
+			s.logger.WithFields(logrus.Fields{
 				"method": c.Request().Method,
 				"uri":    c.Request().RequestURI,
 			}).Errorln(err)

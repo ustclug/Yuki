@@ -8,20 +8,24 @@ import (
 	"path"
 	"time"
 
+	"github.com/gorilla/sessions"
+	"github.com/knight42/Yuki/auth"
 	"github.com/knight42/Yuki/core"
 	"github.com/knight42/Yuki/cron"
 	"github.com/labstack/echo"
+	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/middleware"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 type Server struct {
 	e      *echo.Echo
 	c      *core.Core
+	auth   auth.Authenticator
 	config *Config
 	cron   *cron.Cron
 	quit   chan struct{}
-	logger *log.Logger
+	logger *logrus.Logger
 }
 
 func New() (*Server, error) {
@@ -29,18 +33,18 @@ func New() (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewWithConfig(*cfg)
+	return NewWithConfig(cfg)
 }
 
-func NewWithConfig(cfg Config) (*Server, error) {
+func NewWithConfig(cfg *Config) (*Server, error) {
 	if cfg.DbURL == "" {
 		cfg.DbURL = DefaultServerConfig.DbURL
 	}
 	if cfg.DbName == "" {
 		cfg.DbName = DefaultServerConfig.DbName
 	}
-	if cfg.FileSystem == "" {
-		cfg.FileSystem = DefaultServerConfig.FileSystem
+	if cfg.SessionAge == 0 {
+		cfg.SessionAge = DefaultServerConfig.SessionAge
 	}
 	if cfg.DockerEndpoint == "" {
 		cfg.DockerEndpoint = DefaultServerConfig.DockerEndpoint
@@ -69,6 +73,8 @@ func NewWithConfig(cfg Config) (*Server, error) {
 		Debug:          cfg.Debug,
 		DbURL:          cfg.DbURL,
 		DbName:         cfg.DbName,
+		GetSizer:       cfg.GetSizer,
+		SessionAge:     cfg.SessionAge,
 		DockerEndpoint: cfg.DockerEndpoint,
 	}
 	c, err := core.NewWithConfig(coreCfg)
@@ -79,8 +85,8 @@ func NewWithConfig(cfg Config) (*Server, error) {
 		c:      c,
 		e:      echo.New(),
 		cron:   cron.New(),
-		config: &cfg,
-		logger: log.New(),
+		config: cfg,
+		logger: logrus.New(),
 		quit:   make(chan struct{}),
 	}
 	s.e.Validator = &myValidator{NewValidator()}
@@ -97,7 +103,7 @@ func NewWithConfig(cfg Config) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	s.logger.Formatter = new(log.TextFormatter)
+	s.logger.Formatter = new(logrus.TextFormatter)
 	s.logger.Out = logfile
 
 	s.logger.Info("Cleaning dead containers")
@@ -116,9 +122,6 @@ func NewWithConfig(cfg Config) (*Server, error) {
 		s.c.CleanImages()
 	})
 
-	g := s.e.Group("/api/v1/")
-	s.registerAPIs(g)
-
 	// middlewares
 	secureCfg := middleware.DefaultSecureConfig
 	secureCfg.HSTSMaxAge = 31536000
@@ -129,6 +132,10 @@ func NewWithConfig(cfg Config) (*Server, error) {
 	s.e.Use(middleware.CORSWithConfig(corsCfg))
 
 	s.e.Use(middleware.BodyLimit("2M"))
+	s.e.Use(session.Middleware(sessions.NewCookieStore([]byte(s.config.CookieKey))))
+
+	g := s.e.Group("/api/v1/")
+	s.registerAPIs(g)
 
 	return &s, nil
 }
@@ -205,7 +212,7 @@ func (s *Server) Start() {
 }
 
 func (s *Server) teardown() {
-	//s.auth.Cleanup()
+	s.auth.Cleanup()
 	s.c.MgoSess.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()

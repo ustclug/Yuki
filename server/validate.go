@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -66,6 +67,15 @@ func (mv *myValidator) CheckMap(m map[string]interface{}, i interface{}) error {
 		}
 	}
 	for k, v := range m {
+		if strings.HasPrefix(k, "envs.") {
+			continue
+		}
+		if strings.HasPrefix(k, "volumes.") {
+			if reflect.ValueOf(v).Kind() != reflect.String {
+				return fmt.Errorf("not a string: %v", v)
+			}
+			continue
+		}
 		field, ok := fieldMap[k]
 		if !ok {
 			return fmt.Errorf("unexpected key: %s", k)
@@ -73,6 +83,14 @@ func (mv *myValidator) CheckMap(m map[string]interface{}, i interface{}) error {
 		expectedKind := field.Type.Kind()
 		actualKind := reflect.ValueOf(v).Kind()
 
+		// try converting string to float
+		if isNum(expectedKind) && actualKind == reflect.String {
+			s := v.(string)
+			if f, err := strconv.ParseFloat(s, 64); err == nil {
+				m[k] = f
+				continue
+			}
+		}
 		if actualKind == reflect.Float64 && isNum(expectedKind) {
 			// do nothing
 		} else if actualKind != expectedKind {

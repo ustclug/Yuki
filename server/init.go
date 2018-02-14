@@ -28,5 +28,6 @@ func init() {
 	viper.SetDefault("log_level", "info")
 	viper.SetDefault("name_prefix", "syncing-")
 	viper.SetDefault("sync_timeout", "48h")
+	viper.SetDefault("session_age", "168h") // 1 week
 	viper.SetDefault("allow_origins", []string{"*"})
 }
