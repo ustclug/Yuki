@@ -7,12 +7,12 @@ services:
 
 env:
   global:
-    - NAME=yuki DEP_VERSION=0.3.2
+    - NAME=yuki DEP_VERSION=0.4.1
   matrix:
     - GOOS=linux GOARCH=amd64
 
 go:
-  # sync.Map introduced in Go 1.9 is needed here
+  # sync.Map introduced in Go 1.9
   - 1.9.x
   - master
 
