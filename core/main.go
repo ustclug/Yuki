@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/globalsign/mgo"
@@ -15,7 +16,8 @@ type Config struct {
 	// DbURL contains username and password
 	DbURL          string
 	DbName         string
-	FileSystem     string
+	GetSizer       fs.GetSizer
+	SessionAge     time.Duration
 	DockerEndpoint string
 }
 
@@ -24,12 +26,14 @@ type Core struct {
 	Docker  *docker.Client
 	MgoSess *mgo.Session
 
-	fs       fs.GetSizer
 	ctx      context.Context
+	getSizer fs.GetSizer
 	repoColl *mgo.Collection
 	metaColl *mgo.Collection
-	userColl *mgo.Collection
+	sessColl *mgo.Collection
 }
+
+const ttlIdxName = "sessions-TTL-index-on-createAt"
 
 // NewWithConfig returns a `Core` instance with specified config.
 func NewWithConfig(cfg Config) (*Core, error) {
@@ -50,20 +54,30 @@ func NewWithConfig(cfg Config) (*Core, error) {
 		Docker:  d,
 		MgoSess: sess,
 
-		ctx: context.Background(),
-	}
-
-	switch cfg.FileSystem {
-	case "xfs":
-		c.fs = fs.New(fs.XFS)
-	case "zfs":
-		c.fs = fs.New(fs.ZFS)
-	default:
-		c.fs = fs.New(fs.DEFAULT)
+		ctx:      context.Background(),
+		getSizer: cfg.GetSizer,
 	}
 
 	c.repoColl = db.C("repositories")
 	c.metaColl = db.C("metas")
-	c.userColl = db.C("users")
+	c.sessColl = db.C("sessions")
+
+	if err = ensureTTLIndex(c.sessColl, cfg.SessionAge); err != nil {
+		if err = c.sessColl.DropIndexName(ttlIdxName); err != nil {
+			return nil, err
+		}
+		if err = ensureTTLIndex(c.sessColl, cfg.SessionAge); err != nil {
+			return nil, err
+		}
+	}
+
 	return &c, nil
+}
+
+func ensureTTLIndex(coll *mgo.Collection, age time.Duration) error {
+	return coll.EnsureIndex(mgo.Index{
+		Key:         []string{"createdAt"},
+		Name:        ttlIdxName,
+		ExpireAfter: age,
+	})
 }

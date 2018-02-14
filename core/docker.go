@@ -81,7 +81,7 @@ func (c *Core) CleanImages() {
 		Context: ctx,
 		Filters: map[string][]string{
 			"dangling": {"true"},
-			"label":    {"ustcmirror.images"},
+			"label":    {"org.ustcmirror.images=true"},
 		},
 	})
 	if err != nil {

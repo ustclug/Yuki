@@ -114,13 +114,11 @@ func (c *Core) AddMeta(ms ...*Meta) error {
 // InitMetas creates metadata for each Repository.
 func (c *Core) InitMetas() {
 	repos := c.ListRepositories(nil, nil)
-	sess := c.MgoSess.Copy()
-	defer sess.Close()
 	now := time.Now().Unix()
 	for _, r := range repos {
 		go func(id, dir string) {
-			size := c.fs.GetSize(dir)
-			c.metaColl.With(sess).UpsertId(id, bson.M{
+			size := c.getSizer.GetSize(dir)
+			c.metaColl.UpsertId(id, bson.M{
 				"$set": bson.M{
 					"size": size,
 				},
@@ -139,7 +137,7 @@ func (c *Core) UpsertRepoMeta(name, dir string, code int) error {
 	set := bson.M{
 		"exitCode":  code,
 		"updatedAt": now,
-		"size":      c.fs.GetSize(dir),
+		"size":      c.getSizer.GetSize(dir),
 	}
 	if code == 0 {
 		set["lastSuccess"] = now
