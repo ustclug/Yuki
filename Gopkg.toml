@@ -26,8 +26,8 @@
 
 
 [[constraint]]
+  branch = "master"
   name = "github.com/fsouza/go-dockerclient"
-  version = "1.1.0"
 
 [[constraint]]
   branch = "master"

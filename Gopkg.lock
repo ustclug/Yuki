@@ -26,7 +26,7 @@
   branch = "master"
   name = "github.com/containerd/continuity"
   packages = ["pathdriver"]
-  revision = "3eb6c382b26d2cc63a4a8c0d2355f23d90efe83b"
+  revision = "d8fb8589b0e8e85b8c8bbaa8840226d0dfeb7371"
 
 [[projects]]
   name = "github.com/davecgh/go-spew"
@@ -41,6 +41,7 @@
   version = "v3.1.0"
 
 [[projects]]
+  branch = "master"
   name = "github.com/docker/docker"
   packages = [
     "api/types",
@@ -69,7 +70,7 @@
     "pkg/term",
     "pkg/term/windows"
   ]
-  revision = "fe8aac6f5ae413a967adb0adad0b54abdfb825c4"
+  revision = "c5e7537d2305c1855f95422f08ca844d05a17aa2"
 
 [[projects]]
   name = "github.com/docker/go-connections"
@@ -90,10 +91,10 @@
   version = "v1.4.7"
 
 [[projects]]
+  branch = "master"
   name = "github.com/fsouza/go-dockerclient"
   packages = ["."]
-  revision = "2ff310040c161b75fa19fb9b287a90a6e03c0012"
-  version = "1.1"
+  revision = "bddface80b57005dcc94ced6ac0040e2382af43f"
 
 [[projects]]
   branch = "master"
@@ -191,8 +192,8 @@
 [[projects]]
   name = "github.com/magiconair/properties"
   packages = ["."]
-  revision = "a8e9fa9ffe534206df1daaa7e9d5e82ca23db7e0"
-  version = "v1.7.5"
+  revision = "c3beff4c2358b44d0493c7dda585e7db7ff28ae6"
+  version = "v1.7.6"
 
 [[projects]]
   name = "github.com/mattn/go-colorable"
@@ -272,8 +273,8 @@
 [[projects]]
   name = "github.com/spf13/cast"
   packages = ["."]
-  revision = "acbeb36b902d72a7a4c18e8f3241075e7ab763e4"
-  version = "v1.1.0"
+  revision = "8965335b8c7107321228e3e3702cab9832751bac"
+  version = "v1.2.0"
 
 [[projects]]
   branch = "master"
@@ -328,7 +329,7 @@
     "context",
     "context/ctxhttp"
   ]
-  revision = "f5dfe339be1d06f81b22525fe34671ee7d2c8904"
+  revision = "136a25c244d3019482a795d728110278d6ba09a4"
 
 [[projects]]
   branch = "master"
@@ -361,8 +362,8 @@
 [[projects]]
   name = "gopkg.in/go-playground/validator.v9"
   packages = ["."]
-  revision = "3620d3c0694119b61c72071ff5a05a976e97b05a"
-  version = "v9.9.4"
+  revision = "535f85221eb67ab842438877b22cac6274380cf2"
+  version = "v9.10.0"
 
 [[projects]]
   branch = "v3"
@@ -385,6 +386,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "5bb1a394c6d55424aea9b59959970d9fed85b12893418fbfe6624d39370de903"
+  inputs-digest = "20192b2013d821d0e301b8d64880bfe53f7691561f327c039502397a579988f3"
   solver-name = "gps-cdcl"
   solver-version = 1
