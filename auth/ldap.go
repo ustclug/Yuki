@@ -16,15 +16,15 @@ type LdapAuthenticator struct {
 }
 
 type LdapAuthConfig struct {
-	Attributes         []string
-	Base               string
-	GroupFilter        string // e.g. "(memberUid=%s)"
-	Host               string
-	UserFilter         string // e.g. "(uid=%s)"
-	Port               int
-	InsecureSkipVerify bool
-	UseSSL             bool
-	CACertificates     []string
+	Attributes         []string `mapstructure:"attributes"`
+	Base               string   `mapstructure:"base"`
+	GroupFilter        string   `mapstructure:"group_filter"` // e.g. "(memberUid=%s)"
+	Host               string   `mapstructure:"host"`
+	UserFilter         string   `mapstructure:"user_filter"` // e.g. "(uid=%s)"
+	Port               int      `mapstructure:"port"`
+	InsecureSkipVerify bool     `mapstructure:"insecure_skip_verify"`
+	UseSSL             bool     `mapstructure:"use_ssl"`
+	CACertificates     []string `mapstructure:"ca_certificates"`
 	//ClientCertificates []tls.Certificate // Adding client certificates
 }
 
@@ -84,7 +84,8 @@ func (c *LdapAuthenticator) Authenticate(name, passwd string) error {
 	// Search for the given username
 	searchRequest := ldap.NewSearchRequest(
 		c.Config.Base,
-		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
+		// set timeLimit to 10 secs
+		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 10, false,
 		fmt.Sprintf(c.Config.UserFilter, name),
 		attributes,
 		nil,
