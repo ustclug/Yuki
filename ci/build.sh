@@ -9,7 +9,7 @@ if [[ -z $TRAVIS_TAG ]]; then
 fi
 
 HERE=$(pwd)
-NAME=${NAME:-yuki}
+NAME=${NAME:-yukid}
 
 export GOOS=${GOOS:-$(go env GOOS)} GOARCH=${GOARCH:-$(go env GOARCH)}
 
