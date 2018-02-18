@@ -35,23 +35,35 @@ type SyncOptions struct {
 
 // LogsOptions provides params to the GetContainerLogs function.
 type LogsOptions struct {
-	ID     string
-	Stream io.Writer
-	Tail   string
-	Follow bool
+	ID          string
+	Stream      io.Writer
+	Tail        string
+	Follow      bool
+	CloseNotify <-chan bool
 }
 
 // GetContainerLogs gets all stdout and stderr logs from the given container.
 func (c *Core) GetContainerLogs(opts LogsOptions) error {
-	return c.Docker.Logs(docker.LogsOptions{
+	ctx, cancel := context.WithCancel(c.ctx)
+	go func() {
+		<-opts.CloseNotify
+		cancel()
+	}()
+
+	err := c.Docker.Logs(docker.LogsOptions{
 		Stdout:       true,
 		Stderr:       true,
+		Context:      ctx,
 		Container:    opts.ID,
 		OutputStream: opts.Stream,
 		ErrorStream:  opts.Stream,
 		Tail:         opts.Tail,
 		Follow:       opts.Follow,
 	})
+	if err != context.Canceled {
+		return err
+	}
+	return nil
 }
 
 // UpgradeImages pulls all in use Docker images.
