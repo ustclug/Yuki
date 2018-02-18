@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"os/exec"
+	"path"
 	"strconv"
 	"strings"
 
@@ -47,7 +48,7 @@ func (f *zfs) GetSize(d string) int64 {
 		return -1
 	}
 	var buf bytes.Buffer
-	cmd := exec.Command("df", "--output=used", d)
+	cmd := exec.Command("df", "-B1", "--output=used", d)
 	cmd.Stdout = &buf
 	if err := cmd.Run(); err != nil {
 		return -1
@@ -55,11 +56,11 @@ func (f *zfs) GetSize(d string) int64 {
 	scanner := bufio.NewScanner(&buf)
 	scanner.Scan()
 	scanner.Scan()
-	kbs, err := strconv.ParseInt(scanner.Text(), 10, 64)
+	bytes, err := strconv.ParseInt(scanner.Text(), 10, 64)
 	if err != nil {
 		return -1
 	}
-	return kbs
+	return bytes
 }
 
 type xfs struct{}
@@ -70,7 +71,8 @@ func (f *xfs) GetSize(d string) int64 {
 	}
 
 	var buf bytes.Buffer
-	cmd := exec.Command("sudo", "-n", "xfs_quota", "-c", fmt.Sprintf("quota -pN %s", d))
+	name := path.Base(d)
+	cmd := exec.Command("sudo", "-n", "xfs_quota", "-c", fmt.Sprintf("quota -pN %s", name))
 	cmd.Stdout = &buf
 	if err := cmd.Run(); err != nil {
 		return -1
@@ -83,5 +85,5 @@ func (f *xfs) GetSize(d string) int64 {
 	if err != nil {
 		return -1
 	}
-	return kbs
+	return kbs * 1024
 }
