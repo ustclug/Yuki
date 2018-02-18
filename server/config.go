@@ -1,6 +1,8 @@
 package server
 
 import (
+	"fmt"
+	"os"
 	"time"
 
 	"github.com/knight42/Yuki/auth"
@@ -64,7 +66,7 @@ var (
 			SessionAge:     time.Hour * 24 * 7, // 1 week
 			DockerEndpoint: "unix:///var/run/docker.sock",
 		},
-		Owner:                 "0:0",
+		Owner:                 fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
 		LogDir:                "/var/log/yuki/",
 		ListenAddr:            "127.0.0.1:9999",
 		NamePrefix:            "syncing-",

@@ -139,18 +139,17 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 }
 
 func (s *Server) schedRepos() {
-	repos := s.c.ListRepositories(nil, nil)
+	repos := s.c.ListAllRepositories()
 	s.logger.Infof("Scheduling %d repositories", len(repos))
 	for _, r := range repos {
-		if err := s.cron.AddJob(r.Name, r.Interval, s.newJob(r)); err != nil {
+		if err := s.cron.AddJob(r.Name, r.Interval, s.newJob(r.Name)); err != nil {
 			s.logger.Errorln(err)
 		}
 	}
 }
 
-func (s *Server) newJob(r core.Repository) cron.FuncJob {
+func (s *Server) newJob(name string) cron.FuncJob {
 	return func() {
-		name := r.Name
 		s.logger.Infof("Syncing %s", name)
 		ct, err := s.c.Sync(core.SyncOptions{
 			LogDir:     s.config.LogDir,

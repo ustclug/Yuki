@@ -69,10 +69,17 @@ func forbidden(msg interface{}) error {
 }
 
 func (s *Server) listRepos(c echo.Context) error {
-	return c.JSON(http.StatusOK, s.c.ListRepositories(nil, bson.M{
+	type repo struct {
+		Name     string `bson:"_id" json:"name"`
+		Interval string `bson:"interval" json:"interval"`
+		Image    string `bson:"image" json:"image"`
+	}
+	var repos []repo
+	s.c.FindRepository(nil).Select(bson.M{
 		"interval": 1,
 		"image":    1,
-	}))
+	}).Sort("_id").All(&repos)
+	return c.JSON(http.StatusOK, repos)
 }
 
 func (s *Server) addRepo(c echo.Context) error {
@@ -243,7 +250,7 @@ func (s *Server) updateRepo(c echo.Context) error {
 		return err
 	}
 	s.logger.Infof("Rescheduled %s", name)
-	if err := s.cron.AddJob(r.Name, r.Interval, s.newJob(*r)); err != nil {
+	if err := s.cron.AddJob(r.Name, r.Interval, s.newJob(r.Name)); err != nil {
 		s.logger.Errorln(err)
 	}
 	return c.NoContent(http.StatusNoContent)
@@ -336,10 +343,11 @@ func (s *Server) getCtLogs(c echo.Context) error {
 	}
 	fw := NewFlushWriter(c.Response())
 	return s.c.GetContainerLogs(core.LogsOptions{
-		ID:     name,
-		Stream: fw,
-		Tail:   opts.Tail,
-		Follow: opts.Follow,
+		ID:          name,
+		Stream:      fw,
+		Tail:        opts.Tail,
+		Follow:      opts.Follow,
+		CloseNotify: c.Response().CloseNotify(),
 	})
 }
 
@@ -361,7 +369,7 @@ func (s *Server) removeCt(c echo.Context) error {
 }
 
 func (s *Server) listMetas(c echo.Context) error {
-	return c.JSON(http.StatusOK, s.c.ListMetas(nil, nil))
+	return c.JSON(http.StatusOK, s.c.ListAllMetas())
 }
 
 func (s *Server) getMeta(c echo.Context) error {
@@ -382,9 +390,8 @@ func (s *Server) exportConfig(c echo.Context) error {
 			"_id": bson.M{"$in": nameLst},
 		}
 	}
-	repos := s.c.ListRepositories(query, bson.M{
-		"updatedAt": 0,
-	})
+	var repos []bson.M
+	s.c.FindRepository(query).Select(bson.M{"updatedAt": 0, "createdAt": 0}).Sort("_id").All(&repos)
 	return c.JSON(http.StatusOK, repos)
 }
 
@@ -458,7 +465,6 @@ func (s *Server) registerAPIs(g *echo.Group) {
 		Validator:   s.config.Authenticator.Authenticate,
 		LookupToken: s.c.LookupToken,
 	}
-
 	g.GET("metas", s.listMetas)
 	g.GET("metas/:name", s.getMeta)
 
