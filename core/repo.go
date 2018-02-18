@@ -3,6 +3,7 @@ package core
 import (
 	"time"
 
+	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 )
 
@@ -11,18 +12,18 @@ type M map[string]string
 
 // Repository contains a list of syncing options.
 type Repository struct {
-	Name        string `bson:"_id,omitempty" json:"name,omitempty" validate:"-"`
-	Interval    string `bson:"interval,omitempty" json:"interval,omitempty" validate:"required,cron"`
-	Image       string `bson:"image,omitempty" json:"image,omitempty" validate:"required,containsrune=:"`
-	StorageDir  string `bson:"storageDir,omitempty" json:"storageDir,omitempty" validate:"required"`
-	LogRotCycle int    `bson:"logRotCycle,omitempty" json:"logRotCycle,omitempty" validate:"omitempty,min=0,max=30"`
-	Envs        M      `bson:"envs,omitempty" json:"envs,omitempty" validate:"omitempty,dive,keys,required,endkeys,required"`
-	Volumes     M      `bson:"volumes,omitempty" json:"volumes,omitempty" validate:"omitempty,dive,keys,required,endkeys,required"`
-	User        string `bson:"user,omitempty" json:"user,omitempty" validate:"-"`
-	BindIP      string `bson:"bindIP,omitempty" json:"bindIP,omitempty" validate:"omitempty,ip"`
-	Retry       int    `bson:"retry,omitempty" json:"retry,omitempty" validate:"omitempty,min=1,max=3"`
-	CreatedAt   int64  `bson:"createdAt,omitempty" json:"createdAt,omitempty" validate:"-"`
-	UpdatedAt   int64  `bson:"updatedAt,omitempty" json:"updatedAt,omitempty" validate:"-"`
+	Name        string `bson:"_id" json:"name" validate:"-"`
+	Interval    string `bson:"interval" json:"interval" validate:"required,cron"`
+	Image       string `bson:"image" json:"image" validate:"required,containsrune=:"`
+	StorageDir  string `bson:"storageDir" json:"storageDir" validate:"required"`
+	LogRotCycle int    `bson:"logRotCycle,omitempty" json:"logRotCycle" validate:"min=0,max=30"`
+	Envs        M      `bson:"envs,omitempty" json:"envs" validate:"omitempty,dive,keys,required,endkeys,required"`
+	Volumes     M      `bson:"volumes,omitempty" json:"volumes" validate:"omitempty,dive,keys,required,endkeys,required"`
+	User        string `bson:"user,omitempty" json:"user" validate:"-"`
+	BindIP      string `bson:"bindIP,omitempty" json:"bindIP" validate:"omitempty,ip"`
+	Retry       int    `bson:"retry,omitempty" json:"retry" validate:"min=1,max=3"`
+	CreatedAt   int64  `bson:"createdAt,omitempty" json:"createdAt" validate:"-"`
+	UpdatedAt   int64  `bson:"updatedAt,omitempty" json:"updatedAt" validate:"-"`
 }
 
 // GetRepository returns the Repository with the given name.
@@ -74,11 +75,16 @@ func (c *Core) RemoveRepository(name string) error {
 	return c.repoColl.With(sess).RemoveId(name)
 }
 
-// ListRepositories returns all Repositories.
-func (c *Core) ListRepositories(query, proj bson.M) []Repository {
+// ListAllRepositories returns all Repositories.
+func (c *Core) ListAllRepositories() []Repository {
 	sess := c.MgoSess.Copy()
 	defer sess.Close()
 	result := []Repository{}
-	c.repoColl.With(sess).Find(query).Select(proj).Sort("_id").All(&result)
+	c.repoColl.With(sess).Find(nil).Sort("_id").All(&result)
 	return result
+}
+
+// FindRepository simply re-export the mgo API.
+func (c *Core) FindRepository(query interface{}) *mgo.Query {
+	return c.repoColl.Find(query)
 }

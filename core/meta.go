@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 )
 
@@ -15,13 +16,13 @@ var (
 
 // Meta represents the metadata of a Repository.
 type Meta struct {
-	Name        string `bson:"_id,omitempty" json:"name,omitempty"`
-	Upstream    string `bson:"-" json:"upstream,omitempty"`
-	Size        int    `bson:"size,omitempty" json:"size,omitempty"`
-	ExitCode    int    `bson:"exitCode,omitempty" json:"exitCode,omitempty"`
-	LastSuccess int64  `bson:"lastSuccess,omitempty" json:"lastSuccess,omitempty"`
-	CreatedAt   int64  `bson:"createdAt,omitempty" json:"createdAt,omitempty"`
-	UpdatedAt   int64  `bson:"updatedAt,omitempty" json:"updatedAt,omitempty"`
+	Name        string `bson:"_id" json:"name"`
+	Upstream    string `bson:"-" json:"upstream"`
+	Size        int    `bson:"size" json:"size"`
+	ExitCode    int    `bson:"exitCode" json:"exitCode"`
+	LastSuccess int64  `bson:"lastSuccess,omitempty" json:"lastSuccess"`
+	CreatedAt   int64  `bson:"createdAt,omitempty" json:"createdAt"`
+	UpdatedAt   int64  `bson:"updatedAt,omitempty" json:"updatedAt"`
 }
 
 func getUpstream(t string, envs M) (upstream string) {
@@ -113,7 +114,7 @@ func (c *Core) AddMeta(ms ...*Meta) error {
 
 // InitMetas creates metadata for each Repository.
 func (c *Core) InitMetas() {
-	repos := c.ListRepositories(nil, nil)
+	repos := c.ListAllRepositories()
 	now := time.Now().Unix()
 	for _, r := range repos {
 		go func(id, dir string) {
@@ -160,17 +161,22 @@ func (c *Core) RemoveMeta(name string) error {
 	return c.metaColl.With(sess).RemoveId(name)
 }
 
-// ListMetas returns the list of metadata of all Repositories.
-func (c *Core) ListMetas(query, proj bson.M) []Meta {
+// ListAllMetas returns the list of metadata of all Repositories.
+func (c *Core) ListAllMetas() []Meta {
 	sess := c.MgoSess.Copy()
 	defer sess.Close()
 	result := []Meta{}
 	m := Meta{}
-	iter := c.metaColl.With(sess).Find(query).Select(proj).Sort("_id").Iter()
+	iter := c.metaColl.With(sess).Find(nil).Sort("_id").Iter()
 	defer iter.Close()
 	for iter.Next(&m) {
 		c.transformMeta(&m)
 		result = append(result, m)
 	}
 	return result
+}
+
+// FindMeta simply re-export the mgo API.
+func (c *Core) FindMeta(query interface{}) *mgo.Query {
+	return c.metaColl.Find(query)
 }
