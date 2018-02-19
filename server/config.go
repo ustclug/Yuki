@@ -63,7 +63,7 @@ var (
 			Debug:          false,
 			DbURL:          "127.0.0.1:27017",
 			DbName:         "mirror",
-			SessionAge:     time.Hour * 24 * 7, // 1 week
+			SessionAge:     time.Hour * 24 * 2, // 2 days
 			DockerEndpoint: "unix:///var/run/docker.sock",
 		},
 		Owner:                 fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),

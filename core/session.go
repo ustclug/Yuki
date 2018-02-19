@@ -3,13 +3,15 @@ package core
 import (
 	"math/rand"
 	"time"
+
+	"github.com/globalsign/mgo/bson"
 )
 
 // Session contains token, username, and expiration time.
 type Session struct {
-	Token     string    `bson:"_id"`
-	Name      string    `bson:"name"`
-	CreatedAt time.Time `bson:"createdAt"`
+	Token      string    `bson:"_id"`
+	Name       string    `bson:"name"`
+	LastAccess time.Time `bson:"lastAccess"`
 }
 
 func genToken() string {
@@ -28,9 +30,9 @@ func (c *Core) CreateSession(name string) (token string, err error) {
 	defer sess.Close()
 	token = genToken()
 	s := Session{
-		Token:     token,
-		Name:      name,
-		CreatedAt: time.Now(),
+		Token:      token,
+		Name:       name,
+		LastAccess: time.Now(),
 	}
 	err = c.sessColl.With(sess).Insert(s)
 	return
@@ -40,7 +42,9 @@ func (c *Core) CreateSession(name string) (token string, err error) {
 func (c *Core) LookupToken(token string) error {
 	sess := c.MgoSess.Copy()
 	defer sess.Close()
-	return c.sessColl.With(sess).FindId(token).One(&Session{})
+	return c.sessColl.With(sess).UpdateId(token, bson.M{"$set": bson.M{
+		"lastAccess": time.Now(),
+	}})
 }
 
 // RemoveSession removes the session containing the given token.
