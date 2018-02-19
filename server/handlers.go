@@ -453,9 +453,7 @@ func (s *Server) removeSession(c echo.Context) error {
 		sess.Save(c.Request(), c.Response())
 	} else {
 		tok := c.Get("user").(string)
-		if err := s.c.RemoveSession(tok); err != nil {
-			return err
-		}
+		s.c.RemoveSession(tok)
 	}
 	return c.NoContent(http.StatusNoContent)
 }

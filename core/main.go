@@ -33,7 +33,7 @@ type Core struct {
 	sessColl *mgo.Collection
 }
 
-const ttlIdxName = "sessions-TTL-index-on-createAt"
+const ttlIdxName = "sessions-TTL-index-on-lastAccess"
 
 // NewWithConfig returns a `Core` instance with specified config.
 func NewWithConfig(cfg Config) (*Core, error) {
@@ -76,7 +76,7 @@ func NewWithConfig(cfg Config) (*Core, error) {
 
 func ensureTTLIndex(coll *mgo.Collection, age time.Duration) error {
 	return coll.EnsureIndex(mgo.Index{
-		Key:         []string{"createdAt"},
+		Key:         []string{"lastAccess"},
 		Name:        ttlIdxName,
 		ExpireAfter: age,
 	})
