@@ -15,16 +15,16 @@ import (
 type AppConfig struct {
 	Debug bool `mapstructure:"debug,omitempty" validate:"-"`
 	// DbURL contains username and password
-	DbURL          string `mapstructure:"db_url,omitempty" validate:"required,mongodb"`
-	DbName         string `mapstructure:"db_name,omitempty" validate:"alpha"`
+	DbURL          string `mapstructure:"db_url,omitempty" validate:"omitempty,mongodb"`
+	DbName         string `mapstructure:"db_name,omitempty" validate:"omitempty,alpha"`
 	FileSystem     string `mapstructure:"fs,omitempty" validate:"omitempty,eq=xfs|eq=zfs|eq=default"`
 	SessionAge     string `mapstructure:"session_age,omitempty" validate:"omitempty,duration"`
-	DockerEndpoint string `mapstructure:"docker_endpoint,omitempty" validate:"required,unix_addr|tcp_addr"`
+	DockerEndpoint string `mapstructure:"docker_endpoint,omitempty" validate:"omitempty,unix_addr|tcp_addr"`
 
 	Owner                 string   `mapstructure:"owner,omitempty" validate:"-"`
-	LogDir                string   `mapstructure:"log_dir,omitempty" validate:"required"`
+	LogDir                string   `mapstructure:"log_dir,omitempty" validate:"-"`
 	LogLevel              string   `mapstructure:"log_level,omitempty" validate:"omitempty,eq=debug|eq=info|eq=warn|eq=error"`
-	ListenAddr            string   `mapstructure:"listen_addr,omitempty" validate:"hostport,required"`
+	ListenAddr            string   `mapstructure:"listen_addr,omitempty" validate:"omitempty,hostport"`
 	BindIP                string   `mapstructure:"bind_ip,omitempty" validate:"omitempty,ip"`
 	NamePrefix            string   `mapstructure:"name_prefix,omitempty" validate:"-"`
 	SyncTimeout           string   `mapstructure:"sync_timeout,omitempty" validate:"omitempty,duration"`
@@ -34,7 +34,7 @@ type AppConfig struct {
 	SecureCookie          bool     `mapstructure:"secure_cookie,omitempty" validate:"-"`
 	PostSync              []string `mapstructure:"post_sync,omitempty" validate:"-"`
 	AllowOrigins          []string `mapstructure:"allow_origins,omitempty" validate:"-"`
-	ImagesUpgradeInterval string   `mapstructure:"images_upgrade_interval,omitempty" validate:"required,cron"`
+	ImagesUpgradeInterval string   `mapstructure:"images_upgrade_interval,omitempty" validate:"omitempty,cron"`
 
 	Ldap auth.LdapAuthConfig `mapstructure:"ldap,omitempty" validate:"-"`
 }
@@ -70,7 +70,6 @@ var (
 		LogDir:                "/var/log/yuki/",
 		ListenAddr:            "127.0.0.1:9999",
 		NamePrefix:            "syncing-",
-		SecureCookie:          false,
 		LogLevel:              logrus.InfoLevel,
 		AllowOrigins:          []string{"*"},
 		ImagesUpgradeInterval: "@every 1h",

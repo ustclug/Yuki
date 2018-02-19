@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"reflect"
 	"time"
 
 	"github.com/gorilla/sessions"
@@ -34,35 +35,36 @@ func New() (*Server, error) {
 	return NewWithConfig(cfg)
 }
 
-func NewWithConfig(cfg *Config) (*Server, error) {
-	if cfg.DbURL == "" {
-		cfg.DbURL = DefaultServerConfig.DbURL
-	}
-	if cfg.DbName == "" {
-		cfg.DbName = DefaultServerConfig.DbName
-	}
-	if cfg.SessionAge == 0 {
-		cfg.SessionAge = DefaultServerConfig.SessionAge
-	}
-	if cfg.DockerEndpoint == "" {
-		cfg.DockerEndpoint = DefaultServerConfig.DockerEndpoint
-	}
+type valTuple struct {
+	Ptr interface{}
+	Val interface{}
+}
 
-	if cfg.Owner == "" {
-		cfg.Owner = DefaultServerConfig.Owner
+func setDefault(us []valTuple) {
+	for _, u := range us {
+		val := reflect.ValueOf(u.Ptr)
+		dstType := val.Type().Elem()
+		dstVal := reflect.Indirect(val)
+		if reflect.DeepEqual(dstVal.Interface(), reflect.Zero(dstType).Interface()) {
+			dstVal.Set(reflect.ValueOf(u.Val))
+		}
 	}
-	if cfg.LogDir == "" {
-		cfg.LogDir = DefaultServerConfig.LogDir
-	}
-	if cfg.NamePrefix == "" {
-		cfg.NamePrefix = DefaultServerConfig.NamePrefix
-	}
-	if len(cfg.AllowOrigins) == 0 {
-		cfg.AllowOrigins = DefaultServerConfig.AllowOrigins
-	}
-	if cfg.ImagesUpgradeInterval == "" {
-		cfg.ImagesUpgradeInterval = DefaultServerConfig.ImagesUpgradeInterval
-	}
+}
+
+func NewWithConfig(cfg *Config) (*Server, error) {
+	setDefault([]valTuple{
+		{&cfg.DbURL, DefaultServerConfig.DbURL},
+		{&cfg.DbName, DefaultServerConfig.DbName},
+		{&cfg.SessionAge, DefaultServerConfig.SessionAge},
+		{&cfg.DockerEndpoint, DefaultServerConfig.DockerEndpoint},
+
+		{&cfg.Owner, DefaultServerConfig.Owner},
+		{&cfg.LogDir, DefaultServerConfig.LogDir},
+		{&cfg.ListenAddr, DefaultServerConfig.ListenAddr},
+		{&cfg.NamePrefix, DefaultServerConfig.NamePrefix},
+		{&cfg.AllowOrigins, DefaultServerConfig.AllowOrigins},
+		{&cfg.ImagesUpgradeInterval, DefaultServerConfig.ImagesUpgradeInterval},
+	})
 
 	if err := os.MkdirAll(cfg.LogDir, os.ModePerm); err != nil {
 		return nil, err
