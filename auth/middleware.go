@@ -21,6 +21,11 @@ func Middleware(cfg Config) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		const userKey = "user"
 		return func(c echo.Context) error {
+			if strings.HasPrefix(c.Request().RemoteAddr, "127.0.0.1:") {
+				c.Set(userKey, "LocalUser")
+				return next(c)
+			}
+
 			// cookie
 			sess, _ := session.Get("session", c)
 			if !sess.IsNew {
