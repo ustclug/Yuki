@@ -1,28 +1,56 @@
-debug = true
+#debug = true
 
-db_url = "127.0.0.1:27017"
+#db_url = "127.0.0.1:27017"
 
-db_name = "mirror"
+#db_name = "mirror"
+
+# available values:
+#   "zfs"
+#   "xfs"
+#   "default"
+fs = "zfs"
+
+# See also `time.ParseDuration` in Go
+#session_age = "48h"
 
 # unix local socket: unix:///var/run/docker.sock
 # tcp: tcp://127.0.0.1:2375
-docker_endpoint = "unix:///var/run/docker.sock"
+#docker_endpoint = "unix:///var/run/docker.sock"
 
 # uid:gid
-owner = "1000:1000"
+#owner = "1000:1000"
 
-log_dir = "/var/log/yuki/"
+#log_dir = "/var/log/yuki/"
 
-log_level = "info"
+#log_level = "info"
+
+#listen_addr = "127.0.0.1:9999"
 
 #bind_ip = "1.2.3.4"
 
-name_prefix = "syncing-"
+#name_prefix = "syncing-"
 
-allow_origins = ["*"]
+# available values:
+#   "ldap"
+#   "none"
+#auth_provider = "none"
 
-images_upgrade_interval = "@every 1h"
+# REQUIRED!
+cookie_key = "secret"
 
-listen_addr = "127.0.0.1:9999"
+#cookie_domain = ""
+
+#secure_cookie = false
 
 #post_sync = ["/path/to/the/program"]
+
+#allow_origins = ["*"]
+
+#images_upgrade_interval = "@every 1h"
+
+#[ldap]
+#base = "dc=ldap,dc=example,dc=com"
+#host = "ldap.example.com"
+#use_ssl = true
+#user_filter = "(uid=%s)"
+#ca_certificates = ["/etc/slapd-ca-cert.pem"]
