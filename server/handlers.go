@@ -20,7 +20,7 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/knight42/Yuki/auth"
 	"github.com/knight42/Yuki/core"
-	"github.com/knight42/Yuki/queue"
+	"github.com/knight42/Yuki/tail"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo-contrib/session"
 	"github.com/sirupsen/logrus"
@@ -188,7 +188,7 @@ func (s *Server) getRepoLogs(c echo.Context) error {
 	}
 	defer content.Close()
 
-	var reader io.Reader
+	var t *tail.Tail
 
 	switch path.Ext(fileName) {
 	case ".gz":
@@ -197,22 +197,27 @@ func (s *Server) getRepoLogs(c echo.Context) error {
 			return err
 		}
 		defer gr.Close()
-		reader = gr
+		tmpfile, err := ioutil.TempFile(logdir, "extracted")
+		if err != nil {
+			return err
+		}
+		defer os.Remove(tmpfile.Name())
+		defer tmpfile.Close()
+		_, err = io.Copy(tmpfile, gr)
+		if err != nil {
+			return err
+		}
+		_, err = tmpfile.Seek(0, io.SeekStart)
+		if err != nil {
+			return err
+		}
+		t = tail.New(tmpfile, opts.Tail)
 	default:
-		reader = content
+		t = tail.New(content, opts.Tail)
 	}
 
-	if opts.Tail == 0 {
-		io.Copy(c.Response(), reader)
-		return nil
-	}
-
-	q := queue.New(opts.Tail)
-	if err = q.ReadAll(reader); err != nil {
-		return err
-	}
-	q.WriteAll(c.Response())
-	return nil
+	_, err = t.WriteTo(c.Response())
+	return err
 }
 
 func convertUpdate(update bson.M) bson.M {
