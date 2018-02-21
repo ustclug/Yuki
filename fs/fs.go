@@ -1,3 +1,4 @@
+// Package fs implements function for getting the size of a given directory.
 package fs
 
 import (
@@ -12,18 +13,24 @@ import (
 	"github.com/knight42/Yuki/common"
 )
 
+// Type represents different kinds of file system.
 type Type byte
 
 const (
+	// DEFAULT represents the default file system. Always return -1 as size.
 	DEFAULT Type = iota
+	// XFS is the XFS file system. Getting the size by running `sudo -n xfs_quota -c "quota -pN $name"`.
 	XFS
+	// ZFS is the ZFS file system. Getting the size by running `df -B1 --output=used`.
 	ZFS
 )
 
+// GetSizer is the interface that wraps the `GetSize` method.
 type GetSizer interface {
 	GetSize(string) int64
 }
 
+// New returns different `GetSizer` depending on the passed `Type`.
 func New(ty Type) GetSizer {
 	switch ty {
 	case XFS:
