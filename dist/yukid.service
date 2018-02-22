@@ -2,6 +2,7 @@
 Description=Sync Local Repos With Remote
 After=docker.service
 Requires=docker.service
+PartOf=docker.serivce
 
 [Service]
 User=mirror
