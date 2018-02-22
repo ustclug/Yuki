@@ -23,6 +23,7 @@ func TestReadLongLines(t *testing.T) {
 	testReadLines(t, config{l, 3}, true)
 }
 
+// Excerpt from https://github.com/kubernetes/kubernetes/pull/23265/files
 func testReadLines(t *testing.T, cfg config, hasEOL bool) {
 	var (
 		lines    [][]byte
