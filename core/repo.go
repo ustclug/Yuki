@@ -16,12 +16,12 @@ type Repository struct {
 	Interval    string `bson:"interval" json:"interval" validate:"required,cron"`
 	Image       string `bson:"image" json:"image" validate:"required,containsrune=:"`
 	StorageDir  string `bson:"storageDir" json:"storageDir" validate:"required"`
-	LogRotCycle int    `bson:"logRotCycle,omitempty" json:"logRotCycle" validate:"min=0,max=30"`
+	LogRotCycle int    `bson:"logRotCycle,omitempty" json:"logRotCycle" validate:"min=0"`
 	Envs        M      `bson:"envs,omitempty" json:"envs" validate:"omitempty,dive,keys,required,endkeys,required"`
 	Volumes     M      `bson:"volumes,omitempty" json:"volumes" validate:"omitempty,dive,keys,required,endkeys,required"`
 	User        string `bson:"user,omitempty" json:"user" validate:"-"`
 	BindIP      string `bson:"bindIP,omitempty" json:"bindIP" validate:"omitempty,ip"`
-	Retry       int    `bson:"retry,omitempty" json:"retry" validate:"min=1,max=3"`
+	Retry       int    `bson:"retry,omitempty" json:"retry" validate:"min=0"`
 	CreatedAt   int64  `bson:"createdAt,omitempty" json:"createdAt" validate:"-"`
 	UpdatedAt   int64  `bson:"updatedAt,omitempty" json:"updatedAt" validate:"-"`
 }
