@@ -18,6 +18,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var ctxLogFieldKey = "logfields"
+
 type Server struct {
 	e      *echo.Echo
 	c      *core.Core
@@ -133,6 +135,12 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 
 	s.e.Use(middleware.BodyLimit("2M"))
 	s.e.Use(session.Middleware(sessions.NewCookieStore([]byte(s.config.CookieKey))))
+	s.e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			c.Set(ctxLogFieldKey, logrus.Fields{})
+			return next(c)
+		}
+	})
 
 	g := s.e.Group("/api/v1/")
 	s.registerAPIs(g)
@@ -145,7 +153,7 @@ func (s *Server) schedRepos() {
 	s.logger.Infof("Scheduling %d repositories", len(repos))
 	for _, r := range repos {
 		if err := s.cron.AddJob(r.Name, r.Interval, s.newJob(r.Name)); err != nil {
-			s.logger.Errorln(err)
+			s.logger.WithField("repo", r.Name).Errorln(err)
 		}
 	}
 }
@@ -161,11 +169,11 @@ func (s *Server) newJob(name string) cron.FuncJob {
 			MountDir:   !IsTest,
 		})
 		if err != nil {
-			s.logger.Errorln(err)
+			s.logger.WithField("repo", name).Errorln(err)
 			return
 		}
 		if err := s.c.WaitForSync(*ct); err != nil {
-			s.logger.Errorln(err)
+			s.logger.WithField("repo", name).Errorln(err)
 		}
 	}
 }

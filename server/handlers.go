@@ -96,6 +96,7 @@ func (s *Server) addRepo(c echo.Context) error {
 	}
 	err := s.c.AddRepository(repo)
 	if err != nil {
+		s.addLogField(c, "repo", name)
 		if mgo.IsDup(err) {
 			return conflict(err)
 		}
@@ -108,6 +109,7 @@ func (s *Server) getRepo(c echo.Context) error {
 	name := c.Param("name")
 	repo, err := s.c.GetRepository(name)
 	if err != nil {
+		s.addLogField(c, "repo", name)
 		return notFound(err)
 	}
 	return c.JSON(http.StatusOK, repo)
@@ -161,9 +163,6 @@ func (s *Server) getRepoLogs(c echo.Context) error {
 
 	if opts.Tail < 0 {
 		opts.Tail = 0
-	}
-	if opts.Tail > 64 {
-		opts.Tail = 64
 	}
 
 	wantedName := fmt.Sprintf("result.log.%d", opts.N)
@@ -256,7 +255,7 @@ func (s *Server) updateRepo(c echo.Context) error {
 	}
 	s.logger.Infof("Rescheduled %s", name)
 	if err := s.cron.AddJob(r.Name, r.Interval, s.newJob(r.Name)); err != nil {
-		s.logger.Errorln(err)
+		s.logger.WithField("repo", r.Name).Errorln(err)
 	}
 	return c.NoContent(http.StatusNoContent)
 }
@@ -323,6 +322,7 @@ func (s *Server) sync(c echo.Context) error {
 		BindIP:     s.config.BindIP,
 	})
 	if err != nil {
+		s.addLogField(c, "repo", name)
 		if err == docker.ErrContainerAlreadyExists {
 			return conflict(err)
 		}
@@ -397,6 +397,12 @@ func (s *Server) exportConfig(c echo.Context) error {
 	}
 	var repos []bson.M
 	s.c.FindRepository(query).Select(bson.M{"updatedAt": 0, "createdAt": 0}).Sort("_id").All(&repos)
+	for i := 0; i < len(repos); i++ {
+		r := repos[i]
+		r["name"] = r["_id"]
+		delete(r, "_id")
+		delete(r, "__v")
+	}
 	return c.JSON(http.StatusOK, repos)
 }
 
@@ -407,6 +413,11 @@ func (s *Server) importConfig(c echo.Context) error {
 	}
 	if err := s.c.AddRepository(repos...); err != nil {
 		return err
+	}
+	for _, r := range repos {
+		if err := s.cron.AddJob(r.Name, r.Interval, s.newJob(r.Name)); err != nil {
+			return err
+		}
 	}
 	return c.NoContent(http.StatusNoContent)
 }
@@ -492,6 +503,20 @@ func (s *Server) registerAPIs(g *echo.Group) {
 	g.DELETE("sessions", s.removeSession)
 }
 
+func (s *Server) addLogField(c echo.Context, k string, v interface{}) {
+	current := c.Get(ctxLogFieldKey).(logrus.Fields)
+	current[k] = v
+	c.Set(ctxLogFieldKey, current)
+}
+
+func (s *Server) addLogFields(c echo.Context, fields logrus.Fields) {
+	current := c.Get(ctxLogFieldKey).(logrus.Fields)
+	for k, v := range fields {
+		current[k] = v
+	}
+	c.Set(ctxLogFieldKey, current)
+}
+
 func (s *Server) HTTPErrorHandler(err error, c echo.Context) {
 	var (
 		code    = http.StatusInternalServerError
@@ -513,7 +538,7 @@ func (s *Server) HTTPErrorHandler(err error, c echo.Context) {
 	}
 	respMsg = echo.Map{"message": msg}
 
-	s.logger.WithFields(logrus.Fields{
+	s.logger.WithFields(c.Get(ctxLogFieldKey).(logrus.Fields)).WithFields(logrus.Fields{
 		"remote_ip": c.RealIP(),
 		"status":    code,
 		"method":    c.Request().Method,
