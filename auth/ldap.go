@@ -29,10 +29,6 @@ type LdapAuthConfig struct {
 }
 
 func (c *LdapAuthenticator) connect() error {
-	if c.Conn != nil {
-		return nil
-	}
-
 	var (
 		l   *ldap.Conn
 		err error
@@ -76,10 +72,6 @@ func (c *LdapAuthenticator) connect() error {
 }
 
 func (c *LdapAuthenticator) Authenticate(name, passwd string) error {
-	if err := c.connect(); err != nil {
-		return err
-	}
-
 	attributes := append(c.Config.Attributes, "dn")
 	// Search for the given username
 	searchRequest := ldap.NewSearchRequest(
@@ -105,19 +97,14 @@ func (c *LdapAuthenticator) Authenticate(name, passwd string) error {
 	}
 
 	userDN := sr.Entries[0].DN
-	if err := c.Conn.Bind(userDN, passwd); err != nil {
-		return err
-	}
-
-	return nil
+	err = c.Conn.Bind(userDN, passwd)
+	return err
 }
 
 // Cleanup - close the backend ldap connection
 func (c *LdapAuthenticator) Cleanup() {
-	if c.Conn != nil {
-		c.Conn.Close()
-		c.Conn = nil
-	}
+	c.Conn.Close()
+	c.Conn = nil
 }
 
 func NewLdapAuthenticator(cfg *LdapAuthConfig) (*LdapAuthenticator, error) {
