@@ -22,13 +22,13 @@ type Container struct {
 
 // SyncOptions provides params to the Sync function.
 type SyncOptions struct {
-	Name       string
-	LogDir     string
-	Owner      string
-	BindIP     string
-	NamePrefix string
-	Debug      bool
-	MountDir   bool
+	Name          string
+	LogDir        string
+	DefaultOwner  string
+	DefaultBindIP string
+	NamePrefix    string
+	Debug         bool
+	MountDir      bool
 	// FIXME: Not sure whether we should add this param. If a container timed out and got removed, the problem may be hidden.
 	Timeout time.Duration
 }
@@ -192,10 +192,10 @@ func (c *Core) Sync(opts SyncOptions) (*Container, error) {
 		envs.Set(k, v)
 	}
 	if r.BindIP == "" {
-		r.BindIP = opts.BindIP
+		r.BindIP = opts.DefaultBindIP
 	}
 	if r.User == "" {
-		r.User = opts.Owner
+		r.User = opts.DefaultOwner
 	}
 	envs.Set("REPO", r.Name)
 	envs.Set("OWNER", r.User)

@@ -162,12 +162,12 @@ func (s *Server) newJob(name string) cron.FuncJob {
 	return func() {
 		s.logger.Infof("Syncing %s", name)
 		ct, err := s.c.Sync(core.SyncOptions{
-			LogDir:     s.config.LogDir,
-			Owner:      s.config.Owner,
-			NamePrefix: s.config.NamePrefix,
-			Name:       name,
-			MountDir:   !IsTest,
-			BindIP:     s.config.BindIP,
+			LogDir:        s.config.LogDir,
+			DefaultOwner:  s.config.Owner,
+			NamePrefix:    s.config.NamePrefix,
+			Name:          name,
+			MountDir:      true,
+			DefaultBindIP: s.config.BindIP,
 		})
 		if err != nil {
 			s.logger.WithField("repo", name).Errorln(err)
