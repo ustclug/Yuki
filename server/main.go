@@ -167,6 +167,7 @@ func (s *Server) newJob(name string) cron.FuncJob {
 			NamePrefix: s.config.NamePrefix,
 			Name:       name,
 			MountDir:   !IsTest,
+			BindIP:     s.config.BindIP,
 		})
 		if err != nil {
 			s.logger.WithField("repo", name).Errorln(err)
