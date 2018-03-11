@@ -313,13 +313,13 @@ func (s *Server) sync(c echo.Context) error {
 
 	s.logger.Infof("Syncing %s", name)
 	ct, err := s.c.Sync(core.SyncOptions{
-		Name:       name,
-		NamePrefix: s.config.NamePrefix,
-		LogDir:     s.config.LogDir,
-		Owner:      s.config.Owner,
-		MountDir:   !IsTest,
-		Debug:      debug,
-		BindIP:     s.config.BindIP,
+		Name:          name,
+		NamePrefix:    s.config.NamePrefix,
+		LogDir:        s.config.LogDir,
+		DefaultOwner:  s.config.Owner,
+		MountDir:      true,
+		Debug:         debug,
+		DefaultBindIP: s.config.BindIP,
 	})
 	if err != nil {
 		s.addLogField(c, "repo", name)
@@ -329,11 +329,17 @@ func (s *Server) sync(c echo.Context) error {
 		return err
 	}
 
-	go func() {
-		s.c.WaitForSync(*ct)
-	}()
-
+	go s.c.WaitForSync(*ct)
 	return c.NoContent(http.StatusCreated)
+}
+
+func (s *Server) getCtID(name string) string {
+	if s.cron.HasJob(name) {
+		// repo name
+		return s.config.NamePrefix + name
+	}
+	// container ID
+	return name
 }
 
 func (s *Server) getCtLogs(c echo.Context) error {
@@ -341,14 +347,14 @@ func (s *Server) getCtLogs(c echo.Context) error {
 		Follow bool   `query:"follow"`
 		Tail   string `query:"tail"`
 	}
-	name := s.config.NamePrefix + c.Param("name")
+	id := s.getCtID(c.Param("name"))
 	opts := logsOptions{}
 	if err := c.Bind(&opts); err != nil {
 		return badRequest(err)
 	}
 	fw := NewFlushWriter(c.Response())
 	return s.c.GetContainerLogs(core.LogsOptions{
-		ID:          name,
+		ID:          id,
 		Stream:      fw,
 		Tail:        opts.Tail,
 		Follow:      opts.Follow,
@@ -357,16 +363,16 @@ func (s *Server) getCtLogs(c echo.Context) error {
 }
 
 func (s *Server) stopCt(c echo.Context) error {
-	name := c.Param("name")
-	if err := s.c.StopContainer(s.config.NamePrefix + name); err != nil {
+	id := s.getCtID(c.Param("name"))
+	if err := s.c.StopContainer(id); err != nil {
 		return err
 	}
 	return c.NoContent(http.StatusNoContent)
 }
 
 func (s *Server) removeCt(c echo.Context) error {
-	name := c.Param("name")
-	err := s.c.RemoveContainer(s.config.NamePrefix + name)
+	id := s.getCtID(c.Param("name"))
+	err := s.c.RemoveContainer(id)
 	if err != nil {
 		return err
 	}
@@ -444,16 +450,16 @@ func (s *Server) createSession(c echo.Context) error {
 		sess.Values["user"] = name
 		sess.Save(c.Request(), c.Response())
 		return c.NoContent(http.StatusCreated)
-	} else {
-		type token struct {
-			Token string `json:"token"`
-		}
-		tok, err := s.c.CreateSession(name)
-		if err != nil {
-			return err
-		}
-		return c.JSON(http.StatusCreated, token{tok})
 	}
+
+	type token struct {
+		Token string `json:"token"`
+	}
+	tok, err := s.c.CreateSession(name)
+	if err != nil {
+		return err
+	}
+	return c.JSON(http.StatusCreated, token{tok})
 }
 
 func (s *Server) removeSession(c echo.Context) error {

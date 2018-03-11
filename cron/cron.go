@@ -44,6 +44,12 @@ func (c *Cron) AddJob(name, spec string, cmd FuncJob) error {
 	return nil
 }
 
+// HasJob returns whether the given job exists.
+func (c *Cron) HasJob(name string) bool {
+	_, ok := scheduledJobs.Load(name)
+	return ok
+}
+
 // RemoveJob remove the job with the given name.
 func (c *Cron) RemoveJob(name string) {
 	if v, ok := scheduledJobs.Load(name); ok {
