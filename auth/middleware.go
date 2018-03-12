@@ -35,7 +35,11 @@ func Middleware(cfg Config) echo.MiddlewareFunc {
 			// http header
 			auth := c.Request().Header.Get(echo.HeaderAuthorization)
 			parts := strings.Fields(auth)
-			if len(parts) != 2 {
+			switch len(parts) {
+			case 2:
+			case 0:
+				return echo.NewHTTPError(http.StatusBadRequest, "missing authorization header: please login")
+			default:
 				return echo.NewHTTPError(http.StatusBadRequest, "invalid authorization header")
 			}
 			switch strings.ToLower(parts[0]) {
