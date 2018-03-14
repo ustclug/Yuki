@@ -37,8 +37,8 @@
 [[projects]]
   name = "github.com/dgrijalva/jwt-go"
   packages = ["."]
-  revision = "dbeaa9332f19a944acb5736b4456cfcc02140e29"
-  version = "v3.1.0"
+  revision = "06ea1031745cb8b3dab3f6a236daf2b0aa468b7e"
+  version = "v3.2.0"
 
 [[projects]]
   branch = "master"
@@ -70,7 +70,7 @@
     "pkg/term",
     "pkg/term/windows"
   ]
-  revision = "8cf42d3ad805467be407962f902156a3834062ff"
+  revision = "4a65cd4d6d845e895c7c8061080210d74ae5a19b"
 
 [[projects]]
   name = "github.com/docker/go-connections"
@@ -94,7 +94,7 @@
   branch = "master"
   name = "github.com/fsouza/go-dockerclient"
   packages = ["."]
-  revision = "ca33ff277b527ce11b793e62f9ba244129b01caf"
+  revision = "b4b709947ca6022744c3989d7741c069f29357e4"
 
 [[projects]]
   branch = "master"
@@ -106,7 +106,7 @@
     "internal/sasl",
     "internal/scram"
   ]
-  revision = "9be26bd91ab2fff0bd27ef5c2b148fbb3a6c46a9"
+  revision = "baa28fcb8e7d5dfab92026c0920cb6c9ae72faa2"
 
 [[projects]]
   name = "github.com/go-playground/locales"
@@ -138,8 +138,8 @@
 [[projects]]
   name = "github.com/gorilla/securecookie"
   packages = ["."]
-  revision = "667fe4e3466a040b780561fe9b51a83a3753eefc"
-  version = "v1.1"
+  revision = "e59506cc896acb7f7bf732d4fdf5e25f7ccd8983"
+  version = "v1.1.1"
 
 [[projects]]
   name = "github.com/gorilla/sessions"
@@ -169,8 +169,8 @@
     ".",
     "middleware"
   ]
-  revision = "b338075a0fc6e1a0683dbf03d09b4957a289e26f"
-  version = "3.2.6"
+  revision = "27b5253bfd53caad64fb5d2a49ec724ff5558451"
+  version = "3.3.0"
 
 [[projects]]
   name = "github.com/labstack/echo-contrib"
@@ -186,8 +186,8 @@
     "log",
     "random"
   ]
-  revision = "57409ada9da0f2afad6664c49502f8c50fbd8476"
-  version = "0.2.3"
+  revision = "6fe1405d73ec4bd4cd8a4ac8e2a2b2bf95d03954"
+  version = "0.2.4"
 
 [[projects]]
   name = "github.com/magiconair/properties"
@@ -211,7 +211,7 @@
   branch = "master"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
-  revision = "a4e142e9c047c904fa2f1e144d9a84e6133024bc"
+  revision = "00c29f56e2386353d58c599509e8dc3801b0d716"
 
 [[projects]]
   name = "github.com/opencontainers/go-digest"
@@ -258,8 +258,8 @@
 [[projects]]
   name = "github.com/sirupsen/logrus"
   packages = ["."]
-  revision = "d682213848ed68c0a260ca37d6dd5ace8423f5ba"
-  version = "v1.0.4"
+  revision = "c155da19408a8799da419ed3eeb0cb5db0ad5dbc"
+  version = "v1.0.5"
 
 [[projects]]
   name = "github.com/spf13/afero"
@@ -320,16 +320,13 @@
     "acme/autocert",
     "ssh/terminal"
   ]
-  revision = "650f4a345ab4e5b245a3034b110ebc7299e68186"
+  revision = "182114d582623c1caa54f73de9c7224e23a48487"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
-  packages = [
-    "context",
-    "context/ctxhttp"
-  ]
-  revision = "cbe0f9307d0156177f9dd5dc85da1a31abc5f2fb"
+  packages = ["context"]
+  revision = "803fdb99c0f72e493c28ef2099d250a9c989d8ff"
 
 [[projects]]
   branch = "master"
@@ -338,10 +335,9 @@
     "unix",
     "windows"
   ]
-  revision = "37707fdb30a5b38865cfb95e5aab41707daec7fd"
+  revision = "8c0ece68c28377f4c326d85b94f8df0dace46f80"
 
 [[projects]]
-  branch = "master"
   name = "golang.org/x/text"
   packages = [
     "internal/gen",
@@ -351,7 +347,8 @@
     "unicode/cldr",
     "unicode/norm"
   ]
-  revision = "4e4a3210bb54bb31f6ab2cdca2edcc0b50c420c1"
+  revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
+  version = "v0.3.0"
 
 [[projects]]
   name = "gopkg.in/asn1-ber.v1"
@@ -362,8 +359,8 @@
 [[projects]]
   name = "gopkg.in/go-playground/validator.v9"
   packages = ["."]
-  revision = "535f85221eb67ab842438877b22cac6274380cf2"
-  version = "v9.10.0"
+  revision = "1b8c8e19cd250435025214492d9a08411d760fdd"
+  version = "v9.12.0"
 
 [[projects]]
   branch = "v3"
@@ -378,10 +375,10 @@
   version = "v2.5.1"
 
 [[projects]]
-  branch = "v2"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "d670f9405373e636a5a2765eea47fac0c9bc91a4"
+  revision = "7f97868eec74b32b0982dd158a51a446d1da7eb5"
+  version = "v2.1.1"
 
 [solve-meta]
   analyzer-name = "dep"
