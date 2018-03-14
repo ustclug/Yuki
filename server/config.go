@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/knight42/Yuki/auth"
@@ -28,12 +29,13 @@ type AppConfig struct {
 	BindIP                string   `mapstructure:"bind_ip,omitempty" validate:"omitempty,ip"`
 	NamePrefix            string   `mapstructure:"name_prefix,omitempty" validate:"-"`
 	SyncTimeout           string   `mapstructure:"sync_timeout,omitempty" validate:"omitempty,duration"`
-	AuthProvider          string   `mapstructure:"auth_provider,omitempty" validate:"omitempty,eq=ldap|eq=none"`
+	AuthProvider          string   `mapstructure:"auth_provider,omitempty" validate:"omitempty,eq=ldap|eq=none|eq=basic"`
 	CookieKey             string   `mapstructure:"cookie_key,omitempty" validate:"required"`
 	CookieDomain          string   `mapstructure:"cookie_domain,omitempty" validate:"-"`
 	SecureCookie          bool     `mapstructure:"secure_cookie,omitempty" validate:"-"`
 	PostSync              []string `mapstructure:"post_sync,omitempty" validate:"-"`
 	AllowOrigins          []string `mapstructure:"allow_origins,omitempty" validate:"-"`
+	BasicUsers            []string `mapstructure:"basic_users,omitempty" validate:"-"`
 	ImagesUpgradeInterval string   `mapstructure:"images_upgrade_interval,omitempty" validate:"omitempty,cron"`
 
 	Ldap auth.LdapAuthConfig `mapstructure:"ldap,omitempty" validate:"-"`
@@ -115,6 +117,16 @@ func LoadConfig() (*Config, error) {
 			return nil, err
 		}
 		cfg.Authenticator = a
+	case "basic":
+		users := map[string]string{}
+		for _, u := range appCfg.BasicUsers {
+			l := strings.Split(u, ":")
+			if len(l) != 2 {
+				return nil, fmt.Errorf("missing colon: `%s`", u)
+			}
+			users[l[0]] = l[1]
+		}
+		cfg.Authenticator = auth.NewBasicAuthenticator(users)
 	default:
 		cfg.Authenticator = auth.NewNopAuthenticator()
 	}
