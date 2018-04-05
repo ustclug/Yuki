@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"path"
 	"reflect"
+	"sync"
 	"time"
 
 	"github.com/gorilla/sessions"
@@ -21,12 +22,13 @@ import (
 var ctxLogFieldKey = "logfields"
 
 type Server struct {
-	e      *echo.Echo
-	c      *core.Core
-	config *Config
-	cron   *cron.Cron
-	quit   chan struct{}
-	logger *logrus.Logger
+	e          *echo.Echo
+	c          *core.Core
+	config     *Config
+	cron       *cron.Cron
+	syncStatus *sync.Map
+	quit       chan struct{}
+	logger     *logrus.Logger
 }
 
 func New() (*Server, error) {
@@ -38,17 +40,17 @@ func New() (*Server, error) {
 }
 
 type valTuple struct {
-	Ptr interface{}
-	Val interface{}
+	Var    interface{}
+	DefVal interface{}
 }
 
 func setDefault(us []valTuple) {
 	for _, u := range us {
-		val := reflect.ValueOf(u.Ptr)
+		val := reflect.ValueOf(u.Var)
 		dstType := val.Type().Elem()
 		dstVal := reflect.Indirect(val)
 		if reflect.DeepEqual(dstVal.Interface(), reflect.Zero(dstType).Interface()) {
-			dstVal.Set(reflect.ValueOf(u.Val))
+			dstVal.Set(reflect.ValueOf(u.DefVal))
 		}
 	}
 }
@@ -84,12 +86,13 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 		return nil, err
 	}
 	s := Server{
-		c:      c,
-		e:      echo.New(),
-		cron:   cron.New(),
-		config: cfg,
-		logger: logrus.New(),
-		quit:   make(chan struct{}),
+		c:          c,
+		e:          echo.New(),
+		cron:       cron.New(),
+		config:     cfg,
+		logger:     logrus.New(),
+		syncStatus: new(sync.Map),
+		quit:       make(chan struct{}),
 	}
 	s.e.Validator = &myValidator{NewValidator()}
 
@@ -115,7 +118,7 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 
 	s.schedRepos()
 	s.c.InitMetas()
-	s.registerPostSync()
+	s.hookAllEvents()
 
 	s.cron.AddFunc(cfg.ImagesUpgradeInterval, func() {
 		s.logger.Info("Upgrading images")
@@ -160,7 +163,6 @@ func (s *Server) schedRepos() {
 
 func (s *Server) newJob(name string) cron.FuncJob {
 	return func() {
-		s.logger.Infof("Syncing %s", name)
 		ct, err := s.c.Sync(core.SyncOptions{
 			LogDir:        s.config.LogDir,
 			DefaultOwner:  s.config.Owner,
@@ -173,6 +175,7 @@ func (s *Server) newJob(name string) cron.FuncJob {
 			s.logger.WithField("repo", name).Errorln(err)
 			return
 		}
+		s.logger.Infof("Syncing %s", name)
 		if err := s.c.WaitForSync(*ct); err != nil {
 			s.logger.WithField("repo", name).Errorln(err)
 		}

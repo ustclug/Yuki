@@ -8,7 +8,15 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func (s *Server) registerPostSync() {
+func (s *Server) hookPreSync() {
+	events.On(events.SyncStart, func(data events.Payload) {
+		attrs := data.Attrs
+		name := attrs["Name"].(string)
+		s.syncStatus.Store(name, struct{}{})
+	})
+}
+
+func (s *Server) hookPostSync() {
 	cmds := s.config.PostSync
 	events.On(events.SyncEnd, func(data events.Payload) {
 		attrs := data.Attrs
@@ -21,6 +29,7 @@ func (s *Server) registerPostSync() {
 		dir := attrs["Dir"].(string)
 		code := attrs["ExitCode"].(int)
 
+		s.syncStatus.Delete(name)
 		s.c.RemoveContainer(id)
 		s.c.UpsertRepoMeta(name, dir, code)
 		for _, cmd := range cmds {
@@ -33,4 +42,9 @@ func (s *Server) registerPostSync() {
 			}
 		}
 	})
+}
+
+func (s *Server) hookAllEvents() {
+	s.hookPreSync()
+	s.hookPostSync()
 }

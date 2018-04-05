@@ -100,9 +100,7 @@ func (c *Core) CleanImages() {
 		return
 	}
 	for _, i := range imgs {
-		go func(id string) {
-			c.Docker.RemoveImage(id)
-		}(i.ID)
+		go c.Docker.RemoveImage(i.ID)
 	}
 }
 
@@ -148,12 +146,10 @@ func (c *Core) WaitRunningContainers() {
 		return
 	}
 	for _, ct := range cts {
-		go func(ct docker.APIContainers) {
-			c.WaitForSync(Container{
-				ID:     ct.ID,
-				Labels: ct.Labels,
-			})
-		}(ct)
+		go c.WaitForSync(Container{
+			ID:     ct.ID,
+			Labels: ct.Labels,
+		})
 	}
 }
 
@@ -174,9 +170,7 @@ func (c *Core) CleanDeadContainers() {
 		return
 	}
 	for _, ct := range cts {
-		go func(id string) {
-			c.RemoveContainer(id)
-		}(ct.ID)
+		go c.RemoveContainer(ct.ID)
 	}
 }
 
@@ -224,8 +218,8 @@ func (c *Core) Sync(opts SyncOptions) (*Container, error) {
 		binds = append(binds, fmt.Sprintf("%s:/data/", r.StorageDir), fmt.Sprintf("%s:/log/", logdir))
 	}
 	labels := M{
-		"org.ustcmirror.syncing":     "true",
 		"org.ustcmirror.name":        r.Name,
+		"org.ustcmirror.syncing":     "true",
 		"org.ustcmirror.storage-dir": r.StorageDir,
 	}
 	createOpts := docker.CreateContainerOptions{
@@ -258,6 +252,14 @@ func (c *Core) Sync(opts SyncOptions) (*Container, error) {
 	if err = c.Docker.StartContainer(ct.ID, nil); err != nil {
 		return nil, err
 	}
+
+	go events.Emit(events.Payload{
+		Evt: events.SyncStart,
+		Attrs: events.M{
+			"Name": r.Name,
+		},
+	})
+
 	return &Container{ct.ID, labels}, nil
 }
 
@@ -277,7 +279,7 @@ func (c *Core) WaitForSync(ct Container) error {
 		return fmt.Errorf("missing label: org.ustcmirror.storage-dir")
 	}
 
-	events.Emit(events.Payload{
+	go events.Emit(events.Payload{
 		Evt: events.SyncEnd,
 		Attrs: events.M{
 			"ID":       ct.ID,

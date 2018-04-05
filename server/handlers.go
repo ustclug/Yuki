@@ -379,8 +379,23 @@ func (s *Server) removeCt(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
+type metaWithSyncStatus struct {
+	*core.Meta
+	Syncing bool `json:"syncing"`
+}
+
+func (s *Server) expandMeta(m *core.Meta) metaWithSyncStatus {
+	_, ok := s.syncStatus.Load(m.Name)
+	return metaWithSyncStatus{m, ok}
+}
+
 func (s *Server) listMetas(c echo.Context) error {
-	return c.JSON(http.StatusOK, s.c.ListAllMetas())
+	ms := s.c.ListAllMetas()
+	var result []metaWithSyncStatus
+	for i := 0; i < len(ms); i++ {
+		result = append(result, s.expandMeta(&ms[i]))
+	}
+	return c.JSON(http.StatusOK, result)
 }
 
 func (s *Server) getMeta(c echo.Context) error {
@@ -389,7 +404,7 @@ func (s *Server) getMeta(c echo.Context) error {
 	if err != nil {
 		return notFound(err)
 	}
-	return c.JSON(http.StatusOK, m)
+	return c.JSON(http.StatusOK, s.expandMeta(m))
 }
 
 func (s *Server) exportConfig(c echo.Context) error {
