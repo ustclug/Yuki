@@ -111,6 +111,8 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 	s.logger.Formatter = new(logrus.TextFormatter)
 	s.logger.Out = logfile
 
+	s.hookAllEvents()
+
 	s.logger.Info("Cleaning dead containers")
 	s.c.CleanDeadContainers()
 
@@ -118,7 +120,6 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 
 	s.schedRepos()
 	s.c.InitMetas()
-	s.hookAllEvents()
 
 	s.cron.AddFunc(cfg.ImagesUpgradeInterval, func() {
 		s.logger.Info("Upgrading images")

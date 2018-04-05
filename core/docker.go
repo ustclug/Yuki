@@ -253,18 +253,18 @@ func (c *Core) Sync(opts SyncOptions) (*Container, error) {
 		return nil, err
 	}
 
-	go events.Emit(events.Payload{
-		Evt: events.SyncStart,
-		Attrs: events.M{
-			"Name": r.Name,
-		},
-	})
-
 	return &Container{ct.ID, labels}, nil
 }
 
 // WaitForSync blocks until the container stops and emit the `SyncEnd` event.
 func (c *Core) WaitForSync(ct Container) error {
+	go events.Emit(events.Payload{
+		Evt: events.SyncStart,
+		Attrs: events.M{
+			"Name": ct.Labels["org.ustcmirror.name"],
+		},
+	})
+
 	code, err := c.Docker.WaitContainer(ct.ID)
 	if err != nil {
 		return err
