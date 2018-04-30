@@ -26,7 +26,7 @@
   branch = "master"
   name = "github.com/containerd/continuity"
   packages = ["pathdriver"]
-  revision = "3e8f2ea4b190484acb976a5b378d373429639a1a"
+  revision = "c6cef34830231743494fe2969284df7b82cc0ad0"
 
 [[projects]]
   name = "github.com/davecgh/go-spew"
@@ -41,7 +41,6 @@
   version = "v3.2.0"
 
 [[projects]]
-  branch = "master"
   name = "github.com/docker/docker"
   packages = [
     "api/types",
@@ -70,7 +69,7 @@
     "pkg/term",
     "pkg/term/windows"
   ]
-  revision = "8a9e1808cfdef414e60307b4ccd96719731be304"
+  revision = "a422774e593b33bd287d9890544ad9e09b380d8c"
 
 [[projects]]
   name = "github.com/docker/go-connections"
@@ -81,8 +80,8 @@
 [[projects]]
   name = "github.com/docker/go-units"
   packages = ["."]
-  revision = "0dadbb0345b35ec7ef35e228dabb8de89a65bf52"
-  version = "v0.3.2"
+  revision = "47565b4f722fb6ceae66b95f853feed578a4a51c"
+  version = "v0.3.3"
 
 [[projects]]
   name = "github.com/fsnotify/fsnotify"
@@ -94,7 +93,7 @@
   branch = "master"
   name = "github.com/fsouza/go-dockerclient"
   packages = ["."]
-  revision = "eb4b27262d9a41d4004d101c32e0598782a39415"
+  revision = "3a206030a28aea7b55e78db63a78aa6df21b5c09"
 
 [[projects]]
   branch = "master"
@@ -106,7 +105,7 @@
     "internal/sasl",
     "internal/scram"
   ]
-  revision = "f76e4f9da92ecd56e3be26f5ba92580af1ef97b4"
+  revision = "efe0945164a7e582241f37ae8983c075f8f2e870"
 
 [[projects]]
   name = "github.com/go-playground/locales"
@@ -170,8 +169,8 @@
     ".",
     "middleware"
   ]
-  revision = "a5d81b8d4a627f3f49dcb3164ef2bb5239682227"
-  version = "3.3.4"
+  revision = "6d227dfea4d2e52cb76856120b3c17f758139b4e"
+  version = "3.3.5"
 
 [[projects]]
   name = "github.com/labstack/echo-contrib"
@@ -187,8 +186,8 @@
     "log",
     "random"
   ]
-  revision = "6fe1405d73ec4bd4cd8a4ac8e2a2b2bf95d03954"
-  version = "0.2.4"
+  revision = "588f4e8bddc6cb45c27b448e925c7fd6a5545434"
+  version = "0.2.5"
 
 [[projects]]
   name = "github.com/magiconair/properties"
@@ -286,8 +285,8 @@
 [[projects]]
   name = "github.com/spf13/pflag"
   packages = ["."]
-  revision = "e57e3eeb33f795204c1ca35f56c44f83227c6e66"
-  version = "v1.0.0"
+  revision = "583c0c0531f06d5278b7d917446061adc344b5cd"
+  version = "v1.0.1"
 
 [[projects]]
   name = "github.com/spf13/viper"
@@ -321,13 +320,13 @@
     "acme/autocert",
     "ssh/terminal"
   ]
-  revision = "b2aa35443fbc700ab74c586ae79b81c171851023"
+  revision = "ae8bce0030810cf999bb2b9868ae5c7c58e6343b"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
   packages = ["context"]
-  revision = "b3c676e531a6dc479fa1b35ac961c13f5e2b4d2e"
+  revision = "5f9ae10d9af5b1c89ae6904293b14b064d4ada23"
 
 [[projects]]
   branch = "master"
@@ -336,7 +335,7 @@
     "unix",
     "windows"
   ]
-  revision = "1d206c9fa8975fb4cf00df1dc8bf3283dc24ba0e"
+  revision = "4adea008a5e5f820b6028611ae0b6b3fbcec534b"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -360,8 +359,8 @@
 [[projects]]
   name = "gopkg.in/go-playground/validator.v9"
   packages = ["."]
-  revision = "8ce234ff024d85b3848e485decba806385d6e276"
-  version = "v9.13.0"
+  revision = "14984d91328f9612b58443cbdf4a077d4fd71091"
+  version = "v9.15.0"
 
 [[projects]]
   branch = "v3"
