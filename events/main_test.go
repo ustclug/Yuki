@@ -24,15 +24,16 @@ func TestEmitter(t *testing.T) {
 		}).
 		On(ImportConfig, func(data Payload) {
 			t.Log("Import")
-		}).
-		Emit(Payload{SyncStart, nil}).
-		Emit(Payload{
-			Evt: SyncEnd,
-			Attrs: M{
-				"name":      "debian",
-				"createdAt": "19700101",
-			},
-		}).
-		Emit(Payload{ImportConfig, nil}).
-		Emit(Payload{ExportConfig, nil})
+		})
+
+	e.Emit(Payload{SyncStart, nil})
+	e.Emit(Payload{
+		Evt: SyncEnd,
+		Attrs: M{
+			"name":      "debian",
+			"createdAt": "19700101",
+		},
+	})
+	e.Emit(Payload{ImportConfig, nil})
+	e.Emit(Payload{ExportConfig, nil})
 }
