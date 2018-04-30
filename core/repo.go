@@ -8,7 +8,7 @@ import (
 )
 
 // M is an alias for a map[string]string map.
-type M map[string]string
+type M = map[string]string
 
 // Repository contains a list of syncing options.
 type Repository struct {

@@ -44,9 +44,14 @@ type LogsOptions struct {
 
 // GetContainerLogs gets all stdout and stderr logs from the given container.
 func (c *Core) GetContainerLogs(opts LogsOptions) error {
+	finished := make(chan struct{}, 1)
 	ctx, cancel := context.WithCancel(c.ctx)
+
 	go func() {
-		<-opts.CloseNotify
+		select {
+		case <-opts.CloseNotify:
+		case <-finished:
+		}
 		cancel()
 	}()
 
@@ -60,6 +65,7 @@ func (c *Core) GetContainerLogs(opts LogsOptions) error {
 		Tail:         opts.Tail,
 		Follow:       opts.Follow,
 	})
+	close(finished)
 	if err != context.Canceled {
 		return err
 	}
@@ -100,7 +106,7 @@ func (c *Core) CleanImages() {
 		return
 	}
 	for _, i := range imgs {
-		go c.Docker.RemoveImage(i.ID)
+		c.Docker.RemoveImage(i.ID)
 	}
 }
 
@@ -170,7 +176,7 @@ func (c *Core) CleanDeadContainers() {
 		return
 	}
 	for _, ct := range cts {
-		go c.RemoveContainer(ct.ID)
+		c.RemoveContainer(ct.ID)
 	}
 }
 
@@ -256,14 +262,16 @@ func (c *Core) Sync(opts SyncOptions) (*Container, error) {
 	return &Container{ct.ID, labels}, nil
 }
 
-// WaitForSync blocks until the container stops and emit the `SyncEnd` event.
+// WaitForSync emits `SyncStart` event at first, then blocks until the container stops and emits the `SyncEnd` event.
 func (c *Core) WaitForSync(ct Container) error {
-	go events.Emit(events.Payload{
+	if err := events.Emit(events.Payload{
 		Evt: events.SyncStart,
 		Attrs: events.M{
 			"Name": ct.Labels["org.ustcmirror.name"],
 		},
-	})
+	}); err != nil {
+		return err
+	}
 
 	code, err := c.Docker.WaitContainer(ct.ID)
 	if err != nil {
@@ -279,7 +287,7 @@ func (c *Core) WaitForSync(ct Container) error {
 		return fmt.Errorf("missing label: org.ustcmirror.storage-dir")
 	}
 
-	go events.Emit(events.Payload{
+	return events.Emit(events.Payload{
 		Evt: events.SyncEnd,
 		Attrs: events.M{
 			"ID":       ct.ID,
@@ -288,6 +296,4 @@ func (c *Core) WaitForSync(ct Container) error {
 			"ExitCode": code,
 		},
 	})
-
-	return nil
 }
