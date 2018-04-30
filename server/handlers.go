@@ -548,8 +548,8 @@ func (s *Server) HTTPErrorHandler(err error, c echo.Context) {
 	if he, ok := err.(*echo.HTTPError); ok {
 		code = he.Code
 		msg = fmt.Sprintf("%v", he.Message)
-		if he.Inner != nil {
-			msg = fmt.Sprintf("%v, %v", err, he.Inner)
+		if he.Internal != nil {
+			msg = fmt.Sprintf("%v, %v", err, he.Internal)
 		}
 	} else if de, ok := err.(*docker.Error); ok {
 		code = de.Status
