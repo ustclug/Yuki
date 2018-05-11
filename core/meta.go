@@ -39,6 +39,12 @@ func getUpstream(t string, envs M) (upstream string) {
 		return envs["APTSYNC_URL"]
 	case "debian-cd":
 		return fmt.Sprintf("rsync://%s/%s/", envs["RSYNC_HOST"], envs["RSYNC_MODULE"])
+	case "fedora":
+		remote, ok := envs["REMOTE"]
+		if !ok {
+			remote = "rsync://dl.fedoraproject.org"
+		}
+		return fmt.Sprintf("%s/%s", remote, envs["MODULE"])
 	case "freebsd-pkg":
 		if upstream, ok = envs["FBSD_PKG_UPSTREAM"]; !ok {
 			return "http://pkg.freebsd.org/"
