@@ -201,7 +201,7 @@ func (c *Core) Sync(opts SyncOptions) (*Container, error) {
 	envs.Set("OWNER", r.User)
 	envs.Set("BIND_ADDRESS", r.BindIP)
 	envs.SetInt("RETRY", r.Retry)
-	envs.SetInt("LOG_ROTATE_CYCLE", int(r.LogRotCycle))
+	envs.SetInt("LOG_ROTATE_CYCLE", r.LogRotCycle)
 	if opts.Debug {
 		envs.Set("DEBUG", "true")
 	} else {
@@ -215,7 +215,7 @@ func (c *Core) Sync(opts SyncOptions) (*Container, error) {
 
 	if opts.MountDir {
 		logdir := path.Join(opts.LogDir, opts.Name)
-		if err := os.MkdirAll(logdir, os.ModePerm); err != nil {
+		if err = os.MkdirAll(logdir, os.ModePerm); err != nil {
 			return nil, fmt.Errorf("not a directory: %s", logdir)
 		}
 		if !common.DirExists(r.StorageDir) {
@@ -264,14 +264,12 @@ func (c *Core) Sync(opts SyncOptions) (*Container, error) {
 
 // WaitForSync emits `SyncStart` event at first, then blocks until the container stops and emits the `SyncEnd` event.
 func (c *Core) WaitForSync(ct Container) error {
-	if err := events.Emit(events.Payload{
+	events.Emit(events.Payload{
 		Evt: events.SyncStart,
 		Attrs: events.M{
 			"Name": ct.Labels["org.ustcmirror.name"],
 		},
-	}); err != nil {
-		return err
-	}
+	})
 
 	code, err := c.Docker.WaitContainer(ct.ID)
 	if err != nil {
@@ -287,7 +285,7 @@ func (c *Core) WaitForSync(ct Container) error {
 		return fmt.Errorf("missing label: org.ustcmirror.storage-dir")
 	}
 
-	return events.Emit(events.Payload{
+	events.Emit(events.Payload{
 		Evt: events.SyncEnd,
 		Attrs: events.M{
 			"ID":       ct.ID,
@@ -296,4 +294,6 @@ func (c *Core) WaitForSync(ct Container) error {
 			"ExitCode": code,
 		},
 	})
+
+	return nil
 }

@@ -1,12 +1,6 @@
 // Package events implements functions for listening or emitting events.
 package events
 
-import (
-	"fmt"
-	"sync"
-	"time"
-)
-
 // Event is an alias of int.
 type Event = int
 
@@ -35,8 +29,6 @@ type Listener func(data Payload)
 
 var (
 	globalEmitter *Emitter
-	// ErrTimeout is returned for an expired deadline.
-	ErrTimeout = fmt.Errorf("timeout")
 )
 
 // Emitter is the event emitter.
@@ -54,8 +46,8 @@ func On(evt Event, listener Listener) *Emitter {
 }
 
 // Emit triggers global events.
-func Emit(payload Payload) error {
-	return globalEmitter.Emit(payload)
+func Emit(payload Payload) {
+	globalEmitter.Emit(payload)
 }
 
 // On registers a listener for the given event.
@@ -64,42 +56,17 @@ func (e *Emitter) On(evt Event, listener Listener) *Emitter {
 	return e
 }
 
-func waitTimeout(wg *sync.WaitGroup, timeout time.Duration) error {
-	c := make(chan struct{})
-	go func() {
-		wg.Wait()
-		close(c)
-	}()
-	select {
-	case <-c:
-		return nil
-	case <-time.After(timeout):
-		return ErrTimeout
-	}
-}
-
 // Emit emits the given event with the padload.
-func (e *Emitter) Emit(payload Payload) error {
-	var (
-		wg sync.WaitGroup
-	)
-
+func (e *Emitter) Emit(payload Payload) {
 	evt := payload.Evt
 	listeners, ok := e.listeners[evt]
 	if !ok {
-		return nil
+		return
 	}
-
-	wg.Add(len(listeners))
 
 	for _, fn := range listeners {
-		go func(fn Listener) {
-			defer wg.Done()
-			fn(payload)
-		}(fn)
+		go fn(payload)
 	}
-
-	return waitTimeout(&wg, 5*time.Second)
 }
 
 // NewEmitter returns an instance of Emitter.
