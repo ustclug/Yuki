@@ -78,6 +78,8 @@ func (f *xfs) GetSize(d string) int64 {
 	}
 
 	var buf bytes.Buffer
+	var kbs int64
+	var err error
 	name := path.Base(d)
 	cmd := exec.Command("sudo", "-n", "xfs_quota", "-c", fmt.Sprintf("quota -pN %s", name))
 	cmd.Stdout = &buf
@@ -86,9 +88,14 @@ func (f *xfs) GetSize(d string) int64 {
 	}
 	scanner := bufio.NewScanner(&buf)
 	scanner.Scan()
-	scanner.Scan()
 	fields := strings.Fields(scanner.Text())
-	kbs, err := strconv.ParseInt(fields[0], 10, 64)
+	if len(fields) >= 2 {
+		kbs, err = strconv.ParseInt(fields[1], 10, 64)
+	} else {
+		scanner.Scan()
+		fields = strings.Fields(scanner.Text())
+		kbs, err = strconv.ParseInt(fields[0], 10, 64)
+	}
 	if err != nil {
 		return -1
 	}
