@@ -379,23 +379,17 @@ func (s *Server) removeCt(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-type metaWithSyncStatus struct {
-	*core.Meta
-	Syncing bool `json:"syncing"`
-}
-
-func (s *Server) expandMeta(m *core.Meta) metaWithSyncStatus {
+func (s *Server) updateSyncStatus(m *core.Meta) {
 	_, ok := s.syncStatus.Load(m.Name)
-	return metaWithSyncStatus{m, ok}
+	m.Syncing = ok
 }
 
 func (s *Server) listMetas(c echo.Context) error {
 	ms := s.c.ListAllMetas()
-	var result []metaWithSyncStatus
 	for i := 0; i < len(ms); i++ {
-		result = append(result, s.expandMeta(&ms[i]))
+		s.updateSyncStatus(&ms[i])
 	}
-	return c.JSON(http.StatusOK, result)
+	return c.JSON(http.StatusOK, ms)
 }
 
 func (s *Server) getMeta(c echo.Context) error {
@@ -404,7 +398,8 @@ func (s *Server) getMeta(c echo.Context) error {
 	if err != nil {
 		return notFound(err)
 	}
-	return c.JSON(http.StatusOK, s.expandMeta(m))
+	s.updateSyncStatus(m)
+	return c.JSON(http.StatusOK, m)
 }
 
 func (s *Server) exportConfig(c echo.Context) error {
