@@ -10,8 +10,8 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/knight42/Yuki/common"
-	"github.com/knight42/Yuki/events"
+	"github.com/ustclug/Yuki/common"
+	"github.com/ustclug/Yuki/events"
 )
 
 // Container provides the ID and labels of a container.

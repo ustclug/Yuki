@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/gorilla/sessions"
-	"github.com/knight42/Yuki/core"
-	"github.com/knight42/Yuki/cron"
+	"github.com/ustclug/Yuki/core"
+	"github.com/ustclug/Yuki/cron"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/middleware"

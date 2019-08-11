@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/knight42/Yuki/events"
+	"github.com/ustclug/Yuki/events"
 	"github.com/sirupsen/logrus"
 )
 

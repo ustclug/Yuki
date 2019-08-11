@@ -7,7 +7,7 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/globalsign/mgo"
-	"github.com/knight42/Yuki/fs"
+	"github.com/ustclug/Yuki/fs"
 )
 
 // Config contains a list of options used when creating `Core`.

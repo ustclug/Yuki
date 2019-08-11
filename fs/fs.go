@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/knight42/Yuki/common"
+	"github.com/ustclug/Yuki/common"
 )
 
 // Type represents different kinds of file system.

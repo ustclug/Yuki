@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/knight42/Yuki/auth"
-	"github.com/knight42/Yuki/core"
-	"github.com/knight42/Yuki/fs"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"github.com/ustclug/Yuki/auth"
+	"github.com/ustclug/Yuki/core"
+	"github.com/ustclug/Yuki/fs"
 )
 
 type AppConfig struct {
