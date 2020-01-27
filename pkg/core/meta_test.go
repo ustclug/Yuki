@@ -5,20 +5,24 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/ustclug/Yuki/pkg/api"
 )
 
 func TestGetMeta(t *testing.T) {
 	t.Parallel()
 	name := "test-get-meta"
 	as := assert.New(t)
-	c.AddRepository(&Repository{
+	cycle := 10
+	err := c.AddRepository(api.Repository{
 		Name:        name,
 		Interval:    "1 * * * *",
 		Image:       "ustcmirror/hackage:latest",
 		StorageDir:  "/tmp/hackage",
-		LogRotCycle: 10,
+		LogRotCycle: &cycle,
 	})
-	err := c.AddMeta(&Meta{
+	as.Nil(err)
+	err = c.AddMeta(&api.Meta{
 		Name:     name,
 		Size:     -1,
 		ExitCode: -1,
@@ -41,7 +45,7 @@ func TestRemoveMeta(t *testing.T) {
 	t.Parallel()
 	name := "test-remove-meta"
 	as := assert.New(t)
-	err := c.AddMeta(&Meta{
+	err := c.AddMeta(&api.Meta{
 		Name:     name,
 		Size:     -1,
 		ExitCode: -1,

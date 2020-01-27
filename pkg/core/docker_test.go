@@ -5,22 +5,26 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/ustclug/Yuki/pkg/api"
 )
 
 func TestSync(t *testing.T) {
 	t.Parallel()
 	name := "yuki-test-sync-repo"
 	as := assert.New(t)
+	cycle := 10
 	d := "/tmp/" + name
 	os.MkdirAll(d, os.ModePerm)
 	defer os.RemoveAll(d)
-	c.AddRepository(&Repository{
+	err := c.AddRepository(api.Repository{
 		Name:        name,
 		Interval:    "1 * * * *",
 		Image:       "ustcmirror/test:latest",
 		StorageDir:  d,
-		LogRotCycle: 10,
+		LogRotCycle: &cycle,
 	})
+	as.Nil(err)
 	prefix := "syncing-"
 	ct, err := c.Sync(SyncOptions{
 		LogDir:     logDir,
