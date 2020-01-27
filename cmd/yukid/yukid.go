@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/ustclug/Yuki/server"
+	"github.com/ustclug/Yuki/pkg/server"
 )
 
 func main() {
