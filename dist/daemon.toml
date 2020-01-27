@@ -8,10 +8,7 @@
 #   "zfs"
 #   "xfs"
 #   "default"
-fs = "zfs"
-
-# See also `time.ParseDuration` in Go
-#session_age = "48h"
+fs = "default"
 
 # unix local socket: unix:///var/run/docker.sock
 # tcp: tcp://127.0.0.1:2375
@@ -30,30 +27,6 @@ fs = "zfs"
 
 #name_prefix = "syncing-"
 
-# available values:
-#   "ldap"
-#   "basic"
-#   "none"
-#auth_provider = "none"
-
-#basic_users = ["username1:password", "name2:password2"]
-
-# REQUIRED!
-cookie_key = "secret"
-
-#cookie_domain = ""
-
-#secure_cookie = false
-
 #post_sync = ["/path/to/the/program"]
 
-#allow_origins = ["*"]
-
 #images_upgrade_interval = "@every 1h"
-
-#[ldap]
-#base = "dc=ldap,dc=example,dc=com"
-#host = "ldap.example.com"
-#use_ssl = true
-#user_filter = "(uid=%s)"
-#ca_certificates = ["/etc/slapd-ca-cert.pem"]
