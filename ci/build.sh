@@ -9,7 +9,7 @@ if [[ -z $TRAVIS_TAG ]]; then
 fi
 
 HERE=$(pwd)
-NAME=${NAME:-yukid}
+NAME=${NAME:-yuki}
 
 export GOOS=${GOOS:-$(go env GOOS)} GOARCH=${GOARCH:-$(go env GOARCH)}
 
@@ -18,5 +18,6 @@ rm -rf "$stage"
 
 # static linking
 CGO_ENABLED=0 go build -o "$stage/yukid" ./cmd/yukid
+CGO_ENABLED=0 go build -o "$stage/yukictl" ./cmd/yukictl
 cp LICENSE dist/{daemon.toml,yukid.service} "$stage"
 tar -czf "$HERE/$NAME-$TRAVIS_TAG-$GOOS-$GOARCH.tar.gz" -C /tmp -- "${stage#/tmp/}"
