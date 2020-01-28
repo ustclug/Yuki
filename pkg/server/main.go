@@ -193,10 +193,10 @@ func (s *Server) Start(ctx context.Context) {
 	}
 
 	go func() {
-		c := time.Tick(time.Second * 20)
+		ticker := time.NewTicker(time.Second * 20)
 		fail := 0
 		const threshold int = 3
-		for range c {
+		for range ticker.C {
 			if err := s.c.PingMongoSession(); err != nil {
 				fail++
 				if fail > threshold {
@@ -268,6 +268,7 @@ func (s *Server) cleanImages() {
 		"dangling": {"true"},
 	})
 	if err != nil {
+		logrus.Errorf("listImages: %s", err)
 		return
 	}
 	for _, i := range imgs {

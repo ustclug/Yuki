@@ -1,7 +1,6 @@
 package ct
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 
@@ -31,10 +30,7 @@ func (o *lsOptions) Run(f factory.Factory) error {
 	if resp.IsError() {
 		return fmt.Errorf("%s", errMsg.Message)
 	}
-	encoder := json.NewEncoder(os.Stdout)
-	encoder.SetIndent("", "  ")
-	err = encoder.Encode(result)
-	return err
+	return f.JSONEncoder(os.Stdout).Encode(result)
 }
 
 func NewCmdContainerLs(f factory.Factory) *cobra.Command {

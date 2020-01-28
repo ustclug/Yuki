@@ -39,9 +39,9 @@ func (o *reloadOptions) Run(f factory.Factory) error {
 		return fmt.Errorf("%s", errMsg.Message)
 	}
 	if len(o.repo) > 0 {
-		fmt.Printf("Successfully reload <%s>\n", o.repo)
+		fmt.Printf("Successfully reloaded: <%s>\n", o.repo)
 	} else {
-		fmt.Println("Successfully reload all repositories")
+		fmt.Println("Successfully reloaded all repositories")
 	}
 	return nil
 }

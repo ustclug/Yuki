@@ -79,28 +79,6 @@ func (s *Server) listRepos(c echo.Context) error {
 	return c.JSON(http.StatusOK, repos)
 }
 
-func (s *Server) addRepo(c echo.Context) error {
-	var repo api.Repository
-	if err := c.Bind(&repo); err != nil {
-		return badRequest(err)
-	}
-	if err := c.Validate(&repo); err != nil {
-		return badRequest(err)
-	}
-	name := c.Param("name")
-	if repo.Name == "" {
-		repo.Name = name
-	}
-	err := s.c.AddRepository(repo)
-	if err != nil {
-		if mgo.IsDup(err) {
-			return conflict(err)
-		}
-		return err
-	}
-	return c.NoContent(http.StatusCreated)
-}
-
 func (s *Server) getRepo(c echo.Context) error {
 	name := c.Param("name")
 	repo, err := s.c.GetRepository(name)

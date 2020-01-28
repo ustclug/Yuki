@@ -2,10 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"strconv"
 
+	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/cobra"
 
@@ -57,7 +57,7 @@ func (o *syncOptions) Run(f factory.Factory) error {
 	}
 	body := resp.RawBody()
 	defer body.Close()
-	_, err = io.Copy(os.Stdout, body)
+	_, err = stdcopy.StdCopy(os.Stdout, os.Stderr, body)
 	return err
 }
 

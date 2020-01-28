@@ -1,4 +1,4 @@
-// Package common provides some helper functions.
+// Package utils provides some helper functions.
 package utils
 
 import "os"

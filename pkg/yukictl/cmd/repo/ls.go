@@ -1,7 +1,6 @@
 package repo
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
@@ -32,6 +31,7 @@ func (o *repoLsOptions) Run(f factory.Factory) error {
 		errMsg echo.HTTPError
 	)
 	req := f.RESTClient().R().SetError(&errMsg)
+	encoder := f.JSONEncoder(os.Stdout)
 	if len(o.name) > 0 {
 		u, err = f.MakeURL("api/v1/repositories/%s", o.name)
 		if err != nil {
@@ -45,10 +45,7 @@ func (o *repoLsOptions) Run(f factory.Factory) error {
 		if resp.IsError() {
 			return fmt.Errorf("%s", errMsg.Message)
 		}
-		encoder := json.NewEncoder(os.Stdout)
-		encoder.SetIndent("", "  ")
-		err = encoder.Encode(result)
-		return err
+		return encoder.Encode(result)
 	}
 	u, err = f.MakeURL("api/v1/repositories")
 	if err != nil {
@@ -62,10 +59,7 @@ func (o *repoLsOptions) Run(f factory.Factory) error {
 	if resp.IsError() {
 		return fmt.Errorf("%s", errMsg.Message)
 	}
-	encoder := json.NewEncoder(os.Stdout)
-	encoder.SetIndent("", "  ")
-	err = encoder.Encode(result)
-	return err
+	return encoder.Encode(result)
 }
 
 func NewCmdRepoLs(f factory.Factory) *cobra.Command {

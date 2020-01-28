@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -58,12 +57,9 @@ func (o *exportOptions) Run(f factory.Factory) error {
 				return err
 			}
 		}
-	} else {
-		encoder := json.NewEncoder(os.Stdout)
-		encoder.SetIndent("", "  ")
-		_ = encoder.Encode(repos)
+		return nil
 	}
-	return nil
+	return f.JSONEncoder(os.Stdout).Encode(repos)
 }
 
 func NewCmdExport(f factory.Factory) *cobra.Command {

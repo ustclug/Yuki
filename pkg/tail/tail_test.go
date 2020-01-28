@@ -60,6 +60,6 @@ func testReadLines(t *testing.T, cfg config, hasEOL bool) {
 		t.Fatalf("expected length: %d, but got %d", len(expected), written)
 	}
 	if !reflect.DeepEqual(buffer.Bytes(), expected) {
-		t.Fatalf("expected content:\n%s\nbut got:\n%s", string(expected), string(buffer.Bytes()))
+		t.Fatalf("expected content:\n%s\nbut got:\n%s", string(expected), buffer.String())
 	}
 }

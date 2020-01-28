@@ -38,7 +38,7 @@ func (p *poolImpl) worker() {
 			p.mu.RUnlock()
 
 			p.mu.Lock()
-			p.curWorkers -= 1
+			p.curWorkers--
 			p.mu.Unlock()
 			return
 		}
@@ -63,7 +63,7 @@ func (p *poolImpl) Submit(job Job) {
 				p.mu.RUnlock()
 
 				p.mu.Lock()
-				p.curWorkers += 1
+				p.curWorkers++
 				p.mu.Unlock()
 
 				go p.worker()
