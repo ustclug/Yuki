@@ -14,7 +14,7 @@ func TestCron(t *testing.T) {
 	next := now.Add(time.Second * 4)
 	wg.Add(1)
 	cron := New()
-	_, err := cron.AddFunc("@every 3s", func() {
+	err := cron.AddFunc("@every 3s", func() {
 		wg.Done()
 	})
 	assert.Nil(t, err)

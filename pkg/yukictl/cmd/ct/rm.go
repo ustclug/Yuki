@@ -34,7 +34,7 @@ func (o *rmOptions) Run(f factory.Factory) error {
 	if resp.IsError() {
 		return fmt.Errorf("%s", errMsg.Message)
 	}
-	fmt.Printf("Successfully delete: <%s>\n", o.name)
+	fmt.Printf("Successfully deletes container: <%s>\n", o.name)
 	return nil
 }
 

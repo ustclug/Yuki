@@ -1,11 +1,16 @@
 package api
 
+import (
+	"time"
+)
+
 // Container provides the ID and labels of a container.
 type Container struct {
 	ID     string
 	Labels map[string]string
 }
 
+// ContainerDetail describes a container in detail.
 type ContainerDetail struct {
 	ID      string `json:"id"`
 	Image   string `json:"image"`
@@ -13,6 +18,13 @@ type ContainerDetail struct {
 	State   string `json:"state"`
 	Status  string `json:"status"`
 	Name    string `json:"name"`
+}
+
+// LogFileStat describes a log file.
+type LogFileStat struct {
+	Name  string    `json:"name"`
+	Size  int64     `json:"size"`
+	Mtime time.Time `json:"mtime"`
 }
 
 // Meta represents the metadata of a Repository.
@@ -25,8 +37,8 @@ type Meta struct {
 	LastSuccess int64  `bson:"lastSuccess,omitempty" json:"lastSuccess"`
 	CreatedAt   int64  `bson:"createdAt,omitempty" json:"createdAt"`
 	UpdatedAt   int64  `bson:"updatedAt,omitempty" json:"updatedAt"`
+	PrevRun     int64  `bson:"prevRun,omitempty" json:"prevRun"`
 	NextRun     int64  `bson:"-" json:"nextRun"`
-	PrevRun     int64  `bson:"-" json:"prevRun"`
 }
 
 // M is an alias for a map[string]string map.

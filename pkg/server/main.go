@@ -6,13 +6,12 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"os/signal"
 	"path"
 	"reflect"
 	"sync"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
+	"github.com/docker/docker/api/types"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/sirupsen/logrus"
@@ -27,12 +26,12 @@ import (
 type Server struct {
 	e          *echo.Echo
 	c          *core.Core
+	ctx        context.Context
+	syncStatus sync.Map
 	gpool      gpool.Pool
 	config     *Config
 	cron       *cron.Cron
-	syncStatus *sync.Map
 	quit       chan struct{}
-
 	preSyncCh  chan api.PreSyncPayload
 	postSyncCh chan api.PostSyncPayload
 }
@@ -96,51 +95,32 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
+	stopCh := make(chan struct{})
 	s := Server{
 		c:          c,
 		e:          echo.New(),
 		cron:       cron.New(),
 		config:     cfg,
-		syncStatus: new(sync.Map),
-
-		quit:       make(chan struct{}),
+		gpool:      gpool.New(stopCh, gpool.WithMaxWorkers(5)),
+		quit:       stopCh,
 		preSyncCh:  make(chan api.PreSyncPayload),
 		postSyncCh: make(chan api.PostSyncPayload),
 	}
+
 	s.e.Validator = &myValidator{NewValidator()}
-
-	logrus.SetLevel(cfg.LogLevel)
-
 	s.e.Debug = cfg.Debug
 	s.e.HideBanner = true
-
-	s.e.HTTPErrorHandler = s.HTTPErrorHandler
+	s.e.HTTPErrorHandler = s.httpErrorHandler
 	s.e.Logger.SetOutput(ioutil.Discard)
 
 	logfile, err := os.OpenFile(path.Join(cfg.LogDir, "yukid.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, err
 	}
+	logrus.SetLevel(cfg.LogLevel)
+	logrus.SetReportCaller(true)
 	logrus.SetFormatter(new(logrus.TextFormatter))
 	logrus.SetOutput(logfile)
-
-	logrus.Info("Cleaning dead containers")
-	s.cleanDeadContainers()
-
-	s.waitRunningContainers()
-
-	s.schedRepos()
-	s.c.InitMetas()
-
-	_, err = s.cron.AddFunc(cfg.ImagesUpgradeInterval, func() {
-		logrus.Info("Upgrading images")
-		s.upgradeImages()
-		logrus.Info("Cleaning images")
-		s.cleanImages()
-	})
-	if err != nil {
-		return nil, err
-	}
 
 	// middlewares
 	s.e.Use(middleware.BodyLimit("2M"))
@@ -163,7 +143,7 @@ func (s *Server) schedRepos() {
 
 func (s *Server) newJob(name string) cron.FuncJob {
 	return func() {
-		ct, err := s.c.Sync(core.SyncOptions{
+		ct, err := s.c.Sync(s.context(), core.SyncOptions{
 			LogDir:        s.config.LogDir,
 			DefaultOwner:  s.config.Owner,
 			NamePrefix:    s.config.NamePrefix,
@@ -182,7 +162,9 @@ func (s *Server) newJob(name string) cron.FuncJob {
 	}
 }
 
-func (s *Server) Start() {
+func (s *Server) Start(ctx context.Context) {
+	s.ctx = ctx
+
 	logrus.Infof("Listening at %s", s.config.ListenAddr)
 	go func() {
 		if err := s.e.Start(s.config.ListenAddr); err != nil {
@@ -190,16 +172,36 @@ func (s *Server) Start() {
 		}
 	}()
 
+	go s.onPreSync()
+	go s.onPostSync()
+
+	s.cleanDeadContainers()
+
+	s.waitRunningContainers()
+
+	s.schedRepos()
+	s.c.InitMetas()
+
+	err := s.cron.AddFunc(s.config.ImagesUpgradeInterval, func() {
+		logrus.Info("Upgrading images")
+		s.upgradeImages()
+		logrus.Info("Cleaning images")
+		s.cleanImages()
+	})
+	if err != nil {
+		logrus.Fatalf("cron.AddFunc: %s", err)
+	}
+
 	go func() {
 		c := time.Tick(time.Second * 20)
 		fail := 0
 		const threshold int = 3
 		for range c {
-			if err := s.c.MgoSess.Ping(); err != nil {
+			if err := s.c.PingMongoSession(); err != nil {
 				fail++
 				if fail > threshold {
 					logrus.Errorln("Failed to connect to MongoDB, exit...")
-					s.quit <- struct{}{}
+					close(s.quit)
 					return
 				}
 				logrus.Warnf("Failed to connect to MongoDB: %d", fail)
@@ -210,25 +212,29 @@ func (s *Server) Start() {
 		}
 	}()
 
-	// Wait for interrupt signal to gracefully shutdown the server with
-	// a timeout of 10 seconds.
-	signals := make(chan os.Signal)
-	signal.Notify(signals, os.Interrupt)
-
 	select {
-	case <-signals:
+	case <-ctx.Done():
+		close(s.quit)
 	case <-s.quit:
 	}
 	s.teardown()
 }
 
 func (s *Server) teardown() {
-	s.c.MgoSess.Close()
+	s.c.CloseMongoSession()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 	if err := s.e.Shutdown(ctx); err != nil {
 		logrus.Errorln(err)
 	}
+}
+
+func (s *Server) context() context.Context {
+	return s.ctx
+}
+
+func (s *Server) contextWithTimeout(timeout time.Duration) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(s.ctx, timeout)
 }
 
 func (s *Server) upgradeImages() {
@@ -242,7 +248,9 @@ func (s *Server) upgradeImages() {
 	for _, i := range images {
 		img := i
 		s.gpool.Submit(func() {
-			err := s.c.PullImage(img)
+			ctx, cancel := s.contextWithTimeout(time.Minute * 5)
+			err := s.c.PullImage(ctx, img)
+			cancel()
 			wg.Done()
 			if err != nil {
 				logrus.Errorf("pullImage: %s", err)
@@ -253,21 +261,19 @@ func (s *Server) upgradeImages() {
 }
 
 func (s *Server) cleanImages() {
-	ctx, cancel := context.WithTimeout(context.TODO(), time.Second*5)
+	ctx, cancel := s.contextWithTimeout(time.Second * 5)
 	defer cancel()
-	imgs, err := s.c.Docker.ListImages(docker.ListImagesOptions{
-		All:     true,
-		Context: ctx,
-		Filters: map[string][]string{
-			"dangling": {"true"},
-			"label":    {"org.ustcmirror.images=true"},
-		},
+	imgs, err := s.c.ListImages(ctx, map[string][]string{
+		"label":    {"org.ustcmirror.images=true"},
+		"dangling": {"true"},
 	})
 	if err != nil {
 		return
 	}
 	for _, i := range imgs {
-		err := s.c.Docker.RemoveImage(i.ID)
+		ctx, cancel := s.contextWithTimeout(time.Second * 5)
+		err := s.c.RemoveImage(ctx, i.ID)
+		cancel()
 		if err != nil {
 			logrus.Errorf("removeImage: %s", err)
 		}
@@ -280,6 +286,10 @@ func (s *Server) onPreSync() {
 		case <-s.quit:
 			return
 		case data := <-s.preSyncCh:
+			err := s.c.UpdatePrevRun(data.Name)
+			if err != nil {
+				logrus.WithField("repo", data.Name).Errorf("failed to update prevRun: %s", err)
+			}
 			s.syncStatus.Store(data.Name, struct{}{})
 		}
 	}
@@ -292,8 +302,10 @@ func (s *Server) onPostSync() {
 		case <-s.quit:
 			return
 		case data := <-s.postSyncCh:
-			s.syncStatus.Delete(data.ID)
-			err := s.c.RemoveContainer(data.ID)
+			s.syncStatus.Delete(data.Name)
+			ctx, cancel := s.contextWithTimeout(time.Second * 20)
+			err := s.c.RemoveContainer(ctx, data.ID)
+			cancel()
 			entry := logrus.WithField("repo", data.Name)
 			if err != nil {
 				entry.Errorf("failed to remove container: %s", err)
@@ -325,23 +337,22 @@ func (s *Server) onPostSync() {
 
 // cleanDeadContainers removes containers which status are `created`, `exited` or `dead`.
 func (s *Server) cleanDeadContainers() {
+	logrus.Info("Cleaning dead containers")
+
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Second*10)
 	defer cancel()
-	opts := docker.ListContainersOptions{
-		Context: ctx,
-		All:     true,
-		Filters: map[string][]string{
-			"label":  {"org.ustcmirror.syncing=true"},
-			"status": {"created", "exited", "dead"},
-		},
-	}
-	cts, err := s.c.Docker.ListContainers(opts)
+	cts, err := s.c.ListContainers(ctx, map[string][]string{
+		"label":  {"org.ustcmirror.syncing=true"},
+		"status": {"created", "exited", "dead"},
+	})
 	if err != nil {
 		logrus.Errorf("listContainers: %s", err)
 		return
 	}
 	for _, ct := range cts {
-		err := s.c.RemoveContainer(ct.ID)
+		ctx, cancel := s.contextWithTimeout(time.Second * 20)
+		err := s.c.RemoveContainer(ctx, ct.ID)
+		cancel()
 		if err != nil {
 			logrus.WithField("container", ct.Names[0]).Errorf("removeContainer: %s", err)
 		}
@@ -350,20 +361,16 @@ func (s *Server) cleanDeadContainers() {
 
 // waitRunningContainers waits for all syncing containers to stop and remove them.
 func (s *Server) waitRunningContainers() {
-	opts := docker.ListContainersOptions{
-		All: true,
-		Filters: map[string][]string{
-			"label":  {"org.ustcmirror.syncing=true"},
-			"status": {"running"},
-		},
-	}
-	cts, err := s.c.Docker.ListContainers(opts)
+	cts, err := s.c.ListContainers(context.Background(), map[string][]string{
+		"label":  {"org.ustcmirror.syncing=true"},
+		"status": {"running"},
+	})
 	if err != nil {
 		logrus.Errorf("listContainers: %s", err)
 		return
 	}
 	for _, ct := range cts {
-		go func(ct docker.APIContainers) {
+		go func(ct types.Container) {
 			if err := s.waitForSync(&api.Container{
 				ID:     ct.ID,
 				Labels: ct.Labels,
@@ -380,7 +387,7 @@ func (s *Server) waitForSync(ct *api.Container) error {
 		Name: ct.Labels["org.ustcmirror.name"],
 	}
 
-	code, err := s.c.Docker.WaitContainer(ct.ID)
+	code, err := s.c.WaitContainer(s.context(), ct.ID)
 	if err != nil {
 		return err
 	}
@@ -402,21 +409,3 @@ func (s *Server) waitForSync(ct *api.Container) error {
 	}
 	return nil
 }
-
-// initMetas creates metadata for each Repository.
-// func (s *Server) initMetas() {
-// 	repos := s.c.ListAllRepositories()
-// 	now := time.Now().Unix()
-// 	for _, r := range repos {
-// 		size := s.c.GetSize(r.StorageDir)
-// 		_, _ = c.metaColl.UpsertId(r.Name, bson.M{
-// 			"$set": bson.M{
-// 				"size": size,
-// 			},
-// 			"$setOnInsert": bson.M{
-// 				"createdAt": now,
-// 				"exitCode":  -1,
-// 			},
-// 		})
-// 	}
-// }

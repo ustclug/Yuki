@@ -6,11 +6,11 @@ import (
 	"io"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/cobra"
 
+	"github.com/ustclug/Yuki/pkg/api"
 	"github.com/ustclug/Yuki/pkg/utils"
 	"github.com/ustclug/Yuki/pkg/yukictl/factory"
 )
@@ -20,12 +20,6 @@ type logsOptions struct {
 	tail  uint8
 	nth   uint8
 	stats bool
-}
-
-type logFileStat struct {
-	Name  string    `json:"name"`
-	Size  int64     `json:"size"`
-	Mtime time.Time `json:"mtime"`
 }
 
 func (o *logsOptions) Complete(cmd *cobra.Command, args []string) error {
@@ -49,7 +43,7 @@ func (o *logsOptions) Run(cmd *cobra.Command, f factory.Factory) error {
 	req := f.RESTClient().R().SetError(&errMsg)
 
 	if o.stats {
-		var stats []logFileStat
+		var stats []api.LogFileStat
 		resp, err := req.
 			SetQueryParam("stats", strconv.FormatBool(true)).
 			SetResult(&stats).

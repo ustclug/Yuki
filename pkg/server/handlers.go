@@ -2,6 +2,7 @@ package server
 
 import (
 	"compress/gzip"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -14,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
+	"github.com/docker/docker/errdefs"
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/labstack/echo/v4"
@@ -62,7 +63,6 @@ func (s *Server) registerAPIs(g *echo.Group) {
 
 	g.GET("containers", s.listCts)
 	g.POST("containers/:name", s.sync)
-	// g.POST("containers/:name/stop", s.stopCt)
 	g.DELETE("containers/:name", s.removeCt)
 	g.GET("containers/:name/logs", s.getCtLogs)
 
@@ -116,11 +116,6 @@ func (s *Server) getRepoLogs(c echo.Context) error {
 		Tail  int  `query:"tail"`
 		Stats bool `query:"stats"`
 	}
-	type fileInfo struct {
-		Name  string    `json:"name"`
-		Size  int64     `json:"size"`
-		Mtime time.Time `json:"mtime"`
-	}
 
 	opts := repoLogsOptions{}
 	if err := c.Bind(&opts); err != nil {
@@ -138,13 +133,13 @@ func (s *Server) getRepoLogs(c echo.Context) error {
 	}
 
 	if opts.Stats {
-		var infos []fileInfo
+		var infos []api.LogFileStat
 		for _, f := range files {
 			name := f.Name()
 			if !strings.HasPrefix(name, "result.log.") {
 				continue
 			}
-			infos = append(infos, fileInfo{
+			infos = append(infos, api.LogFileStat{
 				Name:  name,
 				Size:  f.Size(),
 				Mtime: f.ModTime(),
@@ -226,13 +221,11 @@ func (s *Server) removeRepo(c echo.Context) error {
 }
 
 func (s *Server) listCts(c echo.Context) error {
-	opts := docker.ListContainersOptions{
-		All: true,
-		Filters: map[string][]string{
-			"label": {"org.ustcmirror.syncing=true"},
-		},
-	}
-	apiCts, err := s.c.Docker.ListContainers(opts)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+	apiCts, err := s.c.ListContainers(ctx, map[string][]string{
+		"label": {"org.ustcmirror.syncing=true"},
+	})
 	if err != nil {
 		return err
 	}
@@ -258,7 +251,7 @@ func (s *Server) sync(c echo.Context) error {
 	}
 
 	logrus.Infof("Syncing %s", name)
-	ct, err := s.c.Sync(core.SyncOptions{
+	ct, err := s.c.Sync(s.context(), core.SyncOptions{
 		Name:          name,
 		NamePrefix:    s.config.NamePrefix,
 		LogDir:        s.config.LogDir,
@@ -268,13 +261,17 @@ func (s *Server) sync(c echo.Context) error {
 		DefaultBindIP: s.config.BindIP,
 	})
 	if err != nil {
-		if err == docker.ErrContainerAlreadyExists {
+		if errdefs.IsConflict(err) {
 			return conflict(err)
 		}
 		return err
 	}
-
-	go s.waitForSync(ct)
+	go func() {
+		err := s.waitForSync(ct)
+		if err != nil {
+			logrus.Errorf("waitForSync: %s", err)
+		}
+	}()
 	return c.NoContent(http.StatusCreated)
 }
 
@@ -298,30 +295,22 @@ func (s *Server) getCtLogs(c echo.Context) error {
 		return badRequest(err)
 	}
 	fw := NewFlushWriter(c.Response())
-	return s.c.GetContainerLogs(core.LogsOptions{
-		ID:          id,
-		Stream:      fw,
-		Tail:        opts.Tail,
-		Follow:      opts.Follow,
-		CloseNotify: c.Request().Context().Done(),
+	return s.c.GetContainerLogs(c.Request().Context(), core.LogsOptions{
+		ID:     id,
+		Stream: fw,
+		Tail:   opts.Tail,
+		Follow: opts.Follow,
 	})
-}
-
-func (s *Server) stopCt(c echo.Context) error {
-	id := s.getCtID(c.Param("name"))
-	if err := s.c.StopContainer(id); err != nil {
-		return err
-	}
-	return c.NoContent(http.StatusNoContent)
 }
 
 func (s *Server) removeCt(c echo.Context) error {
 	id := s.getCtID(c.Param("name"))
-	_ = s.c.StopContainer(id)
-	err := s.c.RemoveContainer(id)
-	if err != nil {
-		return err
-	}
+	ctx, cancel := s.contextWithTimeout(time.Second * 10)
+	_ = s.c.StopContainer(ctx, id)
+	cancel()
+	ctx, cancel = s.contextWithTimeout(time.Second * 10)
+	_ = s.c.RemoveContainer(ctx, id)
+	cancel()
 	return c.NoContent(http.StatusNoContent)
 }
 
@@ -332,7 +321,12 @@ func (s *Server) updateSyncStatus(m *api.Meta) {
 
 func (s *Server) listMetas(c echo.Context) error {
 	ms := s.c.ListAllMetas()
+	jobs := s.cron.Jobs()
 	for i := 0; i < len(ms); i++ {
+		job, ok := jobs[ms[i].Name]
+		if ok {
+			ms[i].NextRun = job.Next.Unix()
+		}
 		s.updateSyncStatus(&ms[i])
 	}
 	return c.JSON(http.StatusOK, ms)
@@ -345,6 +339,11 @@ func (s *Server) getMeta(c echo.Context) error {
 		return notFound(err)
 	}
 	s.updateSyncStatus(m)
+	jobs := s.cron.Jobs()
+	job, ok := jobs[m.Name]
+	if ok {
+		m.NextRun = job.Next.Unix()
+	}
 	return c.JSON(http.StatusOK, m)
 }
 
@@ -357,49 +356,44 @@ func (s *Server) exportConfig(c echo.Context) error {
 			"_id": bson.M{"$in": nameLst},
 		}
 	}
-	var repos []bson.M
+	var repos []api.Repository
 	_ = s.c.FindRepository(query).Select(bson.M{"updatedAt": 0, "createdAt": 0}).Sort("_id").All(&repos)
-	for i := 0; i < len(repos); i++ {
-		r := repos[i]
-		r["name"] = r["_id"]
-		delete(r, "_id")
-		delete(r, "__v")
-	}
 	return c.JSON(http.StatusOK, repos)
 }
 
-func (s *Server) loadRepo(fp string) error {
+func (s *Server) loadRepo(fp string) (*api.Repository, error) {
 	data, err := ioutil.ReadFile(fp)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var repo api.Repository
 	err = yaml.Unmarshal(data, &repo)
 	if err != nil {
-		return badRequest(err)
+		return nil, badRequest(err)
 	}
 	if err := s.e.Validator.Validate(&repo); err != nil {
-		return badRequest(err)
+		return nil, badRequest(err)
 	}
 	err = s.c.RemoveRepository(repo.Name)
 	if err != nil && err != mgo.ErrNotFound {
-		return err
+		return nil, err
 	}
 	err = s.c.AddRepository(repo)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	err = s.cron.AddJob(repo.Name, repo.Interval, s.newJob(repo.Name))
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	_ = s.c.UpsertRepoMeta(repo.Name, repo.StorageDir, -1)
+	return &repo, nil
 }
 
 func (s *Server) reloadRepo(c echo.Context) error {
 	name := c.Param("name")
 	fp := filepath.Join(s.config.RepoConfigDir, name+".yaml")
-	err := s.loadRepo(fp)
+	_, err := s.loadRepo(fp)
 	if err != nil {
 		return err
 	}
@@ -407,6 +401,11 @@ func (s *Server) reloadRepo(c echo.Context) error {
 }
 
 func (s *Server) reloadAllRepos(c echo.Context) error {
+	repos := s.c.ListAllRepositories()
+	toDelete := map[string]struct{}{}
+	for _, r := range repos {
+		toDelete[r.Name] = struct{}{}
+	}
 	infos, err := ioutil.ReadDir(s.config.RepoConfigDir)
 	if err != nil {
 		return err
@@ -417,15 +416,20 @@ func (s *Server) reloadAllRepos(c echo.Context) error {
 			continue
 		}
 		fp := filepath.Join(s.config.RepoConfigDir, fileName)
-		err := s.loadRepo(fp)
+		repo, err := s.loadRepo(fp)
 		if err != nil {
 			return err
 		}
+		delete(toDelete, repo.Name)
+	}
+	for name := range toDelete {
+		err := s.c.RemoveRepository(name)
+		logrus.WithField("repo", name).Errorf("remove repository: %s", err)
 	}
 	return c.NoContent(http.StatusNoContent)
 }
 
-func (s *Server) HTTPErrorHandler(err error, c echo.Context) {
+func (s *Server) httpErrorHandler(err error, c echo.Context) {
 	var (
 		code    = http.StatusInternalServerError
 		msg     string
@@ -438,9 +442,6 @@ func (s *Server) HTTPErrorHandler(err error, c echo.Context) {
 		if he.Internal != nil {
 			msg = fmt.Sprintf("%v, %v", err, he.Internal)
 		}
-	} else if de, ok := err.(*docker.Error); ok {
-		code = de.Status
-		msg = de.Message
 	} else {
 		msg = err.Error()
 	}

@@ -4,11 +4,15 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path"
-	"time"
+	"strconv"
 
-	docker "github.com/fsouza/go-dockerclient"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/client"
 
 	"github.com/ustclug/Yuki/pkg/api"
 	"github.com/ustclug/Yuki/pkg/utils"
@@ -27,81 +31,119 @@ type SyncOptions struct {
 
 // LogsOptions provides params to the GetContainerLogs function.
 type LogsOptions struct {
-	ID          string
-	Stream      io.Writer
-	Tail        string
-	Follow      bool
-	CloseNotify <-chan struct{}
+	ID     string
+	Stream io.Writer
+	Tail   string
+	Follow bool
 }
 
 // GetContainerLogs gets all stdout and stderr logs from the given container.
-func (c *Core) GetContainerLogs(opts LogsOptions) error {
-	finished := make(chan struct{}, 1)
-	ctx, cancel := context.WithCancel(c.ctx)
-
-	go func() {
-		select {
-		case <-opts.CloseNotify:
-		case <-finished:
-		}
-		cancel()
-	}()
-
-	err := c.Docker.Logs(docker.LogsOptions{
-		Stdout:       true,
-		Stderr:       true,
-		Context:      ctx,
-		Container:    opts.ID,
-		OutputStream: opts.Stream,
-		ErrorStream:  opts.Stream,
-		Tail:         opts.Tail,
-		Follow:       opts.Follow,
+func (c *Core) GetContainerLogs(ctx context.Context, opts LogsOptions) error {
+	output, err := c.docker.ContainerLogs(ctx, opts.ID, types.ContainerLogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+		Tail:       opts.Tail,
+		Follow:     opts.Follow,
 	})
-	close(finished)
+	if err != nil {
+		return err
+	}
+	defer output.Close()
+	_, err = io.Copy(opts.Stream, output)
 	if err != context.Canceled {
 		return err
 	}
 	return nil
 }
 
+func makeFilterArgs(filter map[string][]string) filters.Args {
+	args := filters.NewArgs()
+	for k, l := range filter {
+		for _, i := range l {
+			args.Add(k, i)
+		}
+	}
+	return args
+}
+
+// ListImages returns a list of docker images.
+func (c *Core) ListImages(ctx context.Context, filter map[string][]string) ([]types.ImageSummary, error) {
+	return c.docker.ImageList(ctx, types.ImageListOptions{
+		All:     true,
+		Filters: makeFilterArgs(filter),
+	})
+}
+
 // PullImage pulls an image from remote registry.
-func (c *Core) PullImage(img string) error {
-	repo, tag := docker.ParseRepositoryTag(img)
-	return c.Docker.PullImage(docker.PullImageOptions{
-		Tag:               tag,
-		Repository:        repo,
-		InactivityTimeout: time.Second * 10,
-	}, docker.AuthConfiguration{})
+func (c *Core) PullImage(ctx context.Context, img string) error {
+	// ctx, cancel := context.WithTimeout(ctx, time.Minute*5)
+	// defer cancel()
+	stream, err := c.docker.ImagePull(ctx, img, types.ImagePullOptions{})
+	if err != nil {
+		return err
+	}
+	defer stream.Close()
+	_, err = io.Copy(ioutil.Discard, stream)
+	return err
+}
+
+// RemoveImage removes the given docker image.
+func (c *Core) RemoveImage(ctx context.Context, id string) error {
+	_, err := c.docker.ImageRemove(ctx, id, types.ImageRemoveOptions{
+		PruneChildren: true,
+	})
+	return err
 }
 
 // StopContainer stops the given container.
-func (c *Core) StopContainer(id string) error {
-	return c.Docker.StopContainer(id, 10)
+func (c *Core) StopContainer(ctx context.Context, id string) error {
+	return c.docker.ContainerStop(ctx, id, nil)
+}
+
+// ListContainers returns a list of containers.
+func (c *Core) ListContainers(ctx context.Context, filter map[string][]string) ([]types.Container, error) {
+	return c.docker.ContainerList(ctx, types.ContainerListOptions{
+		All:     true,
+		Latest:  true,
+		Filters: makeFilterArgs(filter),
+	})
+}
+
+// WaitContainer blocks until the given container exits.
+func (c *Core) WaitContainer(ctx context.Context, id string) (int, error) {
+	stream, errCh := c.docker.ContainerWait(ctx, id, container.WaitConditionNotRunning)
+	select {
+	case err := <-errCh:
+		if err != nil {
+			return -1, err
+		}
+		// unreachable
+		return -1, fmt.Errorf("unreachable")
+	case resp := <-stream:
+		return int(resp.StatusCode), nil
+	}
 }
 
 // RemoveContainer removes the given container.
-func (c *Core) RemoveContainer(id string) error {
-	ctx, cancel := context.WithTimeout(c.ctx, time.Second*20)
-	defer cancel()
-	opts := docker.RemoveContainerOptions{
-		Context:       ctx,
-		Force:         true,
-		ID:            id,
+func (c *Core) RemoveContainer(ctx context.Context, id string) error {
+	// ctx, cancel := context.WithTimeout(c.ctx, time.Second*20)
+	// defer cancel()
+	return c.docker.ContainerRemove(ctx, id, types.ContainerRemoveOptions{
 		RemoveVolumes: true,
-	}
-	return c.Docker.RemoveContainer(opts)
+		Force:         true,
+	})
 }
 
 // Sync creates and starts a predefined container to sync local repository.
-func (c *Core) Sync(opts SyncOptions) (*api.Container, error) {
+func (c *Core) Sync(ctx context.Context, opts SyncOptions) (*api.Container, error) {
 	r, err := c.GetRepository(opts.Name)
 	if err != nil {
 		return nil, fmt.Errorf("cannot find <%s> in the DB", opts.Name)
 	}
 
-	envs := docker.Env{}
+	envMap := map[string]string{}
 	for k, v := range r.Envs {
-		envs.Set(k, v)
+		envMap[k] = v
 	}
 	if len(r.BindIP) == 0 {
 		r.BindIP = opts.DefaultBindIP
@@ -113,15 +155,19 @@ func (c *Core) Sync(opts SyncOptions) (*api.Container, error) {
 		ten := 10
 		r.LogRotCycle = &ten
 	}
-	envs.Set("REPO", r.Name)
-	envs.Set("OWNER", r.User)
-	envs.Set("BIND_ADDRESS", r.BindIP)
-	envs.SetInt("RETRY", r.Retry)
-	envs.SetInt("LOG_ROTATE_CYCLE", *r.LogRotCycle)
+	envMap["REPO"] = r.Name
+	envMap["OWNER"] = r.User
+	envMap["BIND_ADDRESS"] = r.BindIP
+	envMap["RETRY"] = strconv.FormatInt(int64(r.Retry), 10)
+	envMap["LOG_ROTATE_CYCLE"] = strconv.FormatInt(int64(*r.LogRotCycle), 10)
 	if opts.Debug {
-		envs.Set("DEBUG", "true")
+		envMap["DEBUG"] = "true"
 	} else {
-		envs.Set("DEBUG", "false")
+		envMap["DEBUG"] = "false"
+	}
+	envs := make([]string, 0, len(envMap))
+	for k, v := range envMap {
+		envs = append(envs, k+"="+v)
 	}
 
 	var binds []string
@@ -144,25 +190,35 @@ func (c *Core) Sync(opts SyncOptions) (*api.Container, error) {
 		"org.ustcmirror.syncing":     "true",
 		"org.ustcmirror.storage-dir": r.StorageDir,
 	}
-	createOpts := docker.CreateContainerOptions{
-		Name: opts.NamePrefix + opts.Name,
-		Config: &docker.Config{
-			Image:     r.Image,
-			OpenStdin: true,
-			Env:       envs,
-			Labels:    labels,
-		},
-		HostConfig: &docker.HostConfig{
-			Binds:       binds,
-			NetworkMode: "host",
-		},
+	containerConfig := &container.Config{
+		Image:     r.Image,
+		OpenStdin: true,
+		Env:       envs,
+		Labels:    labels,
 	}
+	hostConfig := &container.HostConfig{
+		Binds:       binds,
+		NetworkMode: "host",
+	}
+	ctName := opts.NamePrefix + opts.Name
 
-	ct, err := c.Docker.CreateContainer(createOpts)
+	ct, err := c.docker.ContainerCreate(
+		ctx,
+		containerConfig,
+		hostConfig,
+		nil,
+		ctName,
+	)
 	if err != nil {
-		if err == docker.ErrNoSuchImage {
-			if err = c.PullImage(r.Image); err == nil {
-				ct, err = c.Docker.CreateContainer(createOpts)
+		if client.IsErrNotFound(err) {
+			if err = c.PullImage(ctx, r.Image); err == nil {
+				ct, err = c.docker.ContainerCreate(
+					ctx,
+					containerConfig,
+					hostConfig,
+					nil,
+					ctName,
+				)
 			}
 		}
 		if err != nil {
@@ -170,7 +226,7 @@ func (c *Core) Sync(opts SyncOptions) (*api.Container, error) {
 		}
 	}
 
-	if err = c.Docker.StartContainer(ct.ID, nil); err != nil {
+	if err = c.docker.ContainerStart(ctx, ct.ID, types.ContainerStartOptions{}); err != nil {
 		return nil, err
 	}
 

@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -15,7 +16,7 @@ func TestSync(t *testing.T) {
 	as := assert.New(t)
 	cycle := 10
 	d := "/tmp/" + name
-	os.MkdirAll(d, os.ModePerm)
+	as.Nil(os.MkdirAll(d, os.ModePerm))
 	defer os.RemoveAll(d)
 	err := c.AddRepository(api.Repository{
 		Name:        name,
@@ -26,15 +27,15 @@ func TestSync(t *testing.T) {
 	})
 	as.Nil(err)
 	prefix := "syncing-"
-	ct, err := c.Sync(SyncOptions{
+	ct, err := c.Sync(context.TODO(), SyncOptions{
 		LogDir:     logDir,
 		MountDir:   false,
 		Name:       name,
 		NamePrefix: prefix,
 	})
 	as.Nil(err)
-	code, err := c.Docker.WaitContainer(ct.ID)
-	defer c.RemoveContainer(ct.ID)
+	code, err := c.WaitContainer(context.TODO(), ct.ID)
 	as.Nil(err)
+	defer c.RemoveContainer(context.TODO(), ct.ID)
 	as.Equal(0, code)
 }

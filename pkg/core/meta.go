@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	re = regexp.MustCompile("([^:])//+")
+	extraSlashes = regexp.MustCompile("([^:])//+")
 )
 
 func getUpstream(t string, envs api.M) (upstream string) {
@@ -80,7 +80,7 @@ func (c *Core) transformMeta(m *api.Meta) {
 		image := strings.Split(r.Image, ":")[0]
 		t := strings.Split(image, "/")
 		// remove extra slashes
-		m.Upstream = re.ReplaceAllString(getUpstream(t[len(t)-1], r.Envs), "${1}/")
+		m.Upstream = extraSlashes.ReplaceAllString(getUpstream(t[len(t)-1], r.Envs), "${1}/")
 	}
 	if m.Upstream == "" {
 		m.Upstream = "unknown"
@@ -90,7 +90,7 @@ func (c *Core) transformMeta(m *api.Meta) {
 // GetMeta returns the metadata of the given Repository.
 func (c *Core) GetMeta(name string) (*api.Meta, error) {
 	m := new(api.Meta)
-	sess := c.MgoSess.Copy()
+	sess := c.mgoSess.Copy()
 	defer sess.Close()
 	if err := c.metaColl.With(sess).FindId(name).One(m); err != nil {
 		return nil, err
@@ -107,7 +107,7 @@ func (c *Core) AddMeta(ms ...*api.Meta) error {
 		m.CreatedAt = now
 		docs = append(docs, *m)
 	}
-	sess := c.MgoSess.Copy()
+	sess := c.mgoSess.Copy()
 	defer sess.Close()
 	return c.metaColl.With(sess).Insert(docs...)
 }
@@ -117,7 +117,7 @@ func (c *Core) InitMetas() {
 	repos := c.ListAllRepositories()
 	now := time.Now().Unix()
 	for _, r := range repos {
-		size := c.getSizer.GetSize(r.StorageDir)
+		size := c.GetSize(r.StorageDir)
 		_, _ = c.metaColl.UpsertId(r.Name, bson.M{
 			"$set": bson.M{
 				"size": size,
@@ -130,18 +130,31 @@ func (c *Core) InitMetas() {
 	}
 }
 
+func (c *Core) UpdatePrevRun(name string) error {
+	sess := c.mgoSess.Copy()
+	defer sess.Close()
+	err := c.metaColl.With(sess).UpdateId(name, bson.M{
+		"$set": bson.M{
+			"prevRun": time.Now().Unix(),
+		},
+	})
+	return err
+}
+
 // UpsertRepoMeta updates the metadata of the given Repository.
 func (c *Core) UpsertRepoMeta(name, dir string, code int) error {
 	now := time.Now().Unix()
 	set := bson.M{
-		"exitCode":  code,
 		"updatedAt": now,
-		"size":      c.getSizer.GetSize(dir),
+		"size":      c.GetSize(dir),
+	}
+	if code != -1 {
+		set["exitCode"] = code
 	}
 	if code == 0 {
 		set["lastSuccess"] = now
 	}
-	sess := c.MgoSess.Copy()
+	sess := c.mgoSess.Copy()
 	defer sess.Close()
 	_, err := c.metaColl.With(sess).UpsertId(name, bson.M{
 		"$set": set,
@@ -154,14 +167,14 @@ func (c *Core) UpsertRepoMeta(name, dir string, code int) error {
 
 // RemoveMeta removes the metadata of the given Repository.
 func (c *Core) RemoveMeta(name string) error {
-	sess := c.MgoSess.Copy()
+	sess := c.mgoSess.Copy()
 	defer sess.Close()
 	return c.metaColl.With(sess).RemoveId(name)
 }
 
 // ListAllMetas returns the list of metadata of all Repositories.
 func (c *Core) ListAllMetas() []api.Meta {
-	sess := c.MgoSess.Copy()
+	sess := c.mgoSess.Copy()
 	defer sess.Close()
 	var (
 		result []api.Meta

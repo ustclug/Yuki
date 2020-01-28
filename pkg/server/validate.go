@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo"
-	"gopkg.in/go-playground/validator.v9"
+	"github.com/go-playground/validator/v10"
 
 	"github.com/ustclug/Yuki/pkg/cron"
 )

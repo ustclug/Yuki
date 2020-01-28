@@ -1,10 +1,9 @@
 package core
 
 import (
-	"context"
 	"fmt"
 
-	docker "github.com/fsouza/go-dockerclient"
+	"github.com/docker/docker/client"
 	"github.com/globalsign/mgo"
 
 	"github.com/ustclug/Yuki/pkg/fs"
@@ -22,18 +21,19 @@ type Config struct {
 
 // Core is the basic type of this package. It provides methods for interaction with MongoDB and Docker API.
 type Core struct {
-	Docker  *docker.Client
-	MgoSess *mgo.Session
-
-	ctx      context.Context
-	getSizer fs.GetSizer
+	mgoSess  *mgo.Session
 	repoColl *mgo.Collection
 	metaColl *mgo.Collection
+	docker   *client.Client
+	getSizer fs.GetSizer
 }
 
 // NewWithConfig returns a `Core` instance with specified config.
 func NewWithConfig(cfg Config) (*Core, error) {
-	d, err := docker.NewClient(cfg.DockerEndpoint)
+	d, err := client.NewClientWithOpts(
+		client.WithHost(cfg.DockerEndpoint),
+		client.WithAPIVersionNegotiation(),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to the Docker daemon at %s", cfg.DockerEndpoint)
 	}
@@ -47,10 +47,8 @@ func NewWithConfig(cfg Config) (*Core, error) {
 
 	db := sess.DB(cfg.DbName)
 	c := Core{
-		Docker:  d,
-		MgoSess: sess,
-
-		ctx:      context.Background(),
+		docker:   d,
+		mgoSess:  sess,
 		getSizer: cfg.GetSizer,
 	}
 
@@ -60,6 +58,14 @@ func NewWithConfig(cfg Config) (*Core, error) {
 	return &c, nil
 }
 
-// func (c *Core) GetSize(dir string) int64 {
-// 	return c.getSizer.GetSize(dir)
-// }
+func (c *Core) GetSize(dir string) int64 {
+	return c.getSizer.GetSize(dir)
+}
+
+func (c *Core) PingMongoSession() error {
+	return c.mgoSess.Ping()
+}
+
+func (c *Core) CloseMongoSession() {
+	c.mgoSess.Close()
+}

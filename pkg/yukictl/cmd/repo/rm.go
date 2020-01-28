@@ -34,7 +34,7 @@ func (o *rmOptions) Run(f factory.Factory) error {
 	if resp.IsError() {
 		return fmt.Errorf("%s", errMsg.Message)
 	}
-	fmt.Printf("Successfully delete from database: <%s>\n", o.name)
+	fmt.Printf("Successfully deleted from database: <%s>\n", o.name)
 	return nil
 }
 
