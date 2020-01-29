@@ -1,16 +1,17 @@
 package repo
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/cobra"
 
 	"github.com/ustclug/Yuki/pkg/api"
+	"github.com/ustclug/Yuki/pkg/tabwriter"
 	"github.com/ustclug/Yuki/pkg/utils"
 	"github.com/ustclug/Yuki/pkg/yukictl/factory"
 )
@@ -54,10 +55,12 @@ func (o *logsOptions) Run(cmd *cobra.Command, f factory.Factory) error {
 		if resp.IsError() {
 			return fmt.Errorf("%s", errMsg.Message)
 		}
-		encoder := json.NewEncoder(os.Stdout)
-		encoder.SetIndent("", "  ")
-		err = encoder.Encode(stats)
-		return err
+		printer := tabwriter.New(os.Stdout)
+		printer.SetHeader([]string{"name", "mtime", "size"})
+		for _, s := range stats {
+			printer.Append(s.Name, s.Mtime.Format(time.RFC3339), utils.PrettySize(s.Size))
+		}
+		return printer.Render()
 	}
 
 	if flags.Changed("nth") {

@@ -10,6 +10,8 @@
 #   "default"
 fs = "default"
 
+repo_config_dir = "/path/to/config-dir"
+
 # unix local socket: unix:///var/run/docker.sock
 # tcp: tcp://127.0.0.1:2375
 #docker_endpoint = "unix:///var/run/docker.sock"

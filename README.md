@@ -6,7 +6,7 @@ README
 
 - [Requirements](#requirements)
 - [Quickstart](#quickstart)
-- [CLI](#cli)
+- [Handbook](#handbook)
 
 Sync local repositories with remote.
 
@@ -50,6 +50,7 @@ Start yukid:
 # systemctl start yukid
 ```
 
-## CLI
+## Handbook
 
-[Yuki-cli](https://github.com/ustclug/Yuki-cli)
+* [yukid](./cmd/yukid/README.md): Yuki daemon
+* [yukictl](./cmd/yukictl/README.md): Yuki cli

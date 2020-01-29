@@ -24,25 +24,9 @@ type outputMeta struct {
 	NextRun     *time.Time `json:"nextRun,omitempty"`
 }
 
-func prettySize(size int64) string {
-	if size < 0 {
-		return "unknown"
-	}
-	const n = float64(1024)
-	a := float64(size)
-	units := []string{"B", "KiB", "MiB", "GiB"}
-	for _, u := range units {
-		if a < n {
-			return fmt.Sprintf("%.1f %s", a, u)
-		}
-		a /= n
-	}
-	return fmt.Sprintf("%.1f TiB", a)
-}
-
 func (o *outputMeta) From(m api.Meta) *outputMeta {
 	o.Meta = m
-	o.Size = prettySize(m.Size)
+	o.Size = utils.PrettySize(m.Size)
 	if m.LastSuccess > 0 {
 		t := time.Unix(m.LastSuccess, 0)
 		o.LastSuccess = &t
