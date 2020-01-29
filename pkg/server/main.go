@@ -118,7 +118,7 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 		return nil, err
 	}
 	logrus.SetLevel(cfg.LogLevel)
-	logrus.SetReportCaller(true)
+	logrus.SetReportCaller(cfg.Debug)
 	logrus.SetFormatter(new(logrus.TextFormatter))
 	logrus.SetOutput(logfile)
 

@@ -32,7 +32,7 @@ type Meta struct {
 	Name        string `bson:"_id" json:"name"`
 	Upstream    string `bson:"-" json:"upstream"`
 	Syncing     bool   `bson:"-" json:"syncing"`
-	Size        int    `bson:"size" json:"size"`
+	Size        int64  `bson:"size" json:"size"`
 	ExitCode    int    `bson:"exitCode" json:"exitCode"`
 	LastSuccess int64  `bson:"lastSuccess,omitempty" json:"lastSuccess"`
 	CreatedAt   int64  `bson:"createdAt,omitempty" json:"createdAt"`

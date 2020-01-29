@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/ustclug/Yuki/pkg/api"
+	"github.com/ustclug/Yuki/pkg/tabwriter"
 	"github.com/ustclug/Yuki/pkg/utils"
 	"github.com/ustclug/Yuki/pkg/yukictl/factory"
 )
@@ -30,7 +31,18 @@ func (o *lsOptions) Run(f factory.Factory) error {
 	if resp.IsError() {
 		return fmt.Errorf("%s", errMsg.Message)
 	}
-	return f.JSONEncoder(os.Stdout).Encode(result)
+	printer := tabwriter.New(os.Stdout)
+	printer.SetHeader([]string{
+		"id",
+		"name",
+		"image",
+		"state",
+		"status",
+	})
+	for _, ct := range result {
+		printer.Append(ct.ID, ct.Name, ct.Image, ct.State, ct.Status)
+	}
+	return printer.Render()
 }
 
 func NewCmdContainerLs(f factory.Factory) *cobra.Command {

@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/ustclug/Yuki/pkg/api"
+	"github.com/ustclug/Yuki/pkg/tabwriter"
 	"github.com/ustclug/Yuki/pkg/utils"
 	"github.com/ustclug/Yuki/pkg/yukictl/factory"
 )
@@ -59,7 +60,17 @@ func (o *repoLsOptions) Run(f factory.Factory) error {
 	if resp.IsError() {
 		return fmt.Errorf("%s", errMsg.Message)
 	}
-	return encoder.Encode(result)
+	printer := tabwriter.New(os.Stdout)
+	printer.SetHeader([]string{
+		"name",
+		"interval",
+		"image",
+		"storage-dir",
+	})
+	for _, r := range result {
+		printer.Append(r.Name, r.Interval, r.Image, r.StorageDir)
+	}
+	return printer.Render()
 }
 
 func NewCmdRepoLs(f factory.Factory) *cobra.Command {

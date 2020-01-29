@@ -16,22 +16,36 @@ import (
 
 type outputMeta struct {
 	api.Meta    `json:",inline"`
+	Size        string     `json:"size"`
 	LastSuccess *time.Time `json:"lastSuccess,omitempty"`
-	CreatedAt   *time.Time `json:"createdAt,omitempty"`
+	CreatedAt   *struct{}  `json:"createdAt,omitempty"` // ignore
 	UpdatedAt   *time.Time `json:"updatedAt,omitempty"`
 	PrevRun     *time.Time `json:"prevRun,omitempty"`
 	NextRun     *time.Time `json:"nextRun,omitempty"`
 }
 
-func (o *outputMeta) From(m api.Meta) {
+func prettySize(size int64) string {
+	if size < 0 {
+		return "unknown"
+	}
+	const n = float64(1024)
+	a := float64(size)
+	units := []string{"B", "KiB", "MiB", "GiB"}
+	for _, u := range units {
+		if a < n {
+			return fmt.Sprintf("%.1f %s", a, u)
+		}
+		a /= n
+	}
+	return fmt.Sprintf("%.1f TiB", a)
+}
+
+func (o *outputMeta) From(m api.Meta) *outputMeta {
 	o.Meta = m
+	o.Size = prettySize(m.Size)
 	if m.LastSuccess > 0 {
 		t := time.Unix(m.LastSuccess, 0)
 		o.LastSuccess = &t
-	}
-	if m.CreatedAt > 0 {
-		t := time.Unix(m.CreatedAt, 0)
-		o.CreatedAt = &t
 	}
 	if m.UpdatedAt > 0 {
 		t := time.Unix(m.UpdatedAt, 0)
@@ -45,6 +59,7 @@ func (o *outputMeta) From(m api.Meta) {
 		t := time.Unix(m.NextRun, 0)
 		o.NextRun = &t
 	}
+	return o
 }
 
 type lsOptions struct {
@@ -80,8 +95,7 @@ func (o *lsOptions) Run(f factory.Factory) error {
 			return fmt.Errorf("%s", errMsg.Message)
 		}
 		var out outputMeta
-		out.From(result)
-		return encoder.Encode(out)
+		return encoder.Encode(out.From(result))
 	}
 	u, err = f.MakeURL("api/v1/metas")
 	if err != nil {
