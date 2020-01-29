@@ -73,6 +73,6 @@ func NewCmdSync(f factory.Factory) *cobra.Command {
 			utils.CheckError(o.Run(f))
 		},
 	}
-	cmd.Flags().BoolVar(&o.debug, "debug", false, "Debug mode")
+	cmd.Flags().BoolVarP(&o.debug, "debug", "v", false, "Debug mode")
 	return cmd
 }
