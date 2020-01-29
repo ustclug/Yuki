@@ -1,12 +1,19 @@
-*.sw[po]
+# Ignore all
+*
+
+# Unignore all with extensions
+!*.*
+
+# Unignore all dirs
+!*/
+!Dockerfile
+!Makefile
+
+### Above combination will ignore all files without extension ###
+
+.idea/
+
+*.swp
 *.[oa]
-*.py[co]
 *~
 *.bac
-*.tgz
-coverage
-.nyc_output
-build/
-bin/
-vendor/
-cmd/yukid/yukid
