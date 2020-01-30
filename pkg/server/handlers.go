@@ -247,7 +247,7 @@ func (s *Server) sync(c echo.Context) error {
 	go func() {
 		err := s.waitForSync(ct)
 		if err != nil {
-			logrus.Errorf("waitForSync: %s", err)
+			logrus.Warningf("waitForSync: %s", err)
 		}
 	}()
 	return c.NoContent(http.StatusCreated)

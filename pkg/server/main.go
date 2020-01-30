@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/errdefs"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/sirupsen/logrus"
@@ -151,13 +152,18 @@ func (s *Server) newJob(name string) cron.FuncJob {
 			MountDir:      true,
 			DefaultBindIP: s.config.BindIP,
 		})
+		entry := logrus.WithField("repo", name)
 		if err != nil {
-			logrus.WithField("repo", name).Errorln(err)
+			if errdefs.IsConflict(err) {
+				entry.Warningln(err)
+			} else {
+				entry.Errorln(err)
+			}
 			return
 		}
 		logrus.Infof("Syncing %s", name)
 		if err := s.waitForSync(ct); err != nil {
-			logrus.WithField("repo", name).Errorln(err)
+			entry.Warningln(err)
 		}
 	}
 }
@@ -225,7 +231,7 @@ func (s *Server) teardown() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 	if err := s.e.Shutdown(ctx); err != nil {
-		logrus.Errorln(err)
+		logrus.Warningln(err)
 	}
 }
 
@@ -253,7 +259,7 @@ func (s *Server) upgradeImages() {
 			cancel()
 			wg.Done()
 			if err != nil {
-				logrus.Errorf("pullImage: %s", err)
+				logrus.Warningf("pullImage: %s", err)
 			}
 		})
 	}
@@ -268,7 +274,7 @@ func (s *Server) cleanImages() {
 		"dangling": {"true"},
 	})
 	if err != nil {
-		logrus.Errorf("listImages: %s", err)
+		logrus.Warningf("listImages: %s", err)
 		return
 	}
 	for _, i := range imgs {
@@ -276,7 +282,7 @@ func (s *Server) cleanImages() {
 		err := s.c.RemoveImage(ctx, i.ID)
 		cancel()
 		if err != nil {
-			logrus.Errorf("removeImage: %s", err)
+			logrus.Warningf("removeImage: %s", err)
 		}
 	}
 }
@@ -376,7 +382,7 @@ func (s *Server) waitRunningContainers() {
 				ID:     ct.ID,
 				Labels: ct.Labels,
 			}); err != nil {
-				logrus.WithField("container", ct.Names[0]).Errorf("waitForSync: %s", err)
+				logrus.WithField("container", ct.Names[0]).Warningf("waitForSync: %s", err)
 			}
 		}(ct)
 	}
