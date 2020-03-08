@@ -402,7 +402,9 @@ func (s *Server) reloadAllRepos(c echo.Context) error {
 	}
 	for name := range toDelete {
 		err := s.c.RemoveRepository(name)
-		logrus.WithField("repo", name).Errorf("remove repository: %s", err)
+		if err != nil {
+			logrus.WithField("repo", name).Errorf("remove repository: %s", err)
+		}
 	}
 	return c.NoContent(http.StatusNoContent)
 }
