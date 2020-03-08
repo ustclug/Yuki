@@ -36,7 +36,7 @@ $ vim /etc/yuki/daemon.toml
 Run MongoDB:
 
 ```
-$ docker run --name mongo -tid mongo:3.6
+$ docker run -p 27017:27017 -tid --name mongo mongo:3.6
 ```
 
 Create systemd service:
