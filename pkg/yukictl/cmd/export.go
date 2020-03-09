@@ -65,7 +65,7 @@ func (o *exportOptions) Run(f factory.Factory) error {
 func NewCmdExport(f factory.Factory) *cobra.Command {
 	o := &exportOptions{}
 	cmd := &cobra.Command{
-		Use:   "export",
+		Use:   "export [name]",
 		Short: "Export config",
 		Run: func(cmd *cobra.Command, args []string) {
 			utils.CheckError(o.Complete(args))

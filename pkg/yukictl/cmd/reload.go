@@ -49,7 +49,7 @@ func (o *reloadOptions) Run(f factory.Factory) error {
 func NewCmdReload(f factory.Factory) *cobra.Command {
 	o := reloadOptions{}
 	cmd := &cobra.Command{
-		Use:   "reload",
+		Use:   "reload [name]",
 		Short: "Reload config of one or all repos",
 		Run: func(cmd *cobra.Command, args []string) {
 			utils.CheckError(o.Complete(args))

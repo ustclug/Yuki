@@ -405,6 +405,8 @@ func (s *Server) reloadAllRepos(c echo.Context) error {
 		if err != nil {
 			logrus.WithField("repo", name).Errorf("remove repository: %s", err)
 		}
+		_ = s.c.RemoveMeta(name)
+		s.cron.RemoveJob(name)
 	}
 	return c.NoContent(http.StatusNoContent)
 }
