@@ -55,6 +55,10 @@ func getUpstream(t string, envs api.M) (upstream string) {
 			return "http://homebrew.bintray.com/"
 		}
 	// case "julia":
+	case "julia-storage":
+		return "https://us-east.storage.juliahub.com, https://kr.storage.juliahub.com"
+	case "rclone":
+		return fmt.Sprintf("%s%s", envs["RCLONE_CONFIG_REMOTE_ENDPOINT"], envs["RCLONE_PATH"])
 	case "nix-channels":
 		if upstream, ok = envs["NIX_MIRROR_UPSTREAM"]; !ok {
 			return "https://nixos.org/channels"
