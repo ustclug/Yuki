@@ -54,11 +54,8 @@ func getUpstream(t string, envs api.M) (upstream string) {
 		if upstream, ok = envs["HOMEBREW_BOTTLE_DOMAIN"]; !ok {
 			return "http://homebrew.bintray.com/"
 		}
-	// case "julia":
 	case "julia-storage":
 		return "https://us-east.storage.juliahub.com, https://kr.storage.juliahub.com"
-	case "rclone":
-		return fmt.Sprintf("%s%s", envs["RCLONE_CONFIG_REMOTE_ENDPOINT"], envs["RCLONE_PATH"])
 	case "nix-channels":
 		if upstream, ok = envs["NIX_MIRROR_UPSTREAM"]; !ok {
 			return "https://nixos.org/channels"
@@ -69,6 +66,8 @@ func getUpstream(t string, envs api.M) (upstream string) {
 		return "https://nodesource.com/"
 	case "pypi":
 		return "https://pypi.python.org/"
+	case "rclone":
+		return fmt.Sprintf("%s%s", envs["RCLONE_CONFIG_REMOTE_ENDPOINT"], envs["RCLONE_PATH"])
 	case "rubygems":
 		if upstream, ok = envs["UPSTREAM"]; !ok {
 			return "http://rubygems.org/"
