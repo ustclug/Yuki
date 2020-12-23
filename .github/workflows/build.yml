@@ -16,6 +16,7 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
+            # GitHub Actions only provides amd64 arch now.
             GOOS: linux 
             GOARCH: amd64
 
@@ -45,6 +46,9 @@ jobs:
             curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
             dep ensure
         fi
+        
+    - name: Start MongoDB
+      run: sudo systemctl start mongod
 
     - name: Test
       run: ci/script.sh
