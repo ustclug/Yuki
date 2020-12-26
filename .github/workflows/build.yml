@@ -55,6 +55,9 @@ jobs:
     - name: Deploy - Build
       if: startsWith(github.ref, 'refs/tags/')
       run: ci/build.sh
+      env:
+        GOOS: ${{ matrix.GOOS }}
+        GOARCH: ${{ matrix.GOARCH }}
 
     - name: Deploy - Extract tag name
       id: tag
