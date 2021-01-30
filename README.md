@@ -1,7 +1,7 @@
 README
 =======
 
-[![Build Status](https://travis-ci.org/ustclug/Yuki.svg?branch=master)](https://travis-ci.org/ustclug/Yuki)
+[![Build Status](https://github.com/ustclug/Yuki/workflows/build/badge.svg)](https://github.com/ustclug/Yuki/actions)
 [![Go Report](https://goreportcard.com/badge/github.com/ustclug/Yuki)](https://goreportcard.com/report/github.com/ustclug/Yuki)
 
 - [Requirements](#requirements)
