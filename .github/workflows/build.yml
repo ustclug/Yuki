@@ -36,8 +36,6 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
 
-    # TODO: before_script?
-
     - name: Get dependencies
       run: |
         go get -v -t -d ./...
@@ -50,7 +48,9 @@ jobs:
       run: sudo systemctl start mongod
 
     - name: Test
-      run: ci/script.sh
+      run: |
+        docker pull ustcmirror/test
+        ci/script.sh
 
     - name: Deploy - Build
       if: startsWith(github.ref, 'refs/tags/')
