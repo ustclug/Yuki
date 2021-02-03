@@ -17,11 +17,10 @@ Sync local repositories with remote.
 
 ## Quickstart
 
-Download the binary from the [Release](https://github.com/ustclug/Yuki/releases) page:
+Download the binary from the [Release](https://github.com/ustclug/Yuki/releases) page, for example:
 
 ```
-For example:
-$ wget https://github.com/ustclug/Yuki/releases/download/v0.1.0/yukid-v0.1.0-linux-amd64.tar.gz
+$ wget https://github.com/ustclug/Yuki/releases/download/v0.2.2/yukid-v0.2.2-linux-amd64.tar.gz
 ```
 
 Configure yukid:
