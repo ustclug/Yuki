@@ -24,7 +24,7 @@ func getUpstream(t string, envs api.M) (upstream string) {
 	switch t {
 	case "archvsync", "rsync":
 		return fmt.Sprintf("rsync://%s/%s/", envs["RSYNC_HOST"], envs["RSYNC_PATH"])
-	case "aptsync":
+	case "aptsync", "apt-sync":
 		return envs["APTSYNC_URL"]
 	case "debian-cd":
 		return fmt.Sprintf("rsync://%s/%s/", envs["RSYNC_HOST"], envs["RSYNC_MODULE"])
@@ -42,6 +42,8 @@ func getUpstream(t string, envs api.M) (upstream string) {
 		if upstream, ok = envs["FBSD_PORTS_DISTFILES_UPSTREAM"]; !ok {
 			return "http://distcache.freebsd.org/ports-distfiles/"
 		}
+	case "github-release":
+		return "https://github.com"
 	case "gitsync":
 		return envs["GITSYNC_URL"]
 	case "gsutil-rsync":
@@ -67,7 +69,17 @@ func getUpstream(t string, envs api.M) (upstream string) {
 	case "pypi":
 		return "https://pypi.python.org/"
 	case "rclone":
-		return fmt.Sprintf("%s%s", envs["RCLONE_CONFIG_REMOTE_ENDPOINT"], envs["RCLONE_PATH"])
+		remoteType := envs["RCLONE_CONFIG_REMOTE_TYPE"]
+		path := envs["RCLONE_PATH"]
+		domain := ""
+		if remoteType == "swift" {
+			domain = envs["RCLONE_SWIFT_STORAGE_URL"] + "/"
+		} else if remoteType == "http" {
+			domain = envs["RCLONE_CONFIG_REMOTE_URL"]
+		} else if remoteType == "s3" {
+			domain = envs["RCLONE_CONFIG_REMOTE_ENDPOINT"]
+		}
+		return fmt.Sprintf("%s%s", domain, path)
 	case "rubygems":
 		if upstream, ok = envs["UPSTREAM"]; !ok {
 			return "http://rubygems.org/"
