@@ -89,6 +89,7 @@ envs: # 传给同步程序的环境变量
   RSYNC_PATH: /
   RSYNC_RSH: ssh -i /home/mirror/.ssh/id_rsa
   RSYNC_USER: bioc-rsync
+  $UPSTREAM: rsync://rsync.example.com/ # 可选变量，设置 yuki 显示的同步上游
 volumes: # 同步的时候需要挂载的 volume
   # 注意: 由于 MongoDB 的限制，key 不能包含 `.`
   /etc/passwd: /etc/passwd:ro
