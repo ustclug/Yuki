@@ -65,7 +65,7 @@ jobs:
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         script: |
-          return context.payload.ref.replace(/^refs\/tags\//, '');
+          return context.ref.replace(/^refs\/tags\//, '');
 
     - name: Deploy - Create Release
       if: startsWith(github.ref, 'refs/tags/')
