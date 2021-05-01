@@ -18,7 +18,7 @@ var (
 
 func getUpstream(t string, envs api.M) (upstream string) {
 	var ok bool
-	if upstream, ok := envs["UPSTREAM"]; ok {
+	if upstream, ok := envs["$UPSTREAM"]; ok {
 		return upstream
 	}
 	switch t {
