@@ -339,20 +339,28 @@ func (s *Server) exportConfig(c echo.Context) error {
 	return c.JSON(http.StatusOK, repos)
 }
 
-func (s *Server) loadRepo(fp string) (*api.Repository, error) {
-	data, err := ioutil.ReadFile(fp)
-	if err != nil {
-		return nil, err
-	}
+func (s *Server) loadRepo(dirs []string, file string) (*api.Repository, error) {
 	var repo api.Repository
-	err = yaml.Unmarshal(data, &repo)
-	if err != nil {
-		return nil, badRequest(err)
+	errn := len(dirs)
+	for _, dir := range dirs {
+		data, err := ioutil.ReadFile(filepath.Join(dir, file))
+		if err != nil {
+			errn--
+			if errn > 0 {
+				continue
+			} else {
+				return nil, badRequest(err)
+			}
+		}
+		err = yaml.Unmarshal(data, &repo)
+		if err != nil {
+			return nil, badRequest(err)
+		}
 	}
 	if err := s.e.Validator.Validate(&repo); err != nil {
 		return nil, badRequest(err)
 	}
-	err = s.c.RemoveRepository(repo.Name)
+	err := s.c.RemoveRepository(repo.Name)
 	if err != nil && err != mgo.ErrNotFound {
 		return nil, err
 	}
@@ -370,8 +378,7 @@ func (s *Server) loadRepo(fp string) (*api.Repository, error) {
 
 func (s *Server) reloadRepo(c echo.Context) error {
 	name := c.Param("name")
-	fp := filepath.Join(s.config.RepoConfigDir, name+".yaml")
-	_, err := s.loadRepo(fp)
+	_, err := s.loadRepo(s.config.RepoConfigDir, name+".yaml")
 	if err != nil {
 		return err
 	}
@@ -384,21 +391,23 @@ func (s *Server) reloadAllRepos(c echo.Context) error {
 	for _, r := range repos {
 		toDelete[r.Name] = struct{}{}
 	}
-	infos, err := ioutil.ReadDir(s.config.RepoConfigDir)
-	if err != nil {
-		return err
-	}
-	for _, info := range infos {
-		fileName := info.Name()
-		if info.IsDir() || fileName[0] == '.' || !strings.HasSuffix(fileName, ".yaml") {
-			continue
-		}
-		fp := filepath.Join(s.config.RepoConfigDir, fileName)
-		repo, err := s.loadRepo(fp)
+	for _, dir := range s.config.RepoConfigDir {
+		infos, err := ioutil.ReadDir(dir)
 		if err != nil {
 			return err
 		}
-		delete(toDelete, repo.Name)
+		for _, info := range infos {
+			fileName := info.Name()
+			if info.IsDir() || fileName[0] == '.' || !strings.HasSuffix(fileName, ".yaml") {
+				continue
+			}
+			repo, err := s.loadRepo(s.config.RepoConfigDir, fileName)
+			if err != nil {
+				return err
+			}
+			delete(toDelete, repo.Name)
+		}
+
 	}
 	for name := range toDelete {
 		err := s.c.RemoveRepository(name)

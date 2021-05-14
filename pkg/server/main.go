@@ -82,8 +82,10 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 	if err := os.MkdirAll(cfg.LogDir, os.ModePerm); err != nil {
 		return nil, err
 	}
-	if err := os.MkdirAll(cfg.RepoConfigDir, os.ModePerm); err != nil {
-		return nil, err
+	for _, dir := range cfg.RepoConfigDir {
+		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+			return nil, err
+		}
 	}
 	coreCfg := core.Config{
 		Debug:          cfg.Debug,
