@@ -21,7 +21,7 @@ type AppConfig struct {
 
 	Owner                 string   `mapstructure:"owner,omitempty" validate:"-"`
 	LogDir                string   `mapstructure:"log_dir,omitempty" validate:"-"`
-	RepoConfigDir         string   `mapstructure:"repo_config_dir,omitempty" validate:"required"`
+	RepoConfigDir         []string   `mapstructure:"repo_config_dir,omitempty" validate:"required"`
 	LogLevel              string   `mapstructure:"log_level,omitempty" validate:"omitempty,eq=debug|eq=info|eq=warn|eq=error"`
 	ListenAddr            string   `mapstructure:"listen_addr,omitempty" validate:"omitempty,hostport"`
 	BindIP                string   `mapstructure:"bind_ip,omitempty" validate:"omitempty,ip"`
@@ -34,7 +34,7 @@ type Config struct {
 	core.Config
 	Owner                 string
 	LogDir                string
-	RepoConfigDir         string
+	RepoConfigDir         []string
 	LogLevel              logrus.Level
 	ListenAddr            string
 	BindIP                string
