@@ -346,7 +346,7 @@ func (s *Server) loadRepo(dirs []string, file string) (*api.Repository, error) {
 		data, err := ioutil.ReadFile(filepath.Join(dir, file))
 		if err != nil {
 			errn--
-			if errn > 0 {
+			if errn > 0 && os.IsNotExist(err) {
 				continue
 			} else {
 				return nil, badRequest(err)
