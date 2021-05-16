@@ -34,7 +34,7 @@ fs = "default"
 ## 每个仓库的同步配置存放的文件夹
 ## 每个配置的后缀名必须是 `.yaml`
 ## 配置的格式参考下方 Repo Configuration
-repo_config_dir = "/path/to/config-dir"
+repo_config_dir = ["/path/to/config-dir"]
 
 ## 设置 Docker Daemon 地址
 ## unix local socket: unix:///var/run/docker.sock
@@ -94,4 +94,49 @@ volumes: # 同步的时候需要挂载的 volume
   # 注意: 由于 MongoDB 的限制，key 不能包含 `.`
   /etc/passwd: /etc/passwd:ro
   /ssh: /home/mirror/.ssh:ro
+```
+
+当存在多个目录时，配置将被字段级合并，同名字段 last win。举例：
+
+daemon.yaml
+```yaml
+repo_config_dir = ["common/", "override/"]
+```
+
+common/centos.yaml
+```yaml
+name: centos
+storageDir: /srv/repo/centos/
+image: ustcmirror/rsync:latest
+interval: 0 0 * * *
+envs:
+  RSYNC_HOST: msync.centos.org
+  RSYNC_PATH: CentOS/
+logRotCycle: 10
+retry: 1
+```
+
+override/centos.yaml
+```yaml
+interval: 17 3-23/4 * * *
+envs:
+  RSYNC_MAXDELETE: '200000'
+```
+
+`yukictl repo ls centos`
+
+```json
+{
+  "name": "centos",
+  "interval": "17 3-23/4 * * *",
+  "image": "ustcmirror/rsync:latest",
+  "storageDir": "/srv/repo/centos/",
+  "logRotCycle": 10,
+  "retry": 2,
+  "envs": {
+    "RSYNC_HOST": "msync.centos.org",
+    "RSYNC_MAXDELETE": "200000",
+    "RSYNC_PATH": "CentOS/"
+  }
+}
 ```
