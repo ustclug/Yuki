@@ -162,7 +162,7 @@ func (c *Core) Sync(ctx context.Context, opts SyncOptions) (*api.Container, erro
 	envMap["LOG_ROTATE_CYCLE"] = strconv.FormatInt(int64(*r.LogRotCycle), 10)
 	if opts.Debug {
 		envMap["DEBUG"] = "true"
-	} else {
+	} else if envMap["DEBUG"] == "" {
 		envMap["DEBUG"] = "false"
 	}
 	envs := make([]string, 0, len(envMap))
