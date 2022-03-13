@@ -59,14 +59,6 @@ jobs:
         GOOS: ${{ matrix.GOOS }}
         GOARCH: ${{ matrix.GOARCH }}
 
-    - name: Deploy - Extract tag name
-      id: tag
-      uses: actions/github-script@v3
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        script: |
-          return context.ref.replace(/^refs\/tags\//, '');
-
     - name: Deploy - Create Release
       if: startsWith(github.ref, 'refs/tags/')
       id: create_release
@@ -74,8 +66,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ steps.tag.outputs.result }}
-        release_name: ${{ steps.tag.outputs.result }}
+        tag_name: ${{ github.ref_name }}
+        release_name: ${{ github.ref_name }}
         draft: false
         prerelease: false
 
