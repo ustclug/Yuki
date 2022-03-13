@@ -15,7 +15,7 @@ require (
 	github.com/go-playground/validator/v10 v10.1.0
 	github.com/go-resty/resty/v2 v2.1.0
 	github.com/gorilla/mux v1.8.0 // indirect
-	github.com/labstack/echo/v4 v4.1.14
+	github.com/labstack/echo/v4 v4.5.0
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
@@ -23,9 +23,9 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/cobra v0.0.5
-	github.com/spf13/pflag v1.0.3
-	github.com/spf13/viper v1.6.2
-	github.com/stretchr/testify v1.4.0
+	github.com/spf13/pflag v1.0.5
+	github.com/spf13/viper v1.8.1
+	github.com/stretchr/testify v1.7.0
 	gotest.tools/v3 v3.1.0 // indirect
 	sigs.k8s.io/yaml v1.1.0
 )
