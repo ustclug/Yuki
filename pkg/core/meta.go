@@ -42,6 +42,8 @@ func getUpstream(t string, envs api.M) (upstream string) {
 		if upstream, ok = envs["FBSD_PORTS_DISTFILES_UPSTREAM"]; !ok {
 			return "http://distcache.freebsd.org/ports-distfiles/"
 		}
+	case "ghcup":
+		return "https://www.haskell.org/ghcup/"
 	case "github-release":
 		return "https://github.com"
 	case "gitsync":
