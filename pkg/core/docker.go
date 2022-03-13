@@ -207,6 +207,7 @@ func (c *Core) Sync(ctx context.Context, opts SyncOptions) (*api.Container, erro
 		containerConfig,
 		hostConfig,
 		nil,
+		nil,
 		ctName,
 	)
 	if err != nil {
@@ -216,6 +217,7 @@ func (c *Core) Sync(ctx context.Context, opts SyncOptions) (*api.Container, erro
 					ctx,
 					containerConfig,
 					hostConfig,
+					nil,
 					nil,
 					ctName,
 				)
