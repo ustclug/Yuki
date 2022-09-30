@@ -15,7 +15,7 @@ require (
 	github.com/go-playground/validator/v10 v10.1.0
 	github.com/go-resty/resty/v2 v2.1.0
 	github.com/gorilla/mux v1.8.0 // indirect
-	github.com/labstack/echo/v4 v4.5.0
+	github.com/labstack/echo/v4 v4.9.0
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
