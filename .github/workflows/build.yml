@@ -19,6 +19,12 @@ jobs:
             GOOS: linux 
             GOARCH: amd64
 
+    services:
+      mongodb:
+        image: mongo:3
+        ports:
+          - 27017:27017
+
     steps:
     - name: Set up Go 1.x
       uses: actions/setup-go@v2
@@ -43,9 +49,6 @@ jobs:
           curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
           dep ensure
         fi
-
-    - name: Start MongoDB
-      run: sudo systemctl start mongod
 
     - name: Test
       run: |
