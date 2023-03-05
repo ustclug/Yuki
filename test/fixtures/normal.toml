@@ -5,5 +5,3 @@ db_name = "test"
 log_dir = "/tmp/log_yuki/"
 
 repo_config_dir = "/tmp/config_yuki"
-
-sync_timeout = "15s"
