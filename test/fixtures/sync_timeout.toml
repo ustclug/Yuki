@@ -1,0 +1,5 @@
+fs = "default"
+
+repo_config_dir = "/path/to/config-dir"
+
+sync_timeout = "48h"

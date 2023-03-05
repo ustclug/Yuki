@@ -91,6 +91,7 @@ func LoadConfig() (*Config, error) {
 		NamePrefix:            appCfg.NamePrefix,
 		PostSync:              appCfg.PostSync,
 		ImagesUpgradeInterval: appCfg.ImagesUpgradeInterval,
+		SyncTimeout:           appCfg.SyncTimeout,
 	}
 
 	switch appCfg.FileSystem {
