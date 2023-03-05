@@ -400,7 +400,7 @@ func (s *Server) waitForSync(ct *api.Container) error {
 	ctx := s.context()
 	if s.config.SyncTimeout > 0 {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, time.Second*time.Duration(s.config.SyncTimeout))
+		ctx, cancel = context.WithTimeout(ctx, s.config.SyncTimeout)
 		defer cancel()
 	}
 
