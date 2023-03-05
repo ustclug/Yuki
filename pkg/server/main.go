@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -396,8 +397,23 @@ func (s *Server) waitForSync(ct *api.Container) error {
 		Name: ct.Labels["org.ustcmirror.name"],
 	}
 
-	code, err := s.c.WaitContainer(s.context(), ct.ID)
+	var ctx context.Context
+	var cancel context.CancelFunc
+	if s.config.SyncTimeOut != 0 {
+		ctx, cancel = s.contextWithTimeout(time.Second * time.Duration(s.config.SyncTimeOut))
+		defer cancel()
+	} else {
+		ctx = s.context()
+	}
+
+	code, err := s.c.WaitContainer(ctx, ct.ID)
 	if err != nil {
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			// timeout, we should stop the container
+			ctx, cancel = s.contextWithTimeout(time.Second * 30)
+			_ = s.c.StopContainer(ctx, ct.ID)
+			cancel()
+		}
 		return err
 	}
 

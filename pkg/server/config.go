@@ -21,13 +21,14 @@ type AppConfig struct {
 
 	Owner                 string   `mapstructure:"owner,omitempty" validate:"-"`
 	LogDir                string   `mapstructure:"log_dir,omitempty" validate:"-"`
-	RepoConfigDir         []string   `mapstructure:"repo_config_dir,omitempty" validate:"required"`
+	RepoConfigDir         []string `mapstructure:"repo_config_dir,omitempty" validate:"required"`
 	LogLevel              string   `mapstructure:"log_level,omitempty" validate:"omitempty,eq=debug|eq=info|eq=warn|eq=error"`
 	ListenAddr            string   `mapstructure:"listen_addr,omitempty" validate:"omitempty,hostport"`
 	BindIP                string   `mapstructure:"bind_ip,omitempty" validate:"omitempty,ip"`
 	NamePrefix            string   `mapstructure:"name_prefix,omitempty" validate:"-"`
 	PostSync              []string `mapstructure:"post_sync,omitempty" validate:"-"`
 	ImagesUpgradeInterval string   `mapstructure:"images_upgrade_interval,omitempty" validate:"omitempty,cron"`
+	SyncTimeOut           int      `mapstructure:"sync_timeout,omitempty" validate:"omitempty,gte=0"`
 }
 
 type Config struct {
@@ -41,6 +42,7 @@ type Config struct {
 	NamePrefix            string
 	PostSync              []string
 	ImagesUpgradeInterval string
+	SyncTimeOut           int
 }
 
 var (
@@ -57,6 +59,7 @@ var (
 		NamePrefix:            "syncing-",
 		LogLevel:              logrus.InfoLevel,
 		ImagesUpgradeInterval: "@every 1h",
+		SyncTimeOut:           0,
 	}
 )
 
