@@ -28,7 +28,7 @@ type AppConfig struct {
 	NamePrefix            string   `mapstructure:"name_prefix,omitempty" validate:"-"`
 	PostSync              []string `mapstructure:"post_sync,omitempty" validate:"-"`
 	ImagesUpgradeInterval string   `mapstructure:"images_upgrade_interval,omitempty" validate:"omitempty,cron"`
-	SyncTimeOut           int      `mapstructure:"sync_timeout,omitempty" validate:"omitempty,gte=0"`
+	SyncTimeout           int      `mapstructure:"sync_timeout,omitempty" validate:"omitempty,gte=0"`
 }
 
 type Config struct {
@@ -42,7 +42,7 @@ type Config struct {
 	NamePrefix            string
 	PostSync              []string
 	ImagesUpgradeInterval string
-	SyncTimeOut           int
+	SyncTimeout           int
 }
 
 var (
@@ -59,7 +59,7 @@ var (
 		NamePrefix:            "syncing-",
 		LogLevel:              logrus.InfoLevel,
 		ImagesUpgradeInterval: "@every 1h",
-		SyncTimeOut:           0,
+		SyncTimeout:           0,
 	}
 )
 
