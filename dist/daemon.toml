@@ -33,4 +33,4 @@ repo_config_dir = "/path/to/config-dir"
 
 #images_upgrade_interval = "@every 1h"
 
-#sync_timeout = 0
+#sync_timeout = "48h"
