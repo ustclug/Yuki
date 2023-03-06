@@ -28,7 +28,7 @@ func getTestingServer(ctx context.Context, prefix string, name string, storageDi
 	defer os.RemoveAll(storageDir)
 	// remove existing repository and container
 	_ = s.c.RemoveRepository(name)
-	_ = s.c.RemoveContainer(context.TODO(), prefix+name)
+	_ = s.c.RemoveContainer(ctx, prefix+name)
 
 	s.ctx = ctx
 	go s.onPreSync()
