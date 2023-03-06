@@ -24,6 +24,6 @@ func TestSyncTimeoutConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 	if config.SyncTimeout != time.Second*15 {
-		t.Fatalf("Expected SyncTimeout to be 15s, got %d", config.SyncTimeout)
+		t.Fatalf("Expected SyncTimeout to be 15s, got %s", config.SyncTimeout)
 	}
 }
