@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -19,15 +20,16 @@ type AppConfig struct {
 	FileSystem     string `mapstructure:"fs,omitempty" validate:"omitempty,eq=xfs|eq=zfs|eq=default"`
 	DockerEndpoint string `mapstructure:"docker_endpoint,omitempty" validate:"omitempty,unix_addr|tcp_addr"`
 
-	Owner                 string   `mapstructure:"owner,omitempty" validate:"-"`
-	LogDir                string   `mapstructure:"log_dir,omitempty" validate:"-"`
-	RepoConfigDir         []string   `mapstructure:"repo_config_dir,omitempty" validate:"required"`
-	LogLevel              string   `mapstructure:"log_level,omitempty" validate:"omitempty,eq=debug|eq=info|eq=warn|eq=error"`
-	ListenAddr            string   `mapstructure:"listen_addr,omitempty" validate:"omitempty,hostport"`
-	BindIP                string   `mapstructure:"bind_ip,omitempty" validate:"omitempty,ip"`
-	NamePrefix            string   `mapstructure:"name_prefix,omitempty" validate:"-"`
-	PostSync              []string `mapstructure:"post_sync,omitempty" validate:"-"`
-	ImagesUpgradeInterval string   `mapstructure:"images_upgrade_interval,omitempty" validate:"omitempty,cron"`
+	Owner                 string        `mapstructure:"owner,omitempty" validate:"-"`
+	LogDir                string        `mapstructure:"log_dir,omitempty" validate:"-"`
+	RepoConfigDir         []string      `mapstructure:"repo_config_dir,omitempty" validate:"required"`
+	LogLevel              string        `mapstructure:"log_level,omitempty" validate:"omitempty,eq=debug|eq=info|eq=warn|eq=error"`
+	ListenAddr            string        `mapstructure:"listen_addr,omitempty" validate:"omitempty,hostport"`
+	BindIP                string        `mapstructure:"bind_ip,omitempty" validate:"omitempty,ip"`
+	NamePrefix            string        `mapstructure:"name_prefix,omitempty" validate:"-"`
+	PostSync              []string      `mapstructure:"post_sync,omitempty" validate:"-"`
+	ImagesUpgradeInterval string        `mapstructure:"images_upgrade_interval,omitempty" validate:"omitempty,cron"`
+	SyncTimeout           time.Duration `mapstructure:"sync_timeout,omitempty" validate:"omitempty,gte=0"`
 }
 
 type Config struct {
@@ -41,6 +43,7 @@ type Config struct {
 	NamePrefix            string
 	PostSync              []string
 	ImagesUpgradeInterval string
+	SyncTimeout           time.Duration
 }
 
 var (
@@ -57,6 +60,7 @@ var (
 		NamePrefix:            "syncing-",
 		LogLevel:              logrus.InfoLevel,
 		ImagesUpgradeInterval: "@every 1h",
+		SyncTimeout:           0,
 	}
 )
 
@@ -87,6 +91,7 @@ func LoadConfig() (*Config, error) {
 		NamePrefix:            appCfg.NamePrefix,
 		PostSync:              appCfg.PostSync,
 		ImagesUpgradeInterval: appCfg.ImagesUpgradeInterval,
+		SyncTimeout:           appCfg.SyncTimeout,
 	}
 
 	switch appCfg.FileSystem {

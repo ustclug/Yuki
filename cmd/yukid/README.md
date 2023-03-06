@@ -67,6 +67,11 @@ repo_config_dir = ["/path/to/config-dir"]
 ## 设置更新用到的 docker images 的频率
 ## 格式为 crontab
 #images_upgrade_interval = "@every 1h"
+
+## 同步超时时间，如果超过了这个时间，同步容器会被强制停止
+## 支持使用 time.ParseDuration() 支持的时间格式，诸如 "10m", "1h" 等
+## 如果为 0 的话则不会超时。注意修改的配置仅对新启动的同步容器生效
+#sync_timeout = "48h"
 ```
 
 ### Repo Configuration
