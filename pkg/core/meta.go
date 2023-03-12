@@ -26,8 +26,12 @@ func getUpstream(t string, envs api.M) (upstream string) {
 		return fmt.Sprintf("rsync://%s/%s/", envs["RSYNC_HOST"], envs["RSYNC_PATH"])
 	case "aptsync", "apt-sync":
 		return envs["APTSYNC_URL"]
+	case "crates-io-index":
+		return "https://github.com/rust-lang/crates.io-index"
 	case "debian-cd":
 		return fmt.Sprintf("rsync://%s/%s/", envs["RSYNC_HOST"], envs["RSYNC_MODULE"])
+	case "docker-ce":
+		return "https://download.docker.com/"
 	case "fedora":
 		remote, ok := envs["REMOTE"]
 		if !ok {
@@ -48,6 +52,10 @@ func getUpstream(t string, envs api.M) (upstream string) {
 		return "https://github.com"
 	case "gitsync":
 		return envs["GITSYNC_URL"]
+	case "google-repo":
+		if upstream, ok = envs["UPSTREAM"]; !ok {
+			return "https://android.googlesource.com/mirror/manifest"
+		}
 	case "gsutil-rsync":
 		return envs["GS_URL"]
 	case "hackage":
@@ -88,6 +96,8 @@ func getUpstream(t string, envs api.M) (upstream string) {
 		}
 	case "stackage":
 		upstream = "https://github.com/commercialhaskell/"
+	case "yum-sync":
+		return envs["YUMSYNC_URL"]
 	}
 	return
 }
