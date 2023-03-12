@@ -96,6 +96,10 @@ func getUpstream(t string, envs api.M) (upstream string) {
 		}
 	case "stackage":
 		upstream = "https://github.com/commercialhaskell/"
+	case "winget-source":
+		if upstream, ok = envs["WINGET_REPO_URL"]; !ok {
+			return "https://cdn.winget.microsoft.com/cache"
+		}
 	case "yum-sync":
 		return envs["YUMSYNC_URL"]
 	}
