@@ -406,13 +406,14 @@ func (s *Server) waitForSync(ct *api.Container) error {
 
 	code, err := s.c.WaitContainer(ctx, ct.ID)
 	if err != nil {
-		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			// timeout, we should stop the container
-			ctx, cancel := context.WithTimeout(s.context(), time.Second*30)
-			_ = s.c.StopContainer(ctx, ct.ID)
-			cancel()
+		if !errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return err
+		} else {
+			// When the error is timeout, we expect that
+			// container will be stopped and removed in onPostSync() goroutine
+			// Here we set a special exit code to indicate that the container is timeout in meta.
+			code = -2
 		}
-		return err
 	}
 
 	name, ok := ct.Labels["org.ustcmirror.name"]
@@ -430,5 +431,7 @@ func (s *Server) waitForSync(ct *api.Container) error {
 		Dir:      dir,
 		ExitCode: code,
 	}
-	return nil
+	// returns context.DeadlineExceeded when timeout
+	// or nil when it succeeded
+	return err
 }
