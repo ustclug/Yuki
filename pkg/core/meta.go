@@ -64,7 +64,7 @@ func getUpstream(t string, envs api.M) (upstream string) {
 		}
 	case "homebrew-bottles":
 		if upstream, ok = envs["HOMEBREW_BOTTLE_DOMAIN"]; !ok {
-			return "http://homebrew.bintray.com/"
+			return "https://ghcr.io/v2/homebrew/"
 		}
 	case "julia-storage":
 		return "https://us-east.storage.juliahub.com, https://kr.storage.juliahub.com"

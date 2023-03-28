@@ -38,7 +38,7 @@ func TestGetMeta(t *testing.T) {
 
 	m, err = c.GetMeta(name)
 	as.Nil(err)
-	as.Equal("http://homebrew.bintray.com/", m.Upstream)
+	as.Equal("https://ghcr.io/v2/homebrew/", m.Upstream)
 }
 
 func TestRemoveMeta(t *testing.T) {
