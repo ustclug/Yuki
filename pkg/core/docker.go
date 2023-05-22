@@ -20,13 +20,14 @@ import (
 
 // SyncOptions provides params to the Sync function.
 type SyncOptions struct {
-	Name          string
-	LogDir        string
-	DefaultOwner  string
-	DefaultBindIP string
-	NamePrefix    string
-	Debug         bool
-	MountDir      bool
+	Name           string
+	LogDir         string
+	DefaultOwner   string
+	DefaultBindIP  string
+	SeccompProfile string
+	NamePrefix     string
+	Debug          bool
+	MountDir       bool
 }
 
 // LogsOptions provides params to the GetContainerLogs function.
@@ -151,6 +152,12 @@ func (c *Core) Sync(ctx context.Context, opts SyncOptions) (*api.Container, erro
 	if len(r.User) == 0 {
 		r.User = opts.DefaultOwner
 	}
+
+	seccomp_item := ""
+	if len(opts.SeccompProfile) != 0 {
+		seccomp_item = "seccomp=" + opts.SeccompProfile
+	}
+
 	if r.LogRotCycle == nil {
 		ten := 10
 		r.LogRotCycle = &ten
@@ -198,7 +205,7 @@ func (c *Core) Sync(ctx context.Context, opts SyncOptions) (*api.Container, erro
 	}
 	hostConfig := &container.HostConfig{
 		Binds:       binds,
-		SecurityOpt: []string{"seccomp=seccomp-perf.json"}, // TODO: use Config.SeccompProfile, should not make SeccompProfile for each repo
+		SecurityOpt: []string{seccomp_item},
 		NetworkMode: "host",
 	}
 	ctName := opts.NamePrefix + opts.Name
