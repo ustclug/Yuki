@@ -198,6 +198,7 @@ func (c *Core) Sync(ctx context.Context, opts SyncOptions) (*api.Container, erro
 	}
 	hostConfig := &container.HostConfig{
 		Binds:       binds,
+		SecurityOpt: []string{"seccomp=seccomp-perf.json"}, // TODO: use Config.SeccompProfile, should not make SeccompProfile for each repo
 		NetworkMode: "host",
 	}
 	ctName := opts.NamePrefix + opts.Name

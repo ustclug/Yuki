@@ -30,6 +30,7 @@ type AppConfig struct {
 	PostSync              []string      `mapstructure:"post_sync,omitempty" validate:"-"`
 	ImagesUpgradeInterval string        `mapstructure:"images_upgrade_interval,omitempty" validate:"omitempty,cron"`
 	SyncTimeout           time.Duration `mapstructure:"sync_timeout,omitempty" validate:"omitempty,gte=0"`
+	SeccompProfile        string        `mapstructure:"seccomp_profile,omitempty" validate:"-"`
 }
 
 type Config struct {
@@ -44,6 +45,7 @@ type Config struct {
 	PostSync              []string
 	ImagesUpgradeInterval string
 	SyncTimeout           time.Duration
+	SeccompProfile        string
 }
 
 var (
@@ -61,6 +63,7 @@ var (
 		LogLevel:              logrus.InfoLevel,
 		ImagesUpgradeInterval: "@every 1h",
 		SyncTimeout:           0,
+		SeccompProfile:        "",
 	}
 )
 
@@ -92,6 +95,7 @@ func LoadConfig() (*Config, error) {
 		PostSync:              appCfg.PostSync,
 		ImagesUpgradeInterval: appCfg.ImagesUpgradeInterval,
 		SyncTimeout:           appCfg.SyncTimeout,
+		SeccompProfile:        appCfg.SeccompProfile,
 	}
 
 	switch appCfg.FileSystem {
