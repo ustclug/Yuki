@@ -220,7 +220,7 @@ func (c *Core) Sync(ctx context.Context, opts SyncOptions) (*api.Container, erro
 		hostConfig.NetworkMode = "host"
 	default:
 		// https://github.com/moby/moby/blob/master/daemon/create_test.go#L15
-		networkingConfig.EndpointsConfig[r.Network] = nil
+		networkingConfig.EndpointsConfig[r.Network] = &network.EndpointSettings{}
 	}
 
 	ct, err := c.docker.ContainerCreate(
