@@ -12,6 +12,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 
 	"github.com/ustclug/Yuki/pkg/api"
@@ -208,15 +209,25 @@ func (c *Core) Sync(ctx context.Context, opts SyncOptions) (*api.Container, erro
 	hostConfig := &container.HostConfig{
 		Binds:       binds,
 		SecurityOpt: security_opt,
-		NetworkMode: "host",
+	}
+	networkingConfig := &network.NetworkingConfig{
+		EndpointsConfig: make(map[string]*network.EndpointSettings, 1),
 	}
 	ctName := opts.NamePrefix + opts.Name
+
+	switch r.Network {
+	case "", "host":
+		hostConfig.NetworkMode = "host"
+	default:
+		// https://github.com/moby/moby/blob/master/daemon/create_test.go#L15
+		networkingConfig.EndpointsConfig[r.Network] = nil
+	}
 
 	ct, err := c.docker.ContainerCreate(
 		ctx,
 		containerConfig,
 		hostConfig,
-		nil,
+		networkingConfig,
 		nil,
 		ctName,
 	)
@@ -227,7 +238,7 @@ func (c *Core) Sync(ctx context.Context, opts SyncOptions) (*api.Container, erro
 					ctx,
 					containerConfig,
 					hostConfig,
-					nil,
+					networkingConfig,
 					nil,
 					ctName,
 				)
