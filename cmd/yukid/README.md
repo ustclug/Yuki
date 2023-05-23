@@ -1,9 +1,10 @@
 # yukid
 
 ### Table of Content
-* [Introduction](#introduction)
-* [Server Configuration](#server-configuration)
-* [Repo Configuration](#repo-configuration)
+
+- [Introduction](#introduction)
+- [Server Configuration](#server-configuration)
+- [Repo Configuration](#repo-configuration)
 
 ### Introduction
 
@@ -11,7 +12,7 @@ yukid 是 yuki 的服务端，负责定期同步仓库，并且提供 RESTful AP
 
 ### Server Configuration
 
-yukid 的配置，路径 `/etc/yuki/daemon.toml` 
+yukid 的配置，路径 `/etc/yuki/daemon.toml`
 
 ```toml
 ## 设置 debug 为 true 后会打开 echo web 框架的 debug 模式
@@ -72,6 +73,11 @@ repo_config_dir = ["/path/to/config-dir"]
 ## 支持使用 time.ParseDuration() 支持的时间格式，诸如 "10m", "1h" 等
 ## 如果为 0 的话则不会超时。注意修改的配置仅对新启动的同步容器生效
 #sync_timeout = "48h"
+
+## 将 seccomp profile 传递至 docker security-opt 参数，而非在 docker daemon 中指定
+## 目的是放通 docker 默认拦截的 pidfd_getfd 系统调用，让 binder 强制让同步程序在特定地址上发起连接
+## 留空时使用 docker daemon 默认的 seccomp 配置
+#seccomp_profile = "/path/to/seccomp/profile.json"
 ```
 
 ### Repo Configuration
@@ -81,6 +87,7 @@ yukid 启动的时候只会从数据库里读取仓库的同步配置，不会�
 存放在 `repo_config_dir` 下的每个仓库的同步配置，文件名必须以 `.yaml` 结尾。
 
 示例如下。不同的 image 需要的 envs 可参考 [这里](https://github.com/ustclug/ustcmirror-images#table-of-content)。
+
 ```yaml
 name: bioc # required
 image: ustcmirror/rsync:latest # required
@@ -104,11 +111,13 @@ volumes: # 同步的时候需要挂载的 volume
 当存在多个目录时，配置将被字段级合并，同名字段 last win。举例：
 
 daemon.yaml
+
 ```yaml
 repo_config_dir = ["common/", "override/"]
 ```
 
 common/centos.yaml
+
 ```yaml
 name: centos
 storageDir: /srv/repo/centos/
@@ -122,10 +131,11 @@ retry: 1
 ```
 
 override/centos.yaml
+
 ```yaml
 interval: 17 3-23/4 * * *
 envs:
-  RSYNC_MAXDELETE: '200000'
+  RSYNC_MAXDELETE: "200000"
 ```
 
 `yukictl repo ls centos`

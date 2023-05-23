@@ -148,12 +148,13 @@ func (s *Server) schedRepos() {
 func (s *Server) newJob(name string) cron.FuncJob {
 	return func() {
 		ct, err := s.c.Sync(s.context(), core.SyncOptions{
-			LogDir:        s.config.LogDir,
-			DefaultOwner:  s.config.Owner,
-			NamePrefix:    s.config.NamePrefix,
-			Name:          name,
-			MountDir:      true,
-			DefaultBindIP: s.config.BindIP,
+			LogDir:         s.config.LogDir,
+			DefaultOwner:   s.config.Owner,
+			NamePrefix:     s.config.NamePrefix,
+			Name:           name,
+			MountDir:       true,
+			DefaultBindIP:  s.config.BindIP,
+			SeccompProfile: s.config.SeccompProfile,
 		})
 		entry := logrus.WithField("repo", name)
 		if err != nil {

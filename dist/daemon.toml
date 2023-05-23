@@ -34,3 +34,5 @@ repo_config_dir = "/path/to/config-dir"
 #images_upgrade_interval = "@every 1h"
 
 #sync_timeout = "48h"
+
+#seccomp_profile = "/path/to/seccomp/profile.json"
