@@ -157,6 +157,7 @@ func (c *Core) Sync(ctx context.Context, opts SyncOptions) (*api.Container, erro
 	if len(opts.SeccompProfile) != 0 {
 		seccomp_item = "seccomp=" + opts.SeccompProfile
 	}
+	security_opt := []string{seccomp_item}
 
 	if r.LogRotCycle == nil {
 		ten := 10
@@ -205,7 +206,7 @@ func (c *Core) Sync(ctx context.Context, opts SyncOptions) (*api.Container, erro
 	}
 	hostConfig := &container.HostConfig{
 		Binds:       binds,
-		SecurityOpt: []string{seccomp_item},
+		SecurityOpt: security_opt,
 		NetworkMode: "host",
 	}
 	ctName := opts.NamePrefix + opts.Name
