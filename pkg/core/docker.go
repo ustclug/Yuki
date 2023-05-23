@@ -154,10 +154,11 @@ func (c *Core) Sync(ctx context.Context, opts SyncOptions) (*api.Container, erro
 	}
 
 	seccomp_item := ""
-	if len(opts.SeccompProfile) != 0 {
+	security_opt := []string{}
+	if len(opts.SeccompProfile) > 0 {
 		seccomp_item = "seccomp=" + opts.SeccompProfile
+		security_opt = append(security_opt, seccomp_item)
 	}
-	security_opt := []string{seccomp_item}
 
 	if r.LogRotCycle == nil {
 		ten := 10
