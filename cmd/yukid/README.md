@@ -76,6 +76,7 @@ repo_config_dir = ["/path/to/config-dir"]
 
 ## 将 seccomp profile 传递至 docker security-opt 参数，而非在 docker daemon 中指定
 ## 目的是放通 docker 默认拦截的 pidfd_getfd 系统调用，让 binder 强制让同步程序在特定地址上发起连接
+## 留空时使用 docker daemon 默认的 seccomp 配置
 #seccomp_profile = "/path/to/seccomp/profile.json"
 ```
 
