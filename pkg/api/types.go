@@ -52,6 +52,7 @@ type Repository struct {
 	StorageDir  string `bson:"storageDir" json:"storageDir" validate:"required"`
 	User        string `bson:"user,omitempty" json:"user,omitempty" validate:"omitempty,gt=1"`
 	BindIP      string `bson:"bindIP,omitempty" json:"bindIP,omitempty" validate:"omitempty,ip"`
+	Network     string `bson:"network,omitempty" json:"network,omitempty" validate:"omitempty"`
 	LogRotCycle *int   `bson:"logRotCycle,omitempty" json:"logRotCycle,omitempty" validate:"omitempty,min=0"`
 	Retry       int    `bson:"retry,omitempty" json:"retry,omitempty" validate:"min=0"`
 	Envs        M      `bson:"envs,omitempty" json:"envs,omitempty" validate:"omitempty,dive,keys,required,endkeys,required"`

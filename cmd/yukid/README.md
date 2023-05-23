@@ -2,9 +2,11 @@
 
 ### Table of Content
 
-- [Introduction](#introduction)
-- [Server Configuration](#server-configuration)
-- [Repo Configuration](#repo-configuration)
+- [yukid](#yukid)
+    - [Table of Content](#table-of-content)
+    - [Introduction](#introduction)
+    - [Server Configuration](#server-configuration)
+    - [Repo Configuration](#repo-configuration)
 
 ### Introduction
 
@@ -74,8 +76,8 @@ repo_config_dir = ["/path/to/config-dir"]
 ## 如果为 0 的话则不会超时。注意修改的配置仅对新启动的同步容器生效
 #sync_timeout = "48h"
 
-## 将 seccomp profile 传递至 docker security-opt 参数，而非在 docker daemon 中指定
-## 目的是放通 docker 默认拦截的 pidfd_getfd 系统调用，让 binder 强制让同步程序在特定地址上发起连接
+## 修改同步时的 seccomp profile，用于特殊用途的容器
+## 例如，使用 seccomp user notify 的程序需要放行一些相关的系统调用
 ## 留空时使用 docker daemon 默认的 seccomp 配置
 #seccomp_profile = "/path/to/seccomp/profile.json"
 ```
@@ -94,7 +96,8 @@ image: ustcmirror/rsync:latest # required
 interval: 2 2 31 4 * # required
 storageDir: /srv/repo/bioc # required
 logRotCycle: 1 # 保留多少次同步日志
-bindIP: 1.2.3.4
+bindIP: 1.2.3.4 # 可选
+network: host # 容器所属的 docker network，可选，默认为 host
 retry: 2 # 同步失败后的重试次数
 envs: # 传给同步程序的环境变量
   RSYNC_HOST: rsync.exmaple.com
