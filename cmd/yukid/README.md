@@ -2,9 +2,11 @@
 
 ### Table of Content
 
-- [Introduction](#introduction)
-- [Server Configuration](#server-configuration)
-- [Repo Configuration](#repo-configuration)
+- [yukid](#yukid)
+    - [Table of Content](#table-of-content)
+    - [Introduction](#introduction)
+    - [Server Configuration](#server-configuration)
+    - [Repo Configuration](#repo-configuration)
 
 ### Introduction
 
@@ -94,7 +96,8 @@ image: ustcmirror/rsync:latest # required
 interval: 2 2 31 4 * # required
 storageDir: /srv/repo/bioc # required
 logRotCycle: 1 # 保留多少次同步日志
-bindIP: 1.2.3.4
+bindIP: 1.2.3.4 # 可选
+network: host # 容器所属的 docker network，可选，默认为 host
 retry: 2 # 同步失败后的重试次数
 envs: # 传给同步程序的环境变量
   RSYNC_HOST: rsync.exmaple.com
