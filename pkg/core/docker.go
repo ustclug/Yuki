@@ -99,7 +99,7 @@ func (c *Core) RemoveImage(ctx context.Context, id string) error {
 
 // StopContainer stops the given container.
 func (c *Core) StopContainer(ctx context.Context, id string) error {
-	return c.docker.ContainerStop(ctx, id, nil)
+	return c.docker.ContainerStop(ctx, id, container.StopOptions{})
 }
 
 // ListContainers returns a list of containers.

@@ -16,7 +16,7 @@ jobs:
         include:
           - os: ubuntu-latest
             # GitHub Actions only provides amd64 arch now.
-            GOOS: linux 
+            GOOS: linux
             GOARCH: amd64
 
     services:
@@ -26,27 +26,19 @@ jobs:
           - 27017:27017
 
     steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
     - name: Set up Go 1.x
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v4
       with:
-        go-version: ^1.16
-
-    - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
-
-    - name: Golang module cache
-      uses: actions/cache@v2
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
+        go-version: ^1.20
 
     - name: Get dependencies
       run: |
         go get -v -t -d ./...
         if [ -f Gopkg.toml ]; then
-          curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+          curl -s https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
           dep ensure
         fi
 
@@ -62,23 +54,15 @@ jobs:
         GOOS: ${{ matrix.GOOS }}
         GOARCH: ${{ matrix.GOARCH }}
 
-    - name: Deploy - Create Release
+    - name: Deploy - Release
       if: startsWith(github.ref, 'refs/tags/')
       id: create_release
-      uses: actions/create-release@v1
+      uses: softprops/action-gh-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ github.ref_name }}
         release_name: ${{ github.ref_name }}
+        files: ${{ env.NAME }}-*.tar.gz
         draft: false
         prerelease: false
-
-    - name: Deploy - Upload Release
-      if: startsWith(github.ref, 'refs/tags/')
-      id: upload-release-asset 
-      uses: csexton/release-asset-action@v2
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        release-url: ${{ steps.create_release.outputs.upload_url }}
-        pattern: ${{ env.NAME }}-*.tar.gz
