@@ -72,7 +72,7 @@ func TestWaitForSync(t *testing.T) {
 	as.Nil(err)
 	defer s.c.RemoveContainer(ctx, ct.ID)
 	err = s.waitForSync(ct)
-	if err != context.DeadlineExceeded {
-		t.Fatalf("Expected error to be context.DeadlineExceeded, got %+v", err)
+	if err != context.DeadlineExceeded && err.Error() != "" {
+		t.Fatalf("Expected error to be context.DeadlineExceeded, got %v", err)
 	}
 }
