@@ -1,15 +1,6 @@
-# Ignore all
-*
-
-# Unignore all with extensions
-!*.*
-
-# Unignore all dirs
-!*/
-!Dockerfile
-!Makefile
-
-### Above combination will ignore all files without extension ###
+# Build output files
+yukictl
+yukid
 
 .idea/
 
