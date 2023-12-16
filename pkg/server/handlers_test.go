@@ -18,7 +18,7 @@ func TestRepoLoad(t *testing.T) {
 	viper.SetConfigFile("../../test/fixtures/sync_timeout.toml")
 
 	prefix := "syncing-"
-	name := "yuki-test-sync-repo"
+	name := "yuki-reload-test-sync-repo"
 	d := "/tmp/" + name
 	server, err := getTestingServer(ctx, prefix, name, d)
 	req.Nil(err)

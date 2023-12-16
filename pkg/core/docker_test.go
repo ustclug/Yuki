@@ -12,7 +12,7 @@ import (
 
 func TestSync(t *testing.T) {
 	t.Parallel()
-	name := "yuki-test-sync-repo"
+	name := "yuki-sync-test-sync-repo"
 	as := assert.New(t)
 	cycle := 10
 	d := "/tmp/" + name

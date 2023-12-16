@@ -47,7 +47,7 @@ func TestWaitForSync(t *testing.T) {
 	viper.SetConfigFile("../../test/fixtures/sync_timeout.toml")
 
 	prefix := "syncing-"
-	name := "yuki-test-sync-repo"
+	name := "yuki-wait-test-sync-repo"
 	d := "/tmp/" + name
 	cycle := 10
 
