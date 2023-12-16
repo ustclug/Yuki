@@ -96,6 +96,8 @@ func getUpstream(t string, envs api.M) (upstream string) {
 		}
 	case "stackage":
 		upstream = "https://github.com/commercialhaskell/"
+	case "tsumugu":
+		return envs["UPSTREAM"]
 	case "winget-source":
 		if upstream, ok = envs["WINGET_REPO_URL"]; !ok {
 			return "https://cdn.winget.microsoft.com/cache"
