@@ -30,7 +30,6 @@ import (
 type Server struct {
 	e          *echo.Echo
 	c          *core.Core
-	ctx        context.Context
 	syncStatus sync.Map
 	config     *Config
 	cron       *cron.Cron
@@ -155,7 +154,8 @@ func (s *Server) schedRepos() {
 
 func (s *Server) newJob(name string) cron.FuncJob {
 	return func() {
-		ct, err := s.c.Sync(s.context(), core.SyncOptions{
+		// FIXME: determine the real context
+		ct, err := s.c.Sync(context.TODO(), core.SyncOptions{
 			LogDir:         s.config.LogDir,
 			DefaultOwner:   s.config.Owner,
 			NamePrefix:     s.config.NamePrefix,
@@ -181,8 +181,6 @@ func (s *Server) newJob(name string) cron.FuncJob {
 }
 
 func (s *Server) Start(ctx context.Context) {
-	s.ctx = ctx
-
 	logrus.Infof("Listening at %s", s.config.ListenAddr)
 	go func() {
 		if err := s.e.Start(s.config.ListenAddr); err != nil {
@@ -245,10 +243,6 @@ func (s *Server) teardown() {
 	if err := s.e.Shutdown(ctx); err != nil {
 		logrus.Warningln(err)
 	}
-}
-
-func (s *Server) context() context.Context {
-	return s.ctx
 }
 
 func (s *Server) upgradeImages(ctx context.Context) {
@@ -402,7 +396,8 @@ func (s *Server) waitForSync(ct *api.Container) error {
 		Name: ct.Labels["org.ustcmirror.name"],
 	}
 
-	ctx := s.context()
+	// FIXME: determine the real context
+	ctx := context.TODO()
 	if s.config.SyncTimeout > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, s.config.SyncTimeout)
