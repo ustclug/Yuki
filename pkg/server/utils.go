@@ -3,10 +3,15 @@ package server
 import (
 	"github.com/labstack/echo/v4"
 	"github.com/robfig/cron/v3"
+	"gorm.io/gorm"
 
 	"github.com/ustclug/Yuki/pkg/api"
 	"github.com/ustclug/Yuki/pkg/model"
 )
+
+func (s *Server) getDB(c echo.Context) *gorm.DB {
+	return s.db.WithContext(c.Request().Context())
+}
 
 func getRequiredParamFromEchoContext(c echo.Context, name string) (string, error) {
 	val := c.Param(name)

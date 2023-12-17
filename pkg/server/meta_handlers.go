@@ -4,15 +4,10 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	"gorm.io/gorm"
 
 	"github.com/ustclug/Yuki/pkg/api"
 	"github.com/ustclug/Yuki/pkg/model"
 )
-
-func (s *Server) getDB(c echo.Context) *gorm.DB {
-	return s.db.WithContext(c.Request().Context())
-}
 
 func (s *Server) handlerListRepoMetas(c echo.Context) error {
 	var metas []model.RepoMeta

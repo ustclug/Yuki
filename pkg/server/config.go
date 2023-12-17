@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
@@ -15,16 +16,16 @@ import (
 type AppConfig struct {
 	Debug bool `mapstructure:"debug,omitempty" validate:"-"`
 	// DbURL contains username and password
-	DbURL          string `mapstructure:"db_url,omitempty" validate:"omitempty,mongodb"`
+	DbURL          string `mapstructure:"db_url,omitempty" validate:"required"`
 	DbName         string `mapstructure:"db_name,omitempty" validate:"omitempty,alpha"`
-	FileSystem     string `mapstructure:"fs,omitempty" validate:"omitempty,eq=xfs|eq=zfs|eq=default"`
+	FileSystem     string `mapstructure:"fs,omitempty" validate:"omitempty,oneof=xfs zfs default"`
 	DockerEndpoint string `mapstructure:"docker_endpoint,omitempty" validate:"omitempty,unix_addr|tcp_addr"`
 
 	Owner                 string        `mapstructure:"owner,omitempty" validate:"-"`
 	LogDir                string        `mapstructure:"log_dir,omitempty" validate:"-"`
 	RepoConfigDir         []string      `mapstructure:"repo_config_dir,omitempty" validate:"required"`
-	LogLevel              string        `mapstructure:"log_level,omitempty" validate:"omitempty,eq=debug|eq=info|eq=warn|eq=error"`
-	ListenAddr            string        `mapstructure:"listen_addr,omitempty" validate:"omitempty,hostport"`
+	LogLevel              string        `mapstructure:"log_level,omitempty" validate:"omitempty,oneof=debug info warn error"`
+	ListenAddr            string        `mapstructure:"listen_addr,omitempty" validate:"omitempty,hostname_port"`
 	BindIP                string        `mapstructure:"bind_ip,omitempty" validate:"omitempty,ip"`
 	NamePrefix            string        `mapstructure:"name_prefix,omitempty" validate:"-"`
 	PostSync              []string      `mapstructure:"post_sync,omitempty" validate:"-"`
@@ -68,7 +69,6 @@ var (
 )
 
 func LoadConfig() (*Config, error) {
-	configValidator := NewValidator()
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, err
 	}
@@ -76,7 +76,8 @@ func LoadConfig() (*Config, error) {
 	if err := viper.Unmarshal(appCfg); err != nil {
 		return nil, err
 	}
-	if err := configValidator.Struct(appCfg); err != nil {
+	validate := validator.New()
+	if err := validate.Struct(appCfg); err != nil {
 		return nil, err
 	}
 	cfg := Config{

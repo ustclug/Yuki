@@ -120,7 +120,6 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 		postSyncCh: make(chan api.PostSyncPayload),
 	}
 
-	s.e.Validator = &myValidator{NewValidator()}
 	s.e.Debug = cfg.Debug
 	s.e.HideBanner = true
 	s.e.HTTPErrorHandler = s.httpErrorHandler
