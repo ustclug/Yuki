@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/ustclug/Yuki/pkg/api"
 	"github.com/ustclug/Yuki/pkg/core"
 )
@@ -32,7 +33,7 @@ func getTestingServer(ctx context.Context, prefix string, name string, storageDi
 
 	s.ctx = ctx
 	go s.onPreSync()
-	go s.onPostSync()
+	go s.onPostSync(context.TODO())
 
 	return s, nil
 }
