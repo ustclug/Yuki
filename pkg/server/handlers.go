@@ -50,8 +50,8 @@ func conflict(msg interface{}) error {
 
 func (s *Server) registerAPIs(g *echo.Group) {
 	// public APIs
-	g.GET("metas", s.listMetas)
-	g.GET("metas/:name", s.getMeta)
+	g.GET("metas", s.handlerListMetas)
+	g.GET("metas/:name", s.handlerGetMeta)
 
 	// private APIs
 	g.GET("repositories", s.listRepos)
@@ -229,7 +229,7 @@ func (s *Server) sync(c echo.Context) error {
 	}
 
 	logrus.Infof("Syncing %s", name)
-	ct, err := s.c.Sync(s.context(), core.SyncOptions{
+	ct, err := s.c.Sync(c.Request().Context(), core.SyncOptions{
 		Name:          name,
 		NamePrefix:    s.config.NamePrefix,
 		LogDir:        s.config.LogDir,
@@ -283,10 +283,11 @@ func (s *Server) getCtLogs(c echo.Context) error {
 
 func (s *Server) removeCt(c echo.Context) error {
 	id := s.getCtID(c.Param("name"))
-	ctx, cancel := s.contextWithTimeout(time.Second * 10)
+	reqCtx := c.Request().Context()
+	ctx, cancel := context.WithTimeout(reqCtx, time.Second*10)
 	_ = s.c.StopContainer(ctx, id)
 	cancel()
-	ctx, cancel = s.contextWithTimeout(time.Second * 10)
+	ctx, cancel = context.WithTimeout(reqCtx, time.Second*10)
 	_ = s.c.RemoveContainer(ctx, id)
 	cancel()
 	return c.NoContent(http.StatusNoContent)
@@ -295,34 +296,6 @@ func (s *Server) removeCt(c echo.Context) error {
 func (s *Server) updateSyncStatus(m *api.Meta) {
 	_, ok := s.syncStatus.Load(m.Name)
 	m.Syncing = ok
-}
-
-func (s *Server) listMetas(c echo.Context) error {
-	ms := s.c.ListAllMetas()
-	jobs := s.cron.Jobs()
-	for i := 0; i < len(ms); i++ {
-		job, ok := jobs[ms[i].Name]
-		if ok {
-			ms[i].NextRun = job.Next.Unix()
-		}
-		s.updateSyncStatus(&ms[i])
-	}
-	return c.JSON(http.StatusOK, ms)
-}
-
-func (s *Server) getMeta(c echo.Context) error {
-	name := c.Param("name")
-	m, err := s.c.GetMeta(name)
-	if err != nil {
-		return notFound(err)
-	}
-	s.updateSyncStatus(m)
-	jobs := s.cron.Jobs()
-	job, ok := jobs[m.Name]
-	if ok {
-		m.NextRun = job.Next.Unix()
-	}
-	return c.JSON(http.StatusOK, m)
 }
 
 func (s *Server) exportConfig(c echo.Context) error {
@@ -426,7 +399,6 @@ func (s *Server) httpErrorHandler(err error, c echo.Context) {
 		msg     string
 		respMsg echo.Map
 	)
-
 	if he, ok := err.(*echo.HTTPError); ok {
 		code = he.Code
 		msg = fmt.Sprintf("%v", he.Message)

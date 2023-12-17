@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"os/exec"
 	"path"
@@ -18,11 +18,12 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"golang.org/x/sync/errgroup"
+	"gorm.io/gorm"
 
 	"github.com/ustclug/Yuki/pkg/api"
 	"github.com/ustclug/Yuki/pkg/core"
 	"github.com/ustclug/Yuki/pkg/cron"
-	"github.com/ustclug/Yuki/pkg/gpool"
 )
 
 type Server struct {
@@ -30,10 +31,10 @@ type Server struct {
 	c          *core.Core
 	ctx        context.Context
 	syncStatus sync.Map
-	gpool      gpool.Pool
 	config     *Config
 	cron       *cron.Cron
 	quit       chan struct{}
+	db         *gorm.DB
 	preSyncCh  chan api.PreSyncPayload
 	postSyncCh chan api.PostSyncPayload
 }
@@ -105,7 +106,6 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 		e:          echo.New(),
 		cron:       cron.New(),
 		config:     cfg,
-		gpool:      gpool.New(stopCh, gpool.WithMaxWorkers(5)),
 		quit:       stopCh,
 		preSyncCh:  make(chan api.PreSyncPayload),
 		postSyncCh: make(chan api.PostSyncPayload),
@@ -115,7 +115,7 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 	s.e.Debug = cfg.Debug
 	s.e.HideBanner = true
 	s.e.HTTPErrorHandler = s.httpErrorHandler
-	s.e.Logger.SetOutput(ioutil.Discard)
+	s.e.Logger.SetOutput(io.Discard)
 
 	logfile, err := os.OpenFile(path.Join(cfg.LogDir, "yukid.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -183,9 +183,9 @@ func (s *Server) Start(ctx context.Context) {
 	}()
 
 	go s.onPreSync()
-	go s.onPostSync()
+	go s.onPostSync(ctx)
 
-	s.cleanDeadContainers()
+	s.cleanDeadContainers(ctx)
 
 	s.waitRunningContainers()
 
@@ -194,9 +194,9 @@ func (s *Server) Start(ctx context.Context) {
 
 	err := s.cron.AddFunc(s.config.ImagesUpgradeInterval, func() {
 		logrus.Info("Upgrading images")
-		s.upgradeImages()
+		s.upgradeImages(ctx)
 		logrus.Info("Cleaning images")
-		s.cleanImages()
+		s.cleanImages(ctx)
 	})
 	if err != nil {
 		logrus.Fatalf("cron.AddFunc: %s", err)
@@ -243,35 +243,31 @@ func (s *Server) context() context.Context {
 	return s.ctx
 }
 
-func (s *Server) contextWithTimeout(timeout time.Duration) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(s.ctx, timeout)
-}
-
-func (s *Server) upgradeImages() {
+func (s *Server) upgradeImages(ctx context.Context) {
 	var images []string
 	err := s.c.FindRepository(nil).Distinct("image", &images)
 	if err != nil {
 		return
 	}
-	var wg sync.WaitGroup
-	wg.Add(len(images))
+	eg, egCtx := errgroup.WithContext(ctx)
+	eg.SetLimit(5)
 	for _, i := range images {
 		img := i
-		s.gpool.Submit(func() {
-			ctx, cancel := s.contextWithTimeout(time.Minute * 5)
-			err := s.c.PullImage(ctx, img)
-			cancel()
-			wg.Done()
+		eg.Go(func() error {
+			pullCtx, cancel := context.WithTimeout(egCtx, time.Minute*5)
+			defer cancel()
+			err := s.c.PullImage(pullCtx, img)
 			if err != nil {
 				logrus.Warningf("pullImage: %s", err)
 			}
+			return nil
 		})
 	}
-	wg.Wait()
+	_ = eg.Wait()
 }
 
-func (s *Server) cleanImages() {
-	ctx, cancel := s.contextWithTimeout(time.Second * 5)
+func (s *Server) cleanImages(rootCtx context.Context) {
+	ctx, cancel := context.WithTimeout(rootCtx, time.Second*5)
 	defer cancel()
 	imgs, err := s.c.ListImages(ctx, map[string][]string{
 		"label":    {"org.ustcmirror.images=true"},
@@ -282,7 +278,7 @@ func (s *Server) cleanImages() {
 		return
 	}
 	for _, i := range imgs {
-		ctx, cancel := s.contextWithTimeout(time.Second * 5)
+		ctx, cancel := context.WithTimeout(rootCtx, time.Second*5)
 		err := s.c.RemoveImage(ctx, i.ID)
 		cancel()
 		if err != nil {
@@ -306,7 +302,7 @@ func (s *Server) onPreSync() {
 	}
 }
 
-func (s *Server) onPostSync() {
+func (s *Server) onPostSync(ctx context.Context) {
 	cmds := s.config.PostSync
 	for {
 		select {
@@ -314,8 +310,8 @@ func (s *Server) onPostSync() {
 			return
 		case data := <-s.postSyncCh:
 			s.syncStatus.Delete(data.Name)
-			ctx, cancel := s.contextWithTimeout(time.Second * 20)
-			err := s.c.RemoveContainer(ctx, data.ID)
+			rmCtx, cancel := context.WithTimeout(ctx, time.Second*20)
+			err := s.c.RemoveContainer(rmCtx, data.ID)
 			cancel()
 			entry := logrus.WithField("repo", data.Name)
 			if err != nil {
@@ -347,7 +343,7 @@ func (s *Server) onPostSync() {
 }
 
 // cleanDeadContainers removes containers which status are `created`, `exited` or `dead`.
-func (s *Server) cleanDeadContainers() {
+func (s *Server) cleanDeadContainers(ctx context.Context) {
 	logrus.Info("Cleaning dead containers")
 
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Second*10)
@@ -361,8 +357,8 @@ func (s *Server) cleanDeadContainers() {
 		return
 	}
 	for _, ct := range cts {
-		ctx, cancel := s.contextWithTimeout(time.Second * 20)
-		err := s.c.RemoveContainer(ctx, ct.ID)
+		rmCtx, cancel := context.WithTimeout(ctx, time.Second*20)
+		err := s.c.RemoveContainer(rmCtx, ct.ID)
 		cancel()
 		if err != nil {
 			logrus.WithField("container", ct.Names[0]).Errorf("removeContainer: %s", err)
