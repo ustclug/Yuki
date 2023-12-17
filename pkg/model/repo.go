@@ -30,5 +30,4 @@ type RepoMeta struct {
 	UpdatedAt   int64 `gorm:"autoUpdateTime"`
 	LastSuccess int64
 	PrevRun     int64
-	NextRun     int64
 }

@@ -5,36 +5,46 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
+
+	"github.com/ustclug/Yuki/pkg/api"
+	"github.com/ustclug/Yuki/pkg/model"
 )
 
 func (s *Server) getDB(c echo.Context) *gorm.DB {
 	return s.db.WithContext(c.Request().Context())
 }
 
-func (s *Server) handlerListMetas(c echo.Context) error {
-	ms := s.c.ListAllMetas()
-	jobs := s.cron.Jobs()
-	for i := 0; i < len(ms); i++ {
-		job, ok := jobs[ms[i].Name]
-		if ok {
-			ms[i].NextRun = job.Next.Unix()
-		}
-		s.updateSyncStatus(&ms[i])
+func (s *Server) handlerListRepoMetas(c echo.Context) error {
+	var metas []model.RepoMeta
+	err := s.getDB(c).Find(&metas).Error
+	if err != nil {
+		return err
 	}
-	return c.JSON(http.StatusOK, ms)
+	resp := make(api.ListRepoMetasResponse, len(metas))
+	jobs := s.cron.Jobs()
+	for i, meta := range metas {
+		resp[i] = s.convertModelRepoMetaToGetMetaResponse(meta, jobs)
+	}
+	return c.JSON(http.StatusOK, resp)
 }
 
-func (s *Server) handlerGetMeta(c echo.Context) error {
-	name := c.Param("name")
-	m, err := s.c.GetMeta(name)
+func (s *Server) handlerGetRepoMeta(c echo.Context) error {
+	name, err := getRequiredParamFromEchoContext(c, "name")
 	if err != nil {
-		return notFound(err)
+		return err
 	}
-	s.updateSyncStatus(m)
-	jobs := s.cron.Jobs()
-	job, ok := jobs[m.Name]
-	if ok {
-		m.NextRun = job.Next.Unix()
+
+	var meta model.RepoMeta
+	err = s.getDB(c).
+		Where(model.RepoMeta{
+			Name: name,
+		}).
+		Limit(1).
+		Find(&meta).Error
+	if err != nil {
+		return err
 	}
-	return c.JSON(http.StatusOK, m)
+
+	resp := s.convertModelRepoMetaToGetMetaResponse(meta, s.cron.Jobs())
+	return c.JSON(http.StatusOK, resp)
 }

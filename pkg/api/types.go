@@ -78,3 +78,17 @@ type PostSyncPayload struct {
 	Dir      string
 	ExitCode int
 }
+
+type ListRepoMetasResponse = []GetMetaResponse
+
+type GetMetaResponse struct {
+	Name        string `json:"name"`
+	Upstream    string `json:"upstream"`
+	Syncing     bool   `json:"syncing"`
+	Size        int64  `json:"size"`
+	ExitCode    int    `json:"exitCode"`
+	LastSuccess int64  `json:"lastSuccess"`
+	UpdatedAt   int64  `json:"updatedAt"`
+	PrevRun     int64  `json:"prevRun"`
+	NextRun     int64  `json:"nextRun"`
+}

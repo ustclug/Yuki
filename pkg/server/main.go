@@ -19,6 +19,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"golang.org/x/sync/errgroup"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
 	"github.com/ustclug/Yuki/pkg/api"
@@ -81,6 +82,13 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 		{&cfg.ImagesUpgradeInterval, DefaultServerConfig.ImagesUpgradeInterval},
 	})
 
+	// FIXME: use a real database
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{
+		QueryFields: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("open db: %w", err)
+	}
 	if err := os.MkdirAll(cfg.LogDir, os.ModePerm); err != nil {
 		return nil, err
 	}
@@ -105,6 +113,7 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 		c:          c,
 		e:          echo.New(),
 		cron:       cron.New(),
+		db:         db,
 		config:     cfg,
 		quit:       stopCh,
 		preSyncCh:  make(chan api.PreSyncPayload),
