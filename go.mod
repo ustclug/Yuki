@@ -15,6 +15,7 @@ require (
 	github.com/spf13/viper v1.15.0
 	github.com/stretchr/testify v1.8.3
 	golang.org/x/sync v0.1.0
+	gorm.io/driver/sqlite v1.5.4
 	gorm.io/gorm v1.25.5
 	sigs.k8s.io/yaml v1.3.0
 )
@@ -41,6 +42,7 @@ require (
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
+	github.com/mattn/go-sqlite3 v1.14.17 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/moby/term v0.5.0 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
