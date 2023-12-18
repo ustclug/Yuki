@@ -1,6 +1,8 @@
 package server
 
 import (
+	"log/slog"
+
 	"github.com/labstack/echo/v4"
 	"github.com/robfig/cron/v3"
 	"gorm.io/gorm"
@@ -39,4 +41,8 @@ func (s *Server) convertModelRepoMetaToGetMetaResponse(in model.RepoMeta, jobs m
 		PrevRun:     in.PrevRun,
 		NextRun:     nextRun,
 	}
+}
+
+func slogErrAttr(err error) slog.Attr {
+	return slog.Any("err", err)
 }

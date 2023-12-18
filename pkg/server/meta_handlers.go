@@ -10,10 +10,18 @@ import (
 )
 
 func (s *Server) handlerListRepoMetas(c echo.Context) error {
+	l := getLogger(c)
+	l.Debug("Invoked")
+
 	var metas []model.RepoMeta
 	err := s.getDB(c).Find(&metas).Error
 	if err != nil {
-		return err
+		const msg = "Fail to list RepoMetas"
+		l.Error(msg, slogErrAttr(err))
+		return &echo.HTTPError{
+			Code:    http.StatusInternalServerError,
+			Message: msg,
+		}
 	}
 	resp := make(api.ListRepoMetasResponse, len(metas))
 	jobs := s.cron.Jobs()
@@ -24,6 +32,9 @@ func (s *Server) handlerListRepoMetas(c echo.Context) error {
 }
 
 func (s *Server) handlerGetRepoMeta(c echo.Context) error {
+	l := getLogger(c)
+	l.Debug("Invoked")
+
 	name, err := getRequiredParamFromEchoContext(c, "name")
 	if err != nil {
 		return err
@@ -37,7 +48,12 @@ func (s *Server) handlerGetRepoMeta(c echo.Context) error {
 		Limit(1).
 		Find(&meta).Error
 	if err != nil {
-		return err
+		const msg = "Fail to get RepoMetas"
+		l.Error(msg, slogErrAttr(err))
+		return &echo.HTTPError{
+			Code:    http.StatusInternalServerError,
+			Message: msg,
+		}
 	}
 
 	resp := s.convertModelRepoMetaToGetMetaResponse(meta, s.cron.Jobs())

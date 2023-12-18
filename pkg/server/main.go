@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
+	"net/http"
 	"os"
 	"os/exec"
-	"path"
+	"path/filepath"
 	"reflect"
 	"sync"
 	"time"
@@ -17,7 +19,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 	"golang.org/x/sync/errgroup"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -33,15 +34,10 @@ type Server struct {
 	syncStatus sync.Map
 	config     *Config
 	cron       *cron.Cron
-	quit       chan struct{}
 	db         *gorm.DB
+	logger     *slog.Logger
 	preSyncCh  chan api.PreSyncPayload
 	postSyncCh chan api.PostSyncPayload
-}
-
-func init() {
-	viper.SetEnvPrefix("YUKI")
-	viper.SetConfigFile("/etc/yuki/daemon.toml")
 }
 
 func New() (*Server, error) {
@@ -71,7 +67,6 @@ func setDefault(us []varAndDefVal) {
 func NewWithConfig(cfg *Config) (*Server, error) {
 	setDefault([]varAndDefVal{
 		{&cfg.DbURL, DefaultServerConfig.DbURL},
-		{&cfg.DbName, DefaultServerConfig.DbName},
 		{&cfg.DockerEndpoint, DefaultServerConfig.DockerEndpoint},
 
 		{&cfg.Owner, DefaultServerConfig.Owner},
@@ -81,8 +76,7 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 		{&cfg.ImagesUpgradeInterval, DefaultServerConfig.ImagesUpgradeInterval},
 	})
 
-	// FIXME: use a real database
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{
+	db, err := gorm.Open(sqlite.Open(cfg.DbURL), &gorm.Config{
 		QueryFields: true,
 	})
 	if err != nil {
@@ -96,25 +90,30 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 			return nil, err
 		}
 	}
-	coreCfg := core.Config{
-		Debug:          cfg.Debug,
-		DbURL:          cfg.DbURL,
-		DbName:         cfg.DbName,
-		GetSizer:       cfg.GetSizer,
-		DockerEndpoint: cfg.DockerEndpoint,
-	}
-	c, err := core.NewWithConfig(coreCfg)
+
+	// workaround a systemd bug.
+	// See also https://github.com/ustclug/Yuki/issues/4
+	logfile, err := os.OpenFile(filepath.Join(cfg.LogDir, "yukid.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, err
 	}
-	stopCh := make(chan struct{})
+	logrus.SetLevel(cfg.LogLevel)
+	logrus.SetReportCaller(cfg.Debug)
+	logrus.SetFormatter(new(logrus.TextFormatter))
+	logrus.SetOutput(logfile)
+
+	// FIXME: write to file
+	slogHandler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		AddSource: cfg.Debug,
+		Level:     cfg.SlogLevel,
+	})
+	slogger := slog.New(slogHandler)
 	s := Server{
-		c:          c,
 		e:          echo.New(),
 		cron:       cron.New(),
 		db:         db,
+		logger:     slogger,
 		config:     cfg,
-		quit:       stopCh,
 		preSyncCh:  make(chan api.PreSyncPayload),
 		postSyncCh: make(chan api.PostSyncPayload),
 	}
@@ -124,17 +123,29 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 	s.e.HTTPErrorHandler = s.httpErrorHandler
 	s.e.Logger.SetOutput(io.Discard)
 
-	logfile, err := os.OpenFile(path.Join(cfg.LogDir, "yukid.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return nil, err
-	}
-	logrus.SetLevel(cfg.LogLevel)
-	logrus.SetReportCaller(cfg.Debug)
-	logrus.SetFormatter(new(logrus.TextFormatter))
-	logrus.SetOutput(logfile)
-
-	// middlewares
-	s.e.Use(middleware.BodyLimit("2M"))
+	// Middlewares.
+	// The order matters.
+	s.e.Use(middleware.RequestID())
+	s.e.Use(setLogger(slogger))
+	s.e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		LogStatus:    true,
+		LogMethod:    true,
+		LogURI:       true,
+		LogLatency:   true,
+		LogUserAgent: true,
+		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
+			attrs := []slog.Attr{
+				slog.Int("status", v.Status),
+				slog.String("method", v.Method),
+				slog.String("uri", v.URI),
+				slog.String("user_agent", v.UserAgent),
+				slog.Duration("latency", v.Latency),
+			}
+			l := getLogger(c)
+			l.LogAttrs(context.Background(), slog.LevelInfo, "REQUEST", attrs...)
+			return nil
+		},
+	}))
 
 	g := s.e.Group("/api/v1/")
 	s.registerAPIs(g)
@@ -180,23 +191,40 @@ func (s *Server) newJob(name string) cron.FuncJob {
 	}
 }
 
-func (s *Server) Start(ctx context.Context) {
-	logrus.Infof("Listening at %s", s.config.ListenAddr)
+func (s *Server) Start(rootCtx context.Context) {
+	l := s.logger
+	ctx, cancel := context.WithCancelCause(rootCtx)
+	defer cancel(context.Canceled)
+
 	go func() {
-		if err := s.e.Start(s.config.ListenAddr); err != nil {
-			logrus.Warnf("Shutting down the server: %v", err)
+		l.Info("Running HTTP server", slog.String("addr", s.config.ListenAddr))
+		if err := s.e.Start(s.config.ListenAddr); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			l.Error("Fail to run HTTP server", slogErrAttr(err))
+			cancel(err)
 		}
 	}()
 
-	go s.onPreSync()
-	go s.onPostSync(ctx)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		s.onPreSync(ctx)
+	}()
 
-	s.cleanDeadContainers(ctx)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		s.onPostSync(ctx)
+	}()
 
-	s.waitRunningContainers()
+	/*
+		 s.cleanDeadContainers(ctx)
 
-	s.schedRepos()
-	s.c.InitMetas()
+		s.waitRunningContainers()
+
+		s.schedRepos()
+		s.c.InitMetas()
+	*/
 
 	err := s.cron.AddFunc(s.config.ImagesUpgradeInterval, func() {
 		logrus.Info("Upgrading images")
@@ -208,41 +236,11 @@ func (s *Server) Start(ctx context.Context) {
 		logrus.Fatalf("cron.AddFunc: %s", err)
 	}
 
-	go func() {
-		ticker := time.NewTicker(time.Second * 20)
-		fail := 0
-		const threshold int = 3
-		for range ticker.C {
-			if err := s.c.PingMongoSession(); err != nil {
-				fail++
-				if fail > threshold {
-					logrus.Errorln("Failed to connect to MongoDB, exit...")
-					close(s.quit)
-					return
-				}
-				logrus.Warnf("Failed to connect to MongoDB: %d", fail)
-			} else if fail != 0 {
-				logrus.Warnln("Reconnected to MongoDB")
-				fail = 0
-			}
-		}
-	}()
-
-	select {
-	case <-ctx.Done():
-		close(s.quit)
-	case <-s.quit:
-	}
-	s.teardown()
-}
-
-func (s *Server) teardown() {
-	s.c.CloseMongoSession()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-	if err := s.e.Shutdown(ctx); err != nil {
-		logrus.Warningln(err)
-	}
+	<-ctx.Done()
+	l.Info("Waiting for goroutines to exit")
+	wg.Wait()
+	l.Info("Shutting down HTTP server")
+	_ = s.e.Shutdown(context.Background())
 }
 
 func (s *Server) upgradeImages(ctx context.Context) {
@@ -289,10 +287,10 @@ func (s *Server) cleanImages(rootCtx context.Context) {
 	}
 }
 
-func (s *Server) onPreSync() {
+func (s *Server) onPreSync(ctx context.Context) {
 	for {
 		select {
-		case <-s.quit:
+		case <-ctx.Done():
 			return
 		case data := <-s.preSyncCh:
 			err := s.c.UpdatePrevRun(data.Name)
@@ -308,7 +306,7 @@ func (s *Server) onPostSync(ctx context.Context) {
 	cmds := s.config.PostSync
 	for {
 		select {
-		case <-s.quit:
+		case <-ctx.Done():
 			return
 		case data := <-s.postSyncCh:
 			s.syncStatus.Delete(data.Name)

@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"time"
 
@@ -13,11 +14,15 @@ import (
 	"github.com/ustclug/Yuki/pkg/fs"
 )
 
+func init() {
+	viper.SetEnvPrefix("YUKI")
+	viper.SetConfigFile("/etc/yuki/daemon.toml")
+}
+
 type AppConfig struct {
 	Debug bool `mapstructure:"debug,omitempty" validate:"-"`
 	// DbURL contains username and password
 	DbURL          string `mapstructure:"db_url,omitempty" validate:"required"`
-	DbName         string `mapstructure:"db_name,omitempty" validate:"omitempty,alpha"`
 	FileSystem     string `mapstructure:"fs,omitempty" validate:"omitempty,oneof=xfs zfs default"`
 	DockerEndpoint string `mapstructure:"docker_endpoint,omitempty" validate:"omitempty,unix_addr|tcp_addr"`
 
@@ -36,10 +41,12 @@ type AppConfig struct {
 
 type Config struct {
 	core.Config
-	Owner                 string
-	LogDir                string
-	RepoConfigDir         []string
-	LogLevel              logrus.Level
+	Owner         string
+	LogDir        string
+	RepoConfigDir []string
+	LogLevel      logrus.Level
+	// FIXME: replace LogLevel
+	SlogLevel             slog.Level
 	ListenAddr            string
 	BindIP                string
 	NamePrefix            string
@@ -84,7 +91,6 @@ func LoadConfig() (*Config, error) {
 		Config: core.Config{
 			Debug:          appCfg.Debug,
 			DbURL:          appCfg.DbURL,
-			DbName:         appCfg.DbName,
 			DockerEndpoint: appCfg.DockerEndpoint,
 		},
 		Owner:                 appCfg.Owner,
@@ -111,14 +117,18 @@ func LoadConfig() (*Config, error) {
 	switch appCfg.LogLevel {
 	case "debug":
 		cfg.LogLevel = logrus.DebugLevel
+		cfg.SlogLevel = slog.LevelDebug
 	case "warn":
 		cfg.LogLevel = logrus.WarnLevel
+		cfg.SlogLevel = slog.LevelWarn
 	case "error":
 		cfg.LogLevel = logrus.ErrorLevel
+		cfg.SlogLevel = slog.LevelError
 	case "info":
 		fallthrough
 	default:
 		cfg.LogLevel = logrus.InfoLevel
+		cfg.SlogLevel = slog.LevelInfo
 	}
 
 	return &cfg, nil

@@ -52,6 +52,11 @@ func (s *Server) registerAPIs(g *echo.Group) {
 	// public APIs
 	g.GET("metas", s.handlerListRepoMetas)
 	g.GET("metas/:name", s.handlerGetRepoMeta)
+	g.GET("test", func(c echo.Context) error {
+		l := getLogger(c)
+		l.Info("Invoked")
+		return c.String(http.StatusOK, "OK")
+	})
 
 	// private APIs
 	g.GET("repositories", s.listRepos)
