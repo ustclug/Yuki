@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 
@@ -64,6 +65,24 @@ func setDefault(us []varAndDefVal) {
 	}
 }
 
+func newSlogger(writer io.Writer, addSource bool, level slog.Leveler) *slog.Logger {
+	return slog.New(slog.NewTextHandler(writer, &slog.HandlerOptions{
+		AddSource: addSource,
+		Level:     level,
+		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			// Taken from https://gist.github.com/HalCanary/6bd335057c65f3b803088cc55b9ebd2b
+			if a.Key == slog.SourceKey {
+				source, _ := a.Value.Any().(*slog.Source)
+				if source != nil {
+					_, after, _ := strings.Cut(source.File, "Yuki")
+					source.File = after
+				}
+			}
+			return a
+		},
+	}))
+}
+
 func NewWithConfig(cfg *Config) (*Server, error) {
 	setDefault([]varAndDefVal{
 		{&cfg.DbURL, DefaultServerConfig.DbURL},
@@ -103,11 +122,7 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 	logrus.SetOutput(logfile)
 
 	// FIXME: write to file
-	slogHandler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-		AddSource: cfg.Debug,
-		Level:     cfg.SlogLevel,
-	})
-	slogger := slog.New(slogHandler)
+	slogger := newSlogger(os.Stderr, cfg.Debug, cfg.SlogLevel)
 	s := Server{
 		e:          echo.New(),
 		cron:       cron.New(),
@@ -147,8 +162,7 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 		},
 	}))
 
-	g := s.e.Group("/api/v1/")
-	s.registerAPIs(g)
+	s.registerAPIs(s.e)
 
 	return &s, nil
 }

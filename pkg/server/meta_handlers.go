@@ -1,6 +1,7 @@
 package server
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -41,18 +42,24 @@ func (s *Server) handlerGetRepoMeta(c echo.Context) error {
 	}
 
 	var meta model.RepoMeta
-	err = s.getDB(c).
+	res := s.getDB(c).
 		Where(model.RepoMeta{
 			Name: name,
 		}).
 		Limit(1).
-		Find(&meta).Error
-	if err != nil {
-		const msg = "Fail to get RepoMetas"
-		l.Error(msg, slogErrAttr(err))
+		Find(&meta)
+	if res.Error != nil {
+		const msg = "Fail to get RepoMeta"
+		l.Error(msg, slogErrAttr(res.Error))
 		return &echo.HTTPError{
 			Code:    http.StatusInternalServerError,
 			Message: msg,
+		}
+	}
+	if res.RowsAffected == 0 {
+		return &echo.HTTPError{
+			Code:    http.StatusNotFound,
+			Message: "RepoMeta not found",
 		}
 	}
 

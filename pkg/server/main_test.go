@@ -2,15 +2,24 @@ package server
 
 import (
 	"context"
+	"log/slog"
+	"net/http/httptest"
 	"os"
 	"testing"
 
+	"github.com/go-resty/resty/v2"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 
 	"github.com/ustclug/Yuki/pkg/api"
 	"github.com/ustclug/Yuki/pkg/core"
+	"github.com/ustclug/Yuki/pkg/cron"
+	"github.com/ustclug/Yuki/pkg/model"
 )
 
 func getTestingServer(ctx context.Context, prefix string, name string, storageDir string) (*Server, error) {
@@ -31,7 +40,7 @@ func getTestingServer(ctx context.Context, prefix string, name string, storageDi
 	_ = s.c.RemoveRepository(name)
 	_ = s.c.RemoveContainer(ctx, prefix+name)
 
-	go s.onPreSync()
+	go s.onPreSync(context.TODO())
 	go s.onPostSync(context.TODO())
 
 	return s, nil
@@ -74,5 +83,61 @@ func TestWaitForSync(t *testing.T) {
 	err = s.waitForSync(ct)
 	if err != context.DeadlineExceeded && err.Error() != "" {
 		t.Fatalf("Expected error to be context.DeadlineExceeded, got %v", err)
+	}
+}
+
+type TestEnv struct {
+	t       *testing.T
+	httpSrv *httptest.Server
+	server  *Server
+
+	ctx context.Context
+}
+
+func (t *TestEnv) RESTClient() *resty.Client {
+	return resty.New().SetBaseURL(t.httpSrv.URL + "/api/v1")
+}
+
+func NewTestEnv(t *testing.T) *TestEnv {
+	slogger := newSlogger(os.Stderr, true, slog.LevelInfo)
+
+	e := echo.New()
+	e.HideBanner = true
+	e.HidePort = true
+
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
+		QueryFields: true,
+	})
+	require.NoError(t, err)
+	require.NoError(t, model.AutoMigrate(db))
+
+	s := &Server{
+		e:      e,
+		db:     db,
+		cron:   cron.New(),
+		logger: slogger,
+	}
+	s.e.Use(setLogger(slogger))
+	s.e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		LogStatus: true,
+		LogMethod: true,
+		LogURI:    true,
+		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
+			attrs := []slog.Attr{
+				slog.Int("status", v.Status),
+				slog.String("method", v.Method),
+				slog.String("uri", v.URI),
+			}
+			l := getLogger(c)
+			l.LogAttrs(context.Background(), slog.LevelInfo, "REQUEST", attrs...)
+			return nil
+		},
+	}))
+	s.registerAPIs(e)
+	srv := httptest.NewServer(e)
+	return &TestEnv{
+		t:       t,
+		httpSrv: srv,
+		server:  s,
 	}
 }

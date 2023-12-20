@@ -48,30 +48,26 @@ func conflict(msg interface{}) error {
 	}
 }
 
-func (s *Server) registerAPIs(g *echo.Group) {
+func (s *Server) registerAPIs(e *echo.Echo) {
+	v1API := e.Group("/api/v1/")
 	// public APIs
-	g.GET("metas", s.handlerListRepoMetas)
-	g.GET("metas/:name", s.handlerGetRepoMeta)
-	g.GET("test", func(c echo.Context) error {
-		l := getLogger(c)
-		l.Info("Invoked")
-		return c.String(http.StatusOK, "OK")
-	})
+	v1API.GET("metas", s.handlerListRepoMetas)
+	v1API.GET("metas/:name", s.handlerGetRepoMeta)
 
 	// private APIs
-	g.GET("repositories", s.listRepos)
-	g.POST("repositories", s.reloadAllRepos)
-	g.GET("repositories/:name", s.getRepo)
-	g.POST("repositories/:name", s.reloadRepo)
-	g.DELETE("repositories/:name", s.removeRepo)
-	g.GET("repositories/:name/logs", s.getRepoLogs)
+	v1API.GET("repositories", s.listRepos)
+	v1API.POST("repositories", s.reloadAllRepos)
+	v1API.GET("repositories/:name", s.getRepo)
+	v1API.POST("repositories/:name", s.reloadRepo)
+	v1API.DELETE("repositories/:name", s.removeRepo)
+	v1API.GET("repositories/:name/logs", s.getRepoLogs)
 
-	g.GET("containers", s.listCts)
-	g.POST("containers/:name", s.sync)
-	g.DELETE("containers/:name", s.removeCt)
-	g.GET("containers/:name/logs", s.getCtLogs)
+	v1API.GET("containers", s.listCts)
+	v1API.POST("containers/:name", s.sync)
+	v1API.DELETE("containers/:name", s.removeCt)
+	v1API.GET("containers/:name/logs", s.getCtLogs)
 
-	g.GET("config", s.exportConfig)
+	v1API.GET("config", s.exportConfig)
 }
 
 func (s *Server) listRepos(c echo.Context) error {
