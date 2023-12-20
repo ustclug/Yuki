@@ -7,10 +7,8 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
-	"github.com/ustclug/Yuki/pkg/core"
 	"github.com/ustclug/Yuki/pkg/fs"
 )
 
@@ -40,13 +38,13 @@ type AppConfig struct {
 }
 
 type Config struct {
-	core.Config
-	Owner         string
-	LogDir        string
-	RepoConfigDir []string
-	LogLevel      logrus.Level
-	// FIXME: replace LogLevel
-	SlogLevel             slog.Level
+	Debug                 bool
+	DbURL                 string
+	DockerEndpoint        string
+	Owner                 string
+	LogDir                string
+	RepoConfigDir         []string
+	LogLevel              slog.Level
 	ListenAddr            string
 	BindIP                string
 	NamePrefix            string
@@ -54,32 +52,23 @@ type Config struct {
 	ImagesUpgradeInterval string
 	SyncTimeout           time.Duration
 	SeccompProfile        string
+	GetSizer              fs.GetSizer
 }
-
-var (
-	DefaultServerConfig = Config{
-		Config: core.Config{
-			Debug:          false,
-			DbURL:          "127.0.0.1:27017",
-			DbName:         "mirror",
-			DockerEndpoint: "unix:///var/run/docker.sock",
-		},
-		Owner:                 fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
-		LogDir:                "/var/log/yuki/",
-		ListenAddr:            "127.0.0.1:9999",
-		NamePrefix:            "syncing-",
-		LogLevel:              logrus.InfoLevel,
-		ImagesUpgradeInterval: "@every 1h",
-		SyncTimeout:           0,
-		SeccompProfile:        "",
-	}
-)
 
 func LoadConfig() (*Config, error) {
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, err
 	}
-	appCfg := new(AppConfig)
+	appCfg := AppConfig{
+		Debug:                 false,
+		DockerEndpoint:        "unix:///var/run/docker.sock",
+		Owner:                 fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
+		LogDir:                "/var/log/yuki/",
+		ListenAddr:            "127.0.0.1:9999",
+		NamePrefix:            "syncing-",
+		LogLevel:              "info",
+		ImagesUpgradeInterval: "@every 1h",
+	}
 	if err := viper.Unmarshal(appCfg); err != nil {
 		return nil, err
 	}
@@ -88,11 +77,9 @@ func LoadConfig() (*Config, error) {
 		return nil, err
 	}
 	cfg := Config{
-		Config: core.Config{
-			Debug:          appCfg.Debug,
-			DbURL:          appCfg.DbURL,
-			DockerEndpoint: appCfg.DockerEndpoint,
-		},
+		Debug:                 appCfg.Debug,
+		DbURL:                 appCfg.DbURL,
+		DockerEndpoint:        appCfg.DockerEndpoint,
 		Owner:                 appCfg.Owner,
 		RepoConfigDir:         appCfg.RepoConfigDir,
 		LogDir:                appCfg.LogDir,
@@ -107,28 +94,24 @@ func LoadConfig() (*Config, error) {
 
 	switch appCfg.FileSystem {
 	case "zfs":
-		cfg.Config.GetSizer = fs.New(fs.ZFS)
+		cfg.GetSizer = fs.New(fs.ZFS)
 	case "xfs":
-		cfg.Config.GetSizer = fs.New(fs.XFS)
+		cfg.GetSizer = fs.New(fs.XFS)
 	default:
-		cfg.Config.GetSizer = fs.New(fs.DEFAULT)
+		cfg.GetSizer = fs.New(fs.DEFAULT)
 	}
 
 	switch appCfg.LogLevel {
 	case "debug":
-		cfg.LogLevel = logrus.DebugLevel
-		cfg.SlogLevel = slog.LevelDebug
+		cfg.LogLevel = slog.LevelDebug
 	case "warn":
-		cfg.LogLevel = logrus.WarnLevel
-		cfg.SlogLevel = slog.LevelWarn
+		cfg.LogLevel = slog.LevelWarn
 	case "error":
-		cfg.LogLevel = logrus.ErrorLevel
-		cfg.SlogLevel = slog.LevelError
+		cfg.LogLevel = slog.LevelError
 	case "info":
 		fallthrough
 	default:
-		cfg.LogLevel = logrus.InfoLevel
-		cfg.SlogLevel = slog.LevelInfo
+		cfg.LogLevel = slog.LevelInfo
 	}
 
 	return &cfg, nil

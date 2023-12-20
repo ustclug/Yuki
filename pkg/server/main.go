@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -52,22 +51,6 @@ func New() (*Server, error) {
 	return NewWithConfig(cfg)
 }
 
-type varAndDefVal struct {
-	Var    interface{}
-	DefVal interface{}
-}
-
-func setDefault(us []varAndDefVal) {
-	for _, u := range us {
-		val := reflect.ValueOf(u.Var)
-		dstType := val.Type().Elem()
-		dstVal := reflect.Indirect(val)
-		if reflect.DeepEqual(dstVal.Interface(), reflect.Zero(dstType).Interface()) {
-			dstVal.Set(reflect.ValueOf(u.DefVal))
-		}
-	}
-}
-
 func newSlogger(writer io.Writer, addSource bool, level slog.Leveler) *slog.Logger {
 	return slog.New(slog.NewTextHandler(writer, &slog.HandlerOptions{
 		AddSource: addSource,
@@ -87,17 +70,6 @@ func newSlogger(writer io.Writer, addSource bool, level slog.Leveler) *slog.Logg
 }
 
 func NewWithConfig(cfg *Config) (*Server, error) {
-	setDefault([]varAndDefVal{
-		{&cfg.DbURL, DefaultServerConfig.DbURL},
-		{&cfg.DockerEndpoint, DefaultServerConfig.DockerEndpoint},
-
-		{&cfg.Owner, DefaultServerConfig.Owner},
-		{&cfg.LogDir, DefaultServerConfig.LogDir},
-		{&cfg.ListenAddr, DefaultServerConfig.ListenAddr},
-		{&cfg.NamePrefix, DefaultServerConfig.NamePrefix},
-		{&cfg.ImagesUpgradeInterval, DefaultServerConfig.ImagesUpgradeInterval},
-	})
-
 	db, err := gorm.Open(sqlite.Open(cfg.DbURL), &gorm.Config{
 		QueryFields: true,
 	})
@@ -120,7 +92,7 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 		return nil, err
 	}
 
-	slogger := newSlogger(logfile, cfg.Debug, cfg.SlogLevel)
+	slogger := newSlogger(logfile, cfg.Debug, cfg.LogLevel)
 	s := Server{
 		e:          echo.New(),
 		cron:       cron.New(),
