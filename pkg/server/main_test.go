@@ -2,11 +2,14 @@ package server
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"log/slog"
 	"net/http/httptest"
 	"os"
 	"testing"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/go-resty/resty/v2"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -19,6 +22,7 @@ import (
 	"github.com/ustclug/Yuki/pkg/api"
 	"github.com/ustclug/Yuki/pkg/core"
 	"github.com/ustclug/Yuki/pkg/cron"
+	"github.com/ustclug/Yuki/pkg/fs"
 	"github.com/ustclug/Yuki/pkg/model"
 )
 
@@ -98,12 +102,21 @@ func (t *TestEnv) RESTClient() *resty.Client {
 	return resty.New().SetBaseURL(t.httpSrv.URL + "/api/v1")
 }
 
+func (t *TestEnv) RandomString() string {
+	var buf [6]byte
+	_, _ = rand.Read(buf[:])
+	suffix := base64.RawURLEncoding.EncodeToString(buf[:])
+	return t.t.Name() + suffix
+}
+
 func NewTestEnv(t *testing.T) *TestEnv {
 	slogger := newSlogger(os.Stderr, true, slog.LevelInfo)
 
 	e := echo.New()
 	e.HideBanner = true
 	e.HidePort = true
+	v := validator.New()
+	e.Validator = echoValidator(v.Struct)
 
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
 		QueryFields: true,
@@ -112,10 +125,12 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	require.NoError(t, model.AutoMigrate(db))
 
 	s := &Server{
-		e:      e,
-		db:     db,
-		cron:   cron.New(),
-		logger: slogger,
+		e:       e,
+		db:      db,
+		cron:    cron.New(),
+		logger:  slogger,
+		config:  &Config{},
+		getSize: fs.New(fs.DEFAULT).GetSize,
 	}
 	s.e.Use(setLogger(slogger))
 	s.e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
@@ -123,13 +138,8 @@ func NewTestEnv(t *testing.T) *TestEnv {
 		LogMethod: true,
 		LogURI:    true,
 		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
-			attrs := []slog.Attr{
-				slog.Int("status", v.Status),
-				slog.String("method", v.Method),
-				slog.String("uri", v.URI),
-			}
 			l := getLogger(c)
-			l.LogAttrs(context.Background(), slog.LevelInfo, "REQUEST", attrs...)
+			l.LogAttrs(context.Background(), slog.LevelInfo, "REQUEST", slog.Int("status", v.Status))
 			return nil
 		},
 	}))

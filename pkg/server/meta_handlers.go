@@ -1,7 +1,6 @@
 package server
 
 import (
-	"log/slog"
 	"net/http"
 
 	"github.com/labstack/echo/v4"

@@ -17,6 +17,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/errdefs"
+	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/sirupsen/logrus"
@@ -39,6 +40,8 @@ type Server struct {
 	logger     *slog.Logger
 	preSyncCh  chan api.PreSyncPayload
 	postSyncCh chan api.PostSyncPayload
+
+	getSize func(string) int64
 }
 
 func New() (*Server, error) {
@@ -116,13 +119,8 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	logrus.SetLevel(cfg.LogLevel)
-	logrus.SetReportCaller(cfg.Debug)
-	logrus.SetFormatter(new(logrus.TextFormatter))
-	logrus.SetOutput(logfile)
 
-	// FIXME: write to file
-	slogger := newSlogger(os.Stderr, cfg.Debug, cfg.SlogLevel)
+	slogger := newSlogger(logfile, cfg.Debug, cfg.SlogLevel)
 	s := Server{
 		e:          echo.New(),
 		cron:       cron.New(),
@@ -131,11 +129,14 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 		config:     cfg,
 		preSyncCh:  make(chan api.PreSyncPayload),
 		postSyncCh: make(chan api.PostSyncPayload),
+
+		getSize: cfg.GetSizer.GetSize,
 	}
 
+	v := validator.New()
+	s.e.Validator = echoValidator(v.Struct)
 	s.e.Debug = cfg.Debug
 	s.e.HideBanner = true
-	s.e.HTTPErrorHandler = s.httpErrorHandler
 	s.e.Logger.SetOutput(io.Discard)
 
 	// Middlewares.
@@ -144,15 +145,11 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 	s.e.Use(setLogger(slogger))
 	s.e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 		LogStatus:    true,
-		LogMethod:    true,
-		LogURI:       true,
 		LogLatency:   true,
 		LogUserAgent: true,
 		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
 			attrs := []slog.Attr{
 				slog.Int("status", v.Status),
-				slog.String("method", v.Method),
-				slog.String("uri", v.URI),
 				slog.String("user_agent", v.UserAgent),
 				slog.Duration("latency", v.Latency),
 			}

@@ -2,6 +2,7 @@ package server
 
 import (
 	"log/slog"
+	"net/http"
 
 	"github.com/labstack/echo/v4"
 	"github.com/robfig/cron/v3"
@@ -10,6 +11,8 @@ import (
 	"github.com/ustclug/Yuki/pkg/api"
 	"github.com/ustclug/Yuki/pkg/model"
 )
+
+const suffixYAML = ".yaml"
 
 func (s *Server) getDB(c echo.Context) *gorm.DB {
 	return s.db.WithContext(c.Request().Context())
@@ -45,4 +48,40 @@ func (s *Server) convertModelRepoMetaToGetMetaResponse(in model.RepoMeta, jobs m
 
 func slogErrAttr(err error) slog.Attr {
 	return slog.Any("err", err)
+}
+
+func bindAndValidate[T any](c echo.Context, input *T) error {
+	err := c.Bind(input)
+	if err != nil {
+		return err
+	}
+	return c.Validate(input)
+}
+
+func badRequest(msg string) error {
+	return &echo.HTTPError{
+		Code:    http.StatusBadRequest,
+		Message: msg,
+	}
+}
+
+func notFound(msg string) error {
+	return &echo.HTTPError{
+		Code:    http.StatusNotFound,
+		Message: msg,
+	}
+}
+
+func conflict(msg string) error {
+	return &echo.HTTPError{
+		Code:    http.StatusConflict,
+		Message: msg,
+	}
+}
+
+func newHTTPError(code int, msg string) error {
+	return &echo.HTTPError{
+		Code:    code,
+		Message: msg,
+	}
 }

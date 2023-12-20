@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"log/slog"
 
 	"github.com/labstack/echo/v4"
@@ -12,11 +13,20 @@ func setLogger(logger *slog.Logger) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			reqID := c.Response().Header().Get(echo.HeaderXRequestID)
+			attrs := []any{
+				slog.String("req_id", reqID),
+			}
+			routePath := c.Path()
+			if len(routePath) > 0 {
+				attrs = append(
+					attrs,
+					slog.String("endpoint", fmt.Sprintf("%s %s", c.Request().Method, routePath)),
+				)
+			}
 			c.Set(
 				ctxKeyLogger,
-				logger.With(
-					slog.String("req_id", reqID),
-				))
+				logger.With(attrs...),
+			)
 			return next(c)
 		}
 	}

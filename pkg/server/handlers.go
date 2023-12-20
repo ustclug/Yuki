@@ -1,202 +1,38 @@
 package server
 
 import (
-	"compress/gzip"
 	"context"
-	"fmt"
-	"io"
-	"io/ioutil"
 	"net/http"
-	"os"
-	"path"
-	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/docker/docker/errdefs"
-	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/labstack/echo/v4"
 	"github.com/sirupsen/logrus"
-	"sigs.k8s.io/yaml"
 
 	"github.com/ustclug/Yuki/pkg/api"
 	"github.com/ustclug/Yuki/pkg/core"
-	"github.com/ustclug/Yuki/pkg/tail"
 )
-
-func badRequest(msg interface{}) error {
-	return &echo.HTTPError{
-		Code:    http.StatusBadRequest,
-		Message: msg,
-	}
-}
-
-func notFound(msg interface{}) error {
-	return &echo.HTTPError{
-		Code:    http.StatusNotFound,
-		Message: msg,
-	}
-}
-
-func conflict(msg interface{}) error {
-	return &echo.HTTPError{
-		Code:    http.StatusConflict,
-		Message: msg,
-	}
-}
 
 func (s *Server) registerAPIs(e *echo.Echo) {
 	v1API := e.Group("/api/v1/")
+
 	// public APIs
 	v1API.GET("metas", s.handlerListRepoMetas)
 	v1API.GET("metas/:name", s.handlerGetRepoMeta)
 
 	// private APIs
-	v1API.GET("repositories", s.listRepos)
-	v1API.POST("repositories", s.reloadAllRepos)
-	v1API.GET("repositories/:name", s.getRepo)
-	v1API.POST("repositories/:name", s.reloadRepo)
-	v1API.DELETE("repositories/:name", s.removeRepo)
-	v1API.GET("repositories/:name/logs", s.getRepoLogs)
-
-	v1API.GET("containers", s.listCts)
-	v1API.POST("containers/:name", s.sync)
-	v1API.DELETE("containers/:name", s.removeCt)
-	v1API.GET("containers/:name/logs", s.getCtLogs)
+	v1API.GET("repos", s.handlerListRepos)
+	v1API.GET("repos/:name", s.handlerGetRepo)
+	v1API.DELETE("repos/:name", s.handlerRemoveRepo)
+	v1API.GET("repos/:name/logs", s.handlerGetRepoLogs)
+	v1API.POST("repos/:name", s.handlerReloadRepo)
+	v1API.POST("repos", s.handlerReloadAllRepos)
+	v1API.POST("repos/:name/sync", nil)
 
 	v1API.GET("config", s.exportConfig)
-}
-
-func (s *Server) listRepos(c echo.Context) error {
-	var repos []api.RepoSummary
-	_ = s.c.FindRepository(nil).Select(bson.M{
-		"interval":   1,
-		"image":      1,
-		"storageDir": 1,
-	}).Sort("_id").All(&repos)
-	return c.JSON(http.StatusOK, repos)
-}
-
-func (s *Server) getRepo(c echo.Context) error {
-	name := c.Param("name")
-	repo, err := s.c.GetRepository(name)
-	if err != nil {
-		return notFound(err)
-	}
-	return c.JSON(http.StatusOK, repo)
-}
-
-func (s *Server) getRepoLogs(c echo.Context) error {
-	type repoLogsOptions struct {
-		N     int  `query:"n"`
-		Tail  int  `query:"tail"`
-		Stats bool `query:"stats"`
-	}
-
-	opts := repoLogsOptions{}
-	if err := c.Bind(&opts); err != nil {
-		return badRequest(err)
-	}
-
-	logdir := path.Join(s.config.LogDir, c.Param("name"))
-	if err := os.MkdirAll(logdir, os.ModePerm); err != nil {
-		return fmt.Errorf("not a directory: %s", logdir)
-	}
-
-	files, err := ioutil.ReadDir(logdir)
-	if err != nil {
-		return err
-	}
-
-	if opts.Stats {
-		var infos []api.LogFileStat
-		for _, f := range files {
-			name := f.Name()
-			if !strings.HasPrefix(name, "result.log.") {
-				continue
-			}
-			infos = append(infos, api.LogFileStat{
-				Name:  name,
-				Size:  f.Size(),
-				Mtime: f.ModTime(),
-			})
-		}
-		sort.Slice(infos, func(i, j int) bool {
-			return infos[j].Mtime.After(infos[i].Mtime)
-		})
-		return c.JSON(http.StatusOK, infos)
-	}
-
-	if opts.Tail < 0 {
-		opts.Tail = 0
-	}
-
-	wantedName := fmt.Sprintf("result.log.%d", opts.N)
-	fileName := ""
-	for _, f := range files {
-		realName := f.Name()
-		if realName == wantedName || (realName == wantedName+".gz") {
-			// result.log.0
-			// result.log.1.gz
-			// result.log.2.gz
-			// result.log.10.gz
-			fileName = realName
-			break
-		}
-	}
-
-	if len(fileName) == 0 {
-		return notFound(fmt.Sprintf("no such file: %s", wantedName))
-	}
-
-	content, err := os.Open(path.Join(logdir, fileName))
-	if err != nil {
-		return err
-	}
-	defer content.Close()
-
-	var t *tail.Tail
-
-	switch path.Ext(fileName) {
-	case ".gz":
-		gr, err := gzip.NewReader(content)
-		if err != nil {
-			return err
-		}
-		defer gr.Close()
-		tmpfile, err := ioutil.TempFile(logdir, "extracted")
-		if err != nil {
-			return err
-		}
-		defer os.Remove(tmpfile.Name())
-		defer tmpfile.Close()
-		_, err = io.Copy(tmpfile, gr)
-		if err != nil {
-			return err
-		}
-		_, err = tmpfile.Seek(0, io.SeekStart)
-		if err != nil {
-			return err
-		}
-		t = tail.New(tmpfile, opts.Tail)
-	default:
-		t = tail.New(content, opts.Tail)
-	}
-
-	_, err = t.WriteTo(c.Response())
-	return err
-}
-
-func (s *Server) removeRepo(c echo.Context) error {
-	name := c.Param("name")
-	if err := s.c.RemoveRepository(name); err != nil {
-		return err
-	}
-	_ = s.c.RemoveMeta(name)
-	return c.NoContent(http.StatusNoContent)
 }
 
 func (s *Server) listCts(c echo.Context) error {
@@ -241,7 +77,7 @@ func (s *Server) sync(c echo.Context) error {
 	})
 	if err != nil {
 		if errdefs.IsConflict(err) {
-			return conflict(err)
+			return conflict(err.Error())
 		}
 		return err
 	}
@@ -271,7 +107,7 @@ func (s *Server) getCtLogs(c echo.Context) error {
 	id := s.getCtID(c.Param("name"))
 	var opts logsOptions
 	if err := c.Bind(&opts); err != nil {
-		return badRequest(err)
+		return badRequest(err.Error())
 	}
 	fw := NewFlushWriter(c.Response())
 	return s.c.GetContainerLogs(c.Request().Context(), core.LogsOptions{
@@ -311,125 +147,4 @@ func (s *Server) exportConfig(c echo.Context) error {
 	var repos []api.Repository
 	_ = s.c.FindRepository(query).Select(bson.M{"updatedAt": 0, "createdAt": 0}).Sort("_id").All(&repos)
 	return c.JSON(http.StatusOK, repos)
-}
-
-func (s *Server) loadRepo(dirs []string, file string) (*api.Repository, error) {
-	var repo api.Repository
-	errn := len(dirs)
-	for _, dir := range dirs {
-		data, err := ioutil.ReadFile(filepath.Join(dir, file))
-		if err != nil {
-			errn--
-			if errn > 0 && os.IsNotExist(err) {
-				continue
-			} else {
-				return nil, badRequest(err)
-			}
-		}
-		err = yaml.Unmarshal(data, &repo)
-		if err != nil {
-			return nil, badRequest(err)
-		}
-	}
-	if err := s.e.Validator.Validate(&repo); err != nil {
-		return nil, badRequest(err)
-	}
-	err := s.c.RemoveRepository(repo.Name)
-	if err != nil && err != mgo.ErrNotFound {
-		return nil, err
-	}
-	err = s.c.AddRepository(repo)
-	if err != nil {
-		return nil, err
-	}
-	err = s.cron.AddJob(repo.Name, repo.Interval, s.newJob(repo.Name))
-	if err != nil {
-		return nil, err
-	}
-	_ = s.c.UpsertRepoMeta(repo.Name, repo.StorageDir, -1)
-	return &repo, nil
-}
-
-func (s *Server) reloadRepo(c echo.Context) error {
-	name := c.Param("name")
-	_, err := s.loadRepo(s.config.RepoConfigDir, name+".yaml")
-	if err != nil {
-		return err
-	}
-	return c.NoContent(http.StatusNoContent)
-}
-
-func (s *Server) reloadAllRepos(c echo.Context) error {
-	repos := s.c.ListAllRepositories()
-	toDelete := map[string]struct{}{}
-	for _, r := range repos {
-		toDelete[r.Name] = struct{}{}
-	}
-	for _, dir := range s.config.RepoConfigDir {
-		infos, err := ioutil.ReadDir(dir)
-		if err != nil {
-			return err
-		}
-		for _, info := range infos {
-			fileName := info.Name()
-			if info.IsDir() || fileName[0] == '.' || !strings.HasSuffix(fileName, ".yaml") {
-				continue
-			}
-			repo, err := s.loadRepo(s.config.RepoConfigDir, fileName)
-			if err != nil {
-				return err
-			}
-			delete(toDelete, repo.Name)
-		}
-
-	}
-	for name := range toDelete {
-		err := s.c.RemoveRepository(name)
-		if err != nil {
-			logrus.WithField("repo", name).Errorf("remove repository: %s", err)
-		}
-		_ = s.c.RemoveMeta(name)
-		s.cron.RemoveJob(name)
-	}
-	return c.NoContent(http.StatusNoContent)
-}
-
-func (s *Server) httpErrorHandler(err error, c echo.Context) {
-	var (
-		code    = http.StatusInternalServerError
-		msg     string
-		respMsg echo.Map
-	)
-	if he, ok := err.(*echo.HTTPError); ok {
-		code = he.Code
-		msg = fmt.Sprintf("%v", he.Message)
-		if he.Internal != nil {
-			msg = fmt.Sprintf("%v, %v", err, he.Internal)
-		}
-	} else {
-		msg = err.Error()
-	}
-	respMsg = echo.Map{"message": msg}
-
-	logrus.WithFields(logrus.Fields{
-		"remote_ip": c.RealIP(),
-		"status":    code,
-		"method":    c.Request().Method,
-		"uri":       c.Request().RequestURI,
-	}).Error(msg)
-
-	// Send response
-	if !c.Response().Committed {
-		if c.Request().Method == echo.HEAD { // Issue echo#608
-			err = c.NoContent(code)
-		} else {
-			err = c.JSON(code, respMsg)
-		}
-		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"method": c.Request().Method,
-				"uri":    c.Request().RequestURI,
-			}).Errorln(err)
-		}
-	}
 }
