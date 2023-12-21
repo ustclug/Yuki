@@ -27,11 +27,13 @@ import (
 	"github.com/ustclug/Yuki/pkg/api"
 	"github.com/ustclug/Yuki/pkg/core"
 	"github.com/ustclug/Yuki/pkg/cron"
+	"github.com/ustclug/Yuki/pkg/docker"
 )
 
 type Server struct {
 	e          *echo.Echo
 	c          *core.Core
+	dockerCli  docker.Client
 	syncStatus sync.Map
 	config     *Config
 	cron       *cron.Cron
@@ -85,19 +87,25 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 		}
 	}
 
+	dockerCli, err := docker.NewClient(cfg.DockerEndpoint)
+	if err != nil {
+		return nil, err
+	}
+
 	// workaround a systemd bug.
 	// See also https://github.com/ustclug/Yuki/issues/4
 	logfile, err := os.OpenFile(filepath.Join(cfg.LogDir, "yukid.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, err
 	}
-
 	slogger := newSlogger(logfile, cfg.Debug, cfg.LogLevel)
+
 	s := Server{
 		e:          echo.New(),
 		cron:       cron.New(),
 		db:         db,
 		logger:     slogger,
+		dockerCli:  dockerCli,
 		config:     cfg,
 		preSyncCh:  make(chan api.PreSyncPayload),
 		postSyncCh: make(chan api.PostSyncPayload),
@@ -138,10 +146,10 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 
 func (s *Server) schedRepos() {
 	repos := s.c.ListAllRepositories()
-	logrus.Infof("Scheduling %d repositories", len(repos))
+	s.logger.Info("Scheduling repositories", slog.Int("count", len(repos)))
 	for _, r := range repos {
 		if err := s.cron.AddJob(r.Name, r.Interval, s.newJob(r.Name)); err != nil {
-			logrus.WithField("repo", r.Name).Errorln(err)
+			s.logger.Error("Fail to add job", slogErrAttr(err), slog.String("repo", r.Name))
 		}
 	}
 }

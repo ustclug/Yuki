@@ -30,7 +30,7 @@ func (s *Server) registerAPIs(e *echo.Echo) {
 	v1API.GET("repos/:name/logs", s.handlerGetRepoLogs)
 	v1API.POST("repos/:name", s.handlerReloadRepo)
 	v1API.POST("repos", s.handlerReloadAllRepos)
-	v1API.POST("repos/:name/sync", nil)
+	v1API.POST("repos/:name/sync", s.handlerSyncRepo)
 
 	v1API.GET("config", s.exportConfig)
 }
