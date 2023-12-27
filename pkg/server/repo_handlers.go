@@ -2,6 +2,7 @@ package server
 
 import (
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -9,13 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
-	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/mount"
-	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/errdefs"
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm/clause"
@@ -75,7 +71,7 @@ func (s *Server) handlerGetRepo(c echo.Context) error {
 		return newHTTPError(http.StatusInternalServerError, msg)
 	}
 	if res.RowsAffected == 0 {
-		return notFound("Repo not found")
+		return newHTTPError(http.StatusNotFound, "Repo not found")
 	}
 
 	return c.JSON(http.StatusOK, repo)
@@ -114,12 +110,12 @@ func (s *Server) loadRepo(c echo.Context, logger *slog.Logger, dirs []string, fi
 			if errn > 0 && os.IsNotExist(err) {
 				continue
 			} else {
-				return nil, notFound(fmt.Sprintf("File not found: %q", file))
+				return nil, newHTTPError(http.StatusNotFound, fmt.Sprintf("File not found: %q", file))
 			}
 		}
 		err = yaml.Unmarshal(data, &repo)
 		if err != nil {
-			return nil, badRequest(err.Error())
+			return nil, newHTTPError(http.StatusBadRequest, err.Error())
 		}
 	}
 
@@ -307,7 +303,7 @@ func (s *Server) handlerGetRepoLogs(c echo.Context) error {
 		}
 	}
 	if len(fileName) == 0 {
-		return notFound(fmt.Sprintf("No such file: %q", wantedName))
+		return newHTTPError(http.StatusNotFound, fmt.Sprintf("No such file: %q", wantedName))
 	}
 
 	content, err := os.Open(filepath.Join(logDir, fileName))
@@ -350,132 +346,18 @@ func (s *Server) handlerSyncRepo(c echo.Context) error {
 	}
 	l = l.With(slog.String("repo", name))
 
-	db := s.getDB(c)
-	var repo model.Repo
-	res := db.Where(model.Repo{Name: name}).Limit(1).Find(&repo)
-	if res.Error != nil {
-		const msg = "Fail to get Repo"
-		l.Error(msg, slogErrAttr(res.Error))
-		return newHTTPError(http.StatusInternalServerError, msg)
-	}
-	if res.RowsAffected == 0 {
-		return newHTTPError(http.StatusNotFound, "Repo not found")
-	}
-
 	debug := len(c.QueryParam("debug")) > 0
-
-	envMap := map[string]string{}
-	for k, v := range repo.Envs {
-		envMap[k] = v
-	}
-	if len(repo.BindIP) == 0 {
-		repo.BindIP = s.config.BindIP
-	}
-	if len(repo.User) == 0 {
-		repo.User = s.config.Owner
-	}
-
-	var securityOpt []string
-	if len(s.config.SeccompProfile) > 0 {
-		securityOpt = append(securityOpt, "seccomp="+s.config.SeccompProfile)
-	}
-
-	envMap["REPO"] = repo.Name
-	envMap["OWNER"] = repo.User
-	envMap["BIND_ADDRESS"] = repo.BindIP
-	envMap["RETRY"] = strconv.Itoa(repo.Retry)
-	envMap["LOG_ROTATE_CYCLE"] = strconv.Itoa(repo.LogRotCycle)
-	if debug {
-		envMap["DEBUG"] = "true"
-	} else if envMap["DEBUG"] == "" {
-		envMap["DEBUG"] = "false"
-	}
-
-	envs := make([]string, 0, len(envMap))
-	for k, v := range envMap {
-		envs = append(envs, k+"="+v)
-	}
-
-	mounts := []mount.Mount{
-		{
-			// TODO: make it configurable?
-			Type:   mount.TypeTmpfs,
-			Target: "/tmp",
-		},
-		{
-			Type:   mount.TypeBind,
-			Source: repo.StorageDir,
-			Target: "/data",
-		},
-		{
-			Type:   mount.TypeBind,
-			Source: filepath.Join(s.config.LogDir, name),
-			Target: "/log",
-		},
-	}
-	for k, v := range repo.Volumes {
-		mounts = append(mounts, mount.Mount{
-			Type:   mount.TypeBind,
-			Source: k,
-			Target: v,
-		})
-	}
-
-	labels := api.M{
-		"org.ustcmirror.name":        repo.Name,
-		"org.ustcmirror.syncing":     "true",
-		"org.ustcmirror.storage-dir": repo.StorageDir,
-	}
-	containerConfig := &container.Config{
-		Image:     repo.Image,
-		OpenStdin: true,
-		Env:       envs,
-		Labels:    labels,
-	}
-	hostConfig := &container.HostConfig{
-		SecurityOpt: securityOpt,
-		Mounts:      mounts,
-	}
-	networkingConfig := &network.NetworkingConfig{
-		EndpointsConfig: make(map[string]*network.EndpointSettings, 1),
-	}
-	switch repo.Network {
-	case "", "host":
-		hostConfig.NetworkMode = "host"
-	default:
-		// https://github.com/moby/moby/blob/master/daemon/create_test.go#L15
-		networkingConfig.EndpointsConfig[repo.Network] = &network.EndpointSettings{}
-	}
-	ctName := s.config.NamePrefix + name
-
-	l.Info("Syncing")
-	ctID, err := s.dockerCli.RunContainer(
-		c.Request().Context(),
-		containerConfig,
-		hostConfig,
-		networkingConfig,
-		ctName,
-	)
+	err = s.syncRepo(c.Request().Context(), name, debug)
 	if err != nil {
+		if errors.Is(err, errNotFound) {
+			return newHTTPError(http.StatusNotFound, "Repo not found")
+		}
 		if errdefs.IsConflict(err) {
 			return newHTTPError(http.StatusConflict, err.Error())
 		}
-		const msg = "Fail to run container"
+		const msg = "Fail to sync Repo"
 		l.Error(msg, slogErrAttr(err))
 		return newHTTPError(http.StatusInternalServerError, msg)
 	}
-
-	s.syncStatus.Store(name, struct{}{})
-	err = db.
-		Where(model.RepoMeta{Name: name}).
-		Updates(&model.RepoMeta{
-			Upstream: getUpstream(repo.Image, repo.Envs),
-			PrevRun:  time.Now().Unix(),
-		}).Error
-	if err != nil {
-		l.Error("Fail to update RepoMeta", slogErrAttr(err))
-	}
-
-	go s.waitForSyncV2(name, ctID, repo.StorageDir)
 	return c.NoContent(http.StatusCreated)
 }

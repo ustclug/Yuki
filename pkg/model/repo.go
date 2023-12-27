@@ -16,8 +16,8 @@ type Repo struct {
 	Envs        StringMap `gorm:"type:text;serializer:json" json:"envs"`
 	Volumes     StringMap `gorm:"type:text;serializer:json" json:"volumes"`
 	// sqlite3 does not have builtin datetime type
-	CreatedAt int64 `gorm:"autoCreateTime"`
-	UpdatedAt int64 `gorm:"autoUpdateTime"`
+	CreatedAt int64 `gorm:"autoCreateTime" json:"-"`
+	UpdatedAt int64 `gorm:"autoUpdateTime" json:"-"`
 }
 
 // RepoMeta represents the metadata of a Repository.

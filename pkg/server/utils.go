@@ -7,18 +7,28 @@ import (
 	"log/slog"
 	"net/http"
 	"os/exec"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
+	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/errdefs"
 	"github.com/labstack/echo/v4"
 	"github.com/robfig/cron/v3"
+	"golang.org/x/sync/errgroup"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/ustclug/Yuki/pkg/api"
 	"github.com/ustclug/Yuki/pkg/model"
 )
 
 const suffixYAML = ".yaml"
+
+var errNotFound = errors.New("not found")
 
 func (s *Server) getDB(c echo.Context) *gorm.DB {
 	return s.db.WithContext(c.Request().Context())
@@ -27,7 +37,7 @@ func (s *Server) getDB(c echo.Context) *gorm.DB {
 func getRequiredParamFromEchoContext(c echo.Context, name string) (string, error) {
 	val := c.Param(name)
 	if len(val) == 0 {
-		return "", badRequest(name + " is required")
+		return "", newHTTPError(http.StatusBadRequest, "Missing required parameter: "+name)
 	}
 	return val, nil
 }
@@ -64,30 +74,6 @@ func bindAndValidate[T any](c echo.Context, input *T) error {
 	return c.Validate(input)
 }
 
-// Deprecated: use newHTTPError instead
-func badRequest(msg string) error {
-	return &echo.HTTPError{
-		Code:    http.StatusBadRequest,
-		Message: msg,
-	}
-}
-
-// Deprecated: use newHTTPError instead
-func notFound(msg string) error {
-	return &echo.HTTPError{
-		Code:    http.StatusNotFound,
-		Message: msg,
-	}
-}
-
-// Deprecated: use newHTTPError instead
-func conflict(msg string) error {
-	return &echo.HTTPError{
-		Code:    http.StatusConflict,
-		Message: msg,
-	}
-}
-
 func newHTTPError(code int, msg string) error {
 	return &echo.HTTPError{
 		Code:    code,
@@ -119,7 +105,7 @@ func (s *Server) waitForSyncV2(name, ctID, storageDir string) {
 		}
 	}
 	s.syncStatus.Delete(name)
-	err = s.dockerCli.RemoveContainer(ctID, time.Second*20)
+	err = s.dockerCli.RemoveContainerWithTimeout(ctID, time.Second*20)
 	if err != nil {
 		l.Error("Fail to remove container", slogErrAttr(err))
 	}
@@ -256,4 +242,245 @@ func getUpstream(image string, envs model.StringMap) (upstream string) {
 		return envs["YUMSYNC_URL"]
 	}
 	return
+}
+
+// cleanDeadContainers removes containers which status are `created`, `exited` or `dead`.
+func (s *Server) cleanDeadContainers() error {
+	cts, err := s.dockerCli.ListContainersWithTimeout(false, time.Second*10)
+	if err != nil {
+		return fmt.Errorf("list containers: %w", err)
+	}
+
+	for _, ct := range cts {
+		err := s.dockerCli.RemoveContainerWithTimeout(ct.ID, time.Second*20)
+		if err != nil {
+			return fmt.Errorf("remove container %q: %w", ct.ID, err)
+		}
+	}
+	return nil
+}
+
+// waitRunningContainers waits for all syncing containers to stop and remove them.
+func (s *Server) waitRunningContainers() error {
+	cts, err := s.dockerCli.ListContainersWithTimeout(true, time.Second*10)
+	if err != nil {
+		// logger.Error("Fail to list containers", slogErrAttr(err))
+		return fmt.Errorf("list containers: %w", err)
+	}
+	for _, ct := range cts {
+		name := ct.Labels["org.ustcmirror.name"]
+		dir := ct.Labels["org.ustcmirror.storage-dir"]
+		ctID := ct.ID
+		s.syncStatus.Store(name, struct{}{})
+		go s.waitForSyncV2(name, ctID, dir)
+	}
+	return nil
+}
+
+func (s *Server) upgradeImages(logger *slog.Logger) {
+	logger.Info("Upgrading images")
+
+	db := s.db
+	var images []string
+	err := db.Model(&model.Repo{}).
+		Distinct("image").
+		Pluck("image", &images).Error
+	if err != nil {
+		logger.Error("Fail to query images", slogErrAttr(err))
+		return
+	}
+	eg, egCtx := errgroup.WithContext(context.Background())
+	eg.SetLimit(5)
+	for _, i := range images {
+		img := i
+		eg.Go(func() error {
+			pullCtx, cancel := context.WithTimeout(egCtx, time.Minute*5)
+			defer cancel()
+			err := s.dockerCli.PullImage(pullCtx, img)
+			if err != nil {
+				logger.Error("Fail to pull image", slogErrAttr(err), slog.String("image", img))
+			}
+			return nil
+		})
+	}
+	_ = eg.Wait()
+
+	logger.Info("Removing dangling images")
+
+	err = s.dockerCli.RemoveDanglingImages()
+	if err != nil {
+		logger.Error("Fail to remove dangling images", slogErrAttr(err))
+	}
+}
+
+func (s *Server) newJob(name string) cron.FuncJob {
+	l := s.logger.With(slog.String("repo", name))
+	return func() {
+		err := s.syncRepo(context.Background(), name, false)
+		if err != nil {
+			if errdefs.IsConflict(err) {
+				l.Warn("Still syncing")
+			} else {
+				l.Error("Fail to sync", slogErrAttr(err))
+			}
+		}
+	}
+}
+
+func (s *Server) scheduleRepos() error {
+	var repos []model.Repo
+	err := s.db.Select("name", "interval").Find(&repos).Error
+	if err != nil {
+		return fmt.Errorf("list repos: %w", err)
+	}
+	for _, r := range repos {
+		err = s.cron.AddJob(r.Name, r.Interval, s.newJob(r.Name))
+		if err != nil {
+			return fmt.Errorf("add job for repo %q: %w", r.Name, err)
+		}
+	}
+	return nil
+}
+
+func (s *Server) initRepoMetas() error {
+	db := s.db
+	var repos []model.Repo
+	return db.FindInBatches(&repos, 10, func(*gorm.DB, int) error {
+		for _, repo := range repos {
+			size := s.getSize(repo.StorageDir)
+			err := db.Clauses(clause.OnConflict{
+				DoUpdates: clause.Assignments(map[string]any{
+					"size": size,
+				}),
+			}).Create(&model.RepoMeta{
+				Name:     repo.Name,
+				ExitCode: -1,
+			}).Error
+			if err != nil {
+				return fmt.Errorf("init meta for repo %q: %w", repo.Name, err)
+			}
+		}
+		return nil
+	}).Error
+}
+
+func (s *Server) syncRepo(ctx context.Context, name string, debug bool) error {
+	db := s.db.WithContext(ctx)
+	var repo model.Repo
+	res := db.Where(model.Repo{Name: name}).Limit(1).Find(&repo)
+	if res.Error != nil {
+		return fmt.Errorf("get repo %q: %w", name, res.Error)
+	}
+	if res.RowsAffected == 0 {
+		return fmt.Errorf("get repo %q: %w", name, errNotFound)
+	}
+
+	envMap := map[string]string{}
+	for k, v := range repo.Envs {
+		envMap[k] = v
+	}
+	if len(repo.BindIP) == 0 {
+		repo.BindIP = s.config.BindIP
+	}
+	if len(repo.User) == 0 {
+		repo.User = s.config.Owner
+	}
+
+	var securityOpt []string
+	if len(s.config.SeccompProfile) > 0 {
+		securityOpt = append(securityOpt, "seccomp="+s.config.SeccompProfile)
+	}
+
+	envMap["REPO"] = repo.Name
+	envMap["OWNER"] = repo.User
+	envMap["BIND_ADDRESS"] = repo.BindIP
+	envMap["RETRY"] = strconv.Itoa(repo.Retry)
+	envMap["LOG_ROTATE_CYCLE"] = strconv.Itoa(repo.LogRotCycle)
+	if debug {
+		envMap["DEBUG"] = "true"
+	} else if envMap["DEBUG"] == "" {
+		envMap["DEBUG"] = "false"
+	}
+
+	envs := make([]string, 0, len(envMap))
+	for k, v := range envMap {
+		envs = append(envs, k+"="+v)
+	}
+
+	mounts := []mount.Mount{
+		{
+			// TODO: make it configurable?
+			Type:   mount.TypeTmpfs,
+			Target: "/tmp",
+		},
+		{
+			Type:   mount.TypeBind,
+			Source: repo.StorageDir,
+			Target: "/data",
+		},
+		{
+			Type:   mount.TypeBind,
+			Source: filepath.Join(s.config.LogDir, name),
+			Target: "/log",
+		},
+	}
+	for k, v := range repo.Volumes {
+		mounts = append(mounts, mount.Mount{
+			Type:   mount.TypeBind,
+			Source: k,
+			Target: v,
+		})
+	}
+
+	labels := api.M{
+		"org.ustcmirror.name":        repo.Name,
+		"org.ustcmirror.syncing":     "true",
+		"org.ustcmirror.storage-dir": repo.StorageDir,
+	}
+	containerConfig := &container.Config{
+		Image:     repo.Image,
+		OpenStdin: true,
+		Env:       envs,
+		Labels:    labels,
+	}
+	hostConfig := &container.HostConfig{
+		SecurityOpt: securityOpt,
+		Mounts:      mounts,
+	}
+	networkingConfig := &network.NetworkingConfig{
+		EndpointsConfig: make(map[string]*network.EndpointSettings, 1),
+	}
+	switch repo.Network {
+	case "", "host":
+		hostConfig.NetworkMode = "host"
+	default:
+		// https://github.com/moby/moby/blob/master/daemon/create_test.go#L15
+		networkingConfig.EndpointsConfig[repo.Network] = &network.EndpointSettings{}
+	}
+	ctName := s.config.NamePrefix + name
+
+	ctID, err := s.dockerCli.RunContainer(
+		ctx,
+		containerConfig,
+		hostConfig,
+		networkingConfig,
+		ctName,
+	)
+	if err != nil {
+		return fmt.Errorf("run container: %w", err)
+	}
+
+	s.syncStatus.Store(name, struct{}{})
+	err = db.
+		Where(model.RepoMeta{Name: name}).
+		Updates(&model.RepoMeta{
+			Upstream: getUpstream(repo.Image, repo.Envs),
+			PrevRun:  time.Now().Unix(),
+		}).Error
+	if err != nil {
+		s.logger.Error("Fail to update RepoMeta", slogErrAttr(err), slog.String("repo", name))
+	}
+	go s.waitForSyncV2(name, ctID, repo.StorageDir)
+
+	return nil
 }
