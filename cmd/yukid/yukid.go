@@ -23,5 +23,8 @@ func main() {
 		<-signals
 		os.Exit(1)
 	}()
-	s.Start(ctx)
+	err = s.Start(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
