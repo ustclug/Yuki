@@ -26,8 +26,6 @@ type TestEnv struct {
 	t       *testing.T
 	httpSrv *httptest.Server
 	server  *Server
-
-	ctx context.Context
 }
 
 func (t *TestEnv) RESTClient() *resty.Client {
