@@ -15,6 +15,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/spf13/viper"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
@@ -35,7 +36,7 @@ type Server struct {
 }
 
 func New(configPath string) (*Server, error) {
-	cfg, err := LoadConfig(configPath)
+	cfg, err := loadConfig(viper.New(), configPath)
 	if err != nil {
 		return nil, err
 	}

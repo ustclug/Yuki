@@ -50,9 +50,9 @@ type Config struct {
 	GetSizer              fs.GetSizer
 }
 
-func LoadConfig(configPath string) (*Config, error) {
-	viper.SetConfigFile(configPath)
-	if err := viper.ReadInConfig(); err != nil {
+func loadConfig(v *viper.Viper, configPath string) (*Config, error) {
+	v.SetConfigFile(configPath)
+	if err := v.ReadInConfig(); err != nil {
 		return nil, err
 	}
 	appCfg := &AppConfig{
@@ -65,7 +65,7 @@ func LoadConfig(configPath string) (*Config, error) {
 		LogLevel:              "info",
 		ImagesUpgradeInterval: "@every 1h",
 	}
-	if err := viper.Unmarshal(appCfg); err != nil {
+	if err := v.Unmarshal(appCfg); err != nil {
 		return nil, err
 	}
 	validate := validator.New()

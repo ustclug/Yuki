@@ -16,8 +16,6 @@ concurrency:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    # skip for now
-    if: false
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -36,13 +34,6 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-
-    services:
-      mongodb:
-        image: mongo:3
-        ports:
-          - 27017:27017
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -53,5 +44,6 @@ jobs:
         check-latest: true
     - name: Test
       run: |
+        set -euo pipefail
         docker pull ustcmirror/test
-        ci/script.sh
+        make unit-test
