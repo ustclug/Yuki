@@ -4,6 +4,7 @@ go 1.21
 
 require (
 	github.com/docker/docker v24.0.7+incompatible
+	github.com/docker/go-units v0.5.0
 	github.com/go-playground/validator/v10 v10.16.0
 	github.com/go-resty/resty/v2 v2.11.0
 	github.com/labstack/echo/v4 v4.11.4
@@ -24,7 +25,6 @@ require (
 	github.com/distribution/reference v0.5.0 // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
-	github.com/docker/go-units v0.5.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
