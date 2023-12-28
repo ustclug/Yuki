@@ -6,7 +6,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/cobra"
 
-	"github.com/ustclug/Yuki/pkg/utils"
 	"github.com/ustclug/Yuki/pkg/yukictl/factory"
 )
 
@@ -51,9 +50,12 @@ func NewCmdReload(f factory.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "reload [name]",
 		Short: "Reload config of one or all repos",
-		Run: func(cmd *cobra.Command, args []string) {
-			utils.CheckError(o.Complete(args))
-			utils.CheckError(o.Run(f))
+		RunE: func(cmd *cobra.Command, args []string) error {
+			err := o.Complete(args)
+			if err != nil {
+				return err
+			}
+			return o.Run(f)
 		},
 	}
 	return cmd

@@ -11,7 +11,6 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/ustclug/Yuki/pkg/api"
-	"github.com/ustclug/Yuki/pkg/utils"
 	"github.com/ustclug/Yuki/pkg/yukictl/factory"
 )
 
@@ -66,9 +65,12 @@ func NewCmdExport(f factory.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "export [name]",
 		Short: "Export config",
-		Run: func(cmd *cobra.Command, args []string) {
-			utils.CheckError(o.Complete(args))
-			utils.CheckError(o.Run(f))
+		RunE: func(cmd *cobra.Command, args []string) error {
+			err := o.Complete(args)
+			if err != nil {
+				return err
+			}
+			return o.Run(f)
 		},
 	}
 	cmd.Flags().StringVarP(&o.dir, "dir", "d", "", "Dest directory")

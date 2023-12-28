@@ -9,8 +9,6 @@ import (
 	"path"
 	"strconv"
 	"strings"
-
-	"github.com/ustclug/Yuki/pkg/utils"
 )
 
 // Type represents different kinds of file system.
@@ -51,7 +49,7 @@ func (f *defaultFs) GetSize(d string) int64 {
 type zfs struct{}
 
 func (f *zfs) GetSize(d string) int64 {
-	if !utils.DirExists(d) {
+	if !dirExists(d) {
 		return -1
 	}
 	var buf bytes.Buffer
@@ -73,7 +71,7 @@ func (f *zfs) GetSize(d string) int64 {
 type xfs struct{}
 
 func (f *xfs) GetSize(d string) int64 {
-	if !utils.DirExists(d) {
+	if !dirExists(d) {
 		return -1
 	}
 

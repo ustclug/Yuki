@@ -13,7 +13,6 @@ import (
 
 	"github.com/ustclug/Yuki/pkg/api"
 	"github.com/ustclug/Yuki/pkg/tabwriter"
-	"github.com/ustclug/Yuki/pkg/utils"
 	"github.com/ustclug/Yuki/pkg/yukictl/factory"
 )
 
@@ -90,9 +89,12 @@ func NewCmdRepoLogs(f factory.Factory) *cobra.Command {
 		Use:   "logs",
 		Short: "View logs of the given repository",
 		Args:  cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			utils.CheckError(o.Complete(cmd, args))
-			utils.CheckError(o.Run(cmd, f))
+		RunE: func(cmd *cobra.Command, args []string) error {
+			err := o.Complete(cmd, args)
+			if err != nil {
+				return err
+			}
+			return o.Run(cmd, f)
 		},
 	}
 	flags := cmd.Flags()

@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"os"
-
 	"github.com/spf13/cobra"
 )
 
@@ -14,14 +12,14 @@ func NewCmdCompletion() *cobra.Command {
 
 	bashCmd := &cobra.Command{
 		Use: "bash",
-		Run: func(cmd *cobra.Command, args []string) {
-			_ = cmd.Root().GenBashCompletion(os.Stdout)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cmd.Root().GenBashCompletion(cmd.OutOrStdout())
 		},
 	}
 	zshCmd := &cobra.Command{
 		Use: "zsh",
-		Run: func(cmd *cobra.Command, args []string) {
-			_ = cmd.Root().GenZshCompletion(os.Stdout)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cmd.Root().GenZshCompletion(cmd.OutOrStdout())
 		},
 	}
 	rootCmd.AddCommand(bashCmd, zshCmd)

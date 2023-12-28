@@ -7,7 +7,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/cobra"
 
-	"github.com/ustclug/Yuki/pkg/utils"
 	"github.com/ustclug/Yuki/pkg/yukictl/factory"
 )
 
@@ -50,9 +49,12 @@ func NewCmdSync(f factory.Factory) *cobra.Command {
 		Args:    cobra.MinimumNArgs(1),
 		Example: "  yukictl sync REPO",
 		Short:   "Sync local repository with remote",
-		Run: func(cmd *cobra.Command, args []string) {
-			utils.CheckError(o.Complete(args))
-			utils.CheckError(o.Run(f))
+		RunE: func(cmd *cobra.Command, args []string) error {
+			err := o.Complete(args)
+			if err != nil {
+				return err
+			}
+			return o.Run(f)
 		},
 	}
 	cmd.Flags().BoolVarP(&o.debug, "debug", "v", false, "Debug mode")
