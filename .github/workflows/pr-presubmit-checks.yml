@@ -31,8 +31,8 @@ jobs:
           skip-build-cache: true
           skip-pkg-cache: true
 
-  test:
-    name: Test
+  unit-test:
+    name: Unit Test
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -44,6 +44,21 @@ jobs:
         check-latest: true
     - name: Test
       run: |
+        make unit-test
+
+  integration-test:
+    name: Integration Test
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Install Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: stable
+        check-latest: true
+    - name: Integration Test
+      run: |
         set -euo pipefail
         docker pull ustcmirror/test
-        make unit-test
+        make integration-test

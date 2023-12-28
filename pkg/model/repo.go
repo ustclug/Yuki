@@ -7,7 +7,7 @@ type Repo struct {
 	Name        string    `gorm:"primaryKey" json:"name" validate:"required"`
 	Interval    string    `json:"interval" validate:"required,cron"`
 	Image       string    `json:"image" validate:"required,containsrune=:"`
-	StorageDir  string    `json:"storageDir" validate:"required"`
+	StorageDir  string    `json:"storageDir" validate:"required,dir"`
 	User        string    `json:"user" validate:"omitempty,gt=1"`
 	BindIP      string    `json:"bindIP" validate:"omitempty,ip"`
 	Network     string    `json:"network"`

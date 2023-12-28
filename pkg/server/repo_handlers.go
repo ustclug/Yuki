@@ -90,10 +90,13 @@ func (s *Server) handlerRemoveRepo(c echo.Context) error {
 	err = db.Where(model.Repo{Name: name}).Delete(&model.Repo{}).Error
 	if err != nil {
 		const msg = "Fail to delete Repo"
-		l.Error(msg, slogErrAttr(err))
+		l.Error(msg, slogErrAttr(err), slog.String("repo", name))
 		return newHTTPError(http.StatusInternalServerError, msg)
 	}
-	db.Where(model.RepoMeta{Name: name}).Delete(&model.RepoMeta{})
+	err = db.Where(model.RepoMeta{Name: name}).Delete(&model.RepoMeta{}).Error
+	if err != nil {
+		l.Error("Fail to delete RepoMeta", slogErrAttr(err), slog.String("repo", name))
+	}
 
 	return c.NoContent(http.StatusNoContent)
 }
@@ -123,8 +126,14 @@ func (s *Server) loadRepo(c echo.Context, logger *slog.Logger, dirs []string, fi
 		return nil, err
 	}
 
+	logDir := filepath.Join(s.config.LogDir, repo.Name)
+	err := os.MkdirAll(logDir, 0o755)
+	if err != nil {
+		return nil, newHTTPError(http.StatusInternalServerError, fmt.Sprintf("Fail to create log dir: %q", logDir))
+	}
+
 	db := s.getDB(c)
-	err := db.
+	err = db.
 		Clauses(clause.OnConflict{UpdateAll: true}).
 		Create(&repo).Error
 	if err != nil {

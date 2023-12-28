@@ -21,6 +21,7 @@ import (
 
 	"github.com/ustclug/Yuki/pkg/cron"
 	"github.com/ustclug/Yuki/pkg/docker"
+	"github.com/ustclug/Yuki/pkg/model"
 )
 
 type Server struct {
@@ -137,7 +138,13 @@ func (s *Server) Start(rootCtx context.Context) error {
 	ctx, cancel := context.WithCancelCause(rootCtx)
 	defer cancel(context.Canceled)
 
-	err := s.cron.AddFunc(s.config.ImagesUpgradeInterval, s.upgradeImages)
+	l.Info("Initializing database")
+	err := model.AutoMigrate(s.db)
+	if err != nil {
+		return fmt.Errorf("init db: %w", err)
+	}
+
+	err = s.cron.AddFunc(s.config.ImagesUpgradeInterval, s.upgradeImages)
 	if err != nil {
 		return fmt.Errorf("add cronjob to upgrade images: %w", err)
 	}
