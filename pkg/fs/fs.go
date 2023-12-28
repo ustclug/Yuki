@@ -89,11 +89,12 @@ func (f *xfs) GetSize(d string) int64 {
 	scanner := bufio.NewScanner(&buf)
 	scanner.Scan()
 	fields := strings.Fields(scanner.Text())
-	if len(fields) == 0 {
+	switch {
+	case len(fields) == 0:
 		return -1
-	} else if len(fields) >= 2 {
+	case len(fields) >= 2:
 		kbs, err = strconv.ParseInt(fields[1], 10, 64)
-	} else {
+	default:
 		scanner.Scan()
 		fields = strings.Fields(scanner.Text())
 		kbs, err = strconv.ParseInt(fields[0], 10, 64)

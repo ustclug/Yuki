@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/docker/go-units"
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/cobra"
 
@@ -26,7 +27,7 @@ type outputMeta struct {
 
 func (o *outputMeta) From(m api.Meta) *outputMeta {
 	o.Meta = m
-	o.Size = utils.PrettySize(m.Size)
+	o.Size = units.BytesSize(float64(m.Size))
 	if m.LastSuccess > 0 {
 		t := time.Unix(m.LastSuccess, 0)
 		o.LastSuccess = &t
@@ -93,7 +94,7 @@ func (o *lsOptions) Run(f factory.Factory) error {
 	if resp.IsError() {
 		return fmt.Errorf("%s", errMsg.Message)
 	}
-	var outs []outputMeta
+	outs := make([]outputMeta, 0, len(result))
 	for _, r := range result {
 		var out outputMeta
 		out.From(r)

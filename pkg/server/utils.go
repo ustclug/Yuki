@@ -34,6 +34,7 @@ func (s *Server) getDB(c echo.Context) *gorm.DB {
 	return s.db.WithContext(c.Request().Context())
 }
 
+//nolint:unparam
 func getRequiredParamFromEchoContext(c echo.Context, name string) (string, error) {
 	val := c.Param(name)
 	if len(val) == 0 {
@@ -220,11 +221,12 @@ func getUpstream(image string, envs model.StringMap) (upstream string) {
 		remoteType := envs["RCLONE_CONFIG_REMOTE_TYPE"]
 		path := envs["RCLONE_PATH"]
 		domain := ""
-		if remoteType == "swift" {
+		switch remoteType {
+		case "swift":
 			domain = envs["RCLONE_SWIFT_STORAGE_URL"] + "/"
-		} else if remoteType == "http" {
+		case "http":
 			domain = envs["RCLONE_CONFIG_REMOTE_URL"]
-		} else if remoteType == "s3" {
+		case "s3":
 			domain = envs["RCLONE_CONFIG_REMOTE_ENDPOINT"]
 		}
 		return fmt.Sprintf("%s%s", domain, path)

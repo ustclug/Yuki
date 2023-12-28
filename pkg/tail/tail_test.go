@@ -26,7 +26,7 @@ func TestReadLongLines(t *testing.T) {
 // Excerpt from https://github.com/kubernetes/kubernetes/pull/23265/files
 func testReadLines(t *testing.T, cfg config, hasEOL bool) {
 	var (
-		lines    [][]byte
+		lines    = make([][]byte, 0, len(cfg.lens))
 		input    []byte
 		expected []byte
 	)

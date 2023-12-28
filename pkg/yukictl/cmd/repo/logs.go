@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/docker/go-units"
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/cobra"
 
@@ -58,7 +59,7 @@ func (o *logsOptions) Run(cmd *cobra.Command, f factory.Factory) error {
 		printer := tabwriter.New(os.Stdout)
 		printer.SetHeader([]string{"name", "mtime", "size"})
 		for _, s := range stats {
-			printer.Append(s.Name, s.Mtime.Format(time.RFC3339), utils.PrettySize(s.Size))
+			printer.Append(s.Name, s.Mtime.Format(time.RFC3339), units.BytesSize(float64(s.Size)))
 		}
 		return printer.Render()
 	}
