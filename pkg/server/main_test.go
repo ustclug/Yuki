@@ -18,6 +18,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/ustclug/Yuki/pkg/cron"
+	fakedocker "github.com/ustclug/Yuki/pkg/docker/fake"
 	"github.com/ustclug/Yuki/pkg/fs"
 	"github.com/ustclug/Yuki/pkg/model"
 )
@@ -55,12 +56,13 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	require.NoError(t, model.AutoMigrate(db))
 
 	s := &Server{
-		e:       e,
-		db:      db,
-		cron:    cron.New(),
-		logger:  slogger,
-		config:  &Config{},
-		getSize: fs.New(fs.DEFAULT).GetSize,
+		e:         e,
+		db:        db,
+		cron:      cron.New(),
+		logger:    slogger,
+		config:    &Config{},
+		dockerCli: fakedocker.NewClient(nil),
+		getSize:   fs.New(fs.DEFAULT).GetSize,
 	}
 	s.e.Use(setLogger(slogger))
 	s.e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
