@@ -1,6 +1,6 @@
 fs = "default"
 
-db_name = "test"
+db_url = "test"
 
 log_dir = "/tmp/log_yuki/"
 
