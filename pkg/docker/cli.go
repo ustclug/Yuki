@@ -12,6 +12,8 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/errdefs"
+
+	"github.com/ustclug/Yuki/pkg/api"
 )
 
 type Client interface {
@@ -46,7 +48,7 @@ func (c *clientImpl) listImages(timeout time.Duration) ([]types.ImageSummary, er
 	return c.client.ImageList(ctx, types.ImageListOptions{
 		All: true,
 		Filters: filters.NewArgs(
-			filters.Arg("label", "org.ustcmirror.images=true"),
+			filters.Arg("label", api.LabelImages),
 			filters.Arg("dangling", "true"),
 		),
 	})
@@ -79,7 +81,7 @@ func (c *clientImpl) ListContainersWithTimeout(running bool, timeout time.Durati
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	args := filters.NewArgs(filters.Arg("label", "org.ustcmirror.syncing=true"))
+	args := filters.NewArgs(filters.Arg("label", api.LabelRepoName))
 	var statuses []string
 	if running {
 		statuses = append(statuses, "running")

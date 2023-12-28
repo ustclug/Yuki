@@ -24,15 +24,15 @@ import (
 )
 
 type Server struct {
-	e          *echo.Echo
-	dockerCli  docker.Client
-	syncStatus sync.Map
-	config     *Config
-	cron       *cron.Cron
-	db         *gorm.DB
-	logger     *slog.Logger
+	syncingContainers sync.Map
 
-	getSize func(string) int64
+	e         *echo.Echo
+	dockerCli docker.Client
+	config    *Config
+	cron      *cron.Cron
+	db        *gorm.DB
+	logger    *slog.Logger
+	getSize   func(string) int64
 }
 
 func New(configPath string) (*Server, error) {
@@ -137,9 +137,7 @@ func (s *Server) Start(rootCtx context.Context) error {
 	ctx, cancel := context.WithCancelCause(rootCtx)
 	defer cancel(context.Canceled)
 
-	err := s.cron.AddFunc(s.config.ImagesUpgradeInterval, func() {
-		s.upgradeImages(l)
-	})
+	err := s.cron.AddFunc(s.config.ImagesUpgradeInterval, s.upgradeImages)
 	if err != nil {
 		return fmt.Errorf("add cronjob to upgrade images: %w", err)
 	}

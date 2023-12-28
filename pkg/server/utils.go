@@ -44,7 +44,7 @@ func getRequiredParamFromEchoContext(c echo.Context, name string) (string, error
 }
 
 func (s *Server) convertModelRepoMetaToGetMetaResponse(in model.RepoMeta, jobs map[string]cron.Entry) api.GetMetaResponse {
-	_, syncing := s.syncStatus.Load(in.Name)
+	_, syncing := s.syncingContainers.Load(in.Name)
 	var nextRun int64
 	job, ok := jobs[in.Name]
 	if ok {
@@ -105,7 +105,7 @@ func (s *Server) waitForSync(name, ctID, storageDir string) {
 			code = -2
 		}
 	}
-	s.syncStatus.Delete(name)
+	s.syncingContainers.Delete(name)
 	err = s.dockerCli.RemoveContainerWithTimeout(ctID, time.Second*20)
 	if err != nil {
 		l.Error("Fail to remove container", slogErrAttr(err))
@@ -127,6 +127,9 @@ func (s *Server) waitForSync(name, ctID, storageDir string) {
 		l.Error("Fail to update RepoMeta", slogErrAttr(err))
 	}
 
+	if len(s.config.PostSync) == 0 {
+		return
+	}
 	go func() {
 		envs := []string{
 			fmt.Sprintf("ID=%s", ctID),
@@ -270,19 +273,20 @@ func (s *Server) waitRunningContainers() error {
 		return fmt.Errorf("list containers: %w", err)
 	}
 	for _, ct := range cts {
-		name := ct.Labels["org.ustcmirror.name"]
-		dir := ct.Labels["org.ustcmirror.storage-dir"]
+		name := ct.Labels[api.LabelRepoName]
+		dir := ct.Labels[api.LabelStorageDir]
 		ctID := ct.ID
-		s.syncStatus.Store(name, struct{}{})
+		s.syncingContainers.Store(name, struct{}{})
 		go s.waitForSync(name, ctID, dir)
 	}
 	return nil
 }
 
-func (s *Server) upgradeImages(logger *slog.Logger) {
+func (s *Server) upgradeImages() {
+	db := s.db
+	logger := s.logger
 	logger.Info("Upgrading images")
 
-	db := s.db
 	var images []string
 	err := db.Model(&model.Repo{}).
 		Distinct("image").
@@ -347,23 +351,25 @@ func (s *Server) scheduleRepos() error {
 func (s *Server) initRepoMetas() error {
 	db := s.db
 	var repos []model.Repo
-	return db.FindInBatches(&repos, 10, func(*gorm.DB, int) error {
-		for _, repo := range repos {
-			size := s.getSize(repo.StorageDir)
-			err := db.Clauses(clause.OnConflict{
-				DoUpdates: clause.Assignments(map[string]any{
-					"size": size,
-				}),
-			}).Create(&model.RepoMeta{
-				Name:     repo.Name,
-				ExitCode: -1,
-			}).Error
-			if err != nil {
-				return fmt.Errorf("init meta for repo %q: %w", repo.Name, err)
+	return db.Select("name", "storage_dir").
+		FindInBatches(&repos, 10, func(*gorm.DB, int) error {
+			for _, repo := range repos {
+				size := s.getSize(repo.StorageDir)
+				err := db.Clauses(clause.OnConflict{
+					DoUpdates: clause.Assignments(map[string]any{
+						"size": size,
+					}),
+				}).Create(&model.RepoMeta{
+					Name:     repo.Name,
+					Size:     size,
+					ExitCode: -1,
+				}).Error
+				if err != nil {
+					return fmt.Errorf("init meta for repo %q: %w", repo.Name, err)
+				}
 			}
-		}
-		return nil
-	}).Error
+			return nil
+		}).Error
 }
 
 func (s *Server) syncRepo(ctx context.Context, name string, debug bool) error {
@@ -435,9 +441,8 @@ func (s *Server) syncRepo(ctx context.Context, name string, debug bool) error {
 	}
 
 	labels := api.M{
-		"org.ustcmirror.name":        repo.Name,
-		"org.ustcmirror.syncing":     "true",
-		"org.ustcmirror.storage-dir": repo.StorageDir,
+		api.LabelRepoName:   repo.Name,
+		api.LabelStorageDir: repo.StorageDir,
 	}
 	containerConfig := &container.Config{
 		Image:     repo.Image,
@@ -472,7 +477,7 @@ func (s *Server) syncRepo(ctx context.Context, name string, debug bool) error {
 		return fmt.Errorf("run container: %w", err)
 	}
 
-	s.syncStatus.Store(name, struct{}{})
+	s.syncingContainers.Store(name, struct{}{})
 	err = db.
 		Where(model.RepoMeta{Name: name}).
 		Updates(&model.RepoMeta{

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -129,4 +130,38 @@ storageDir: /data
 	var repos []model.Repo
 	require.NoError(t, te.server.db.Find(&repos).Error)
 	require.Len(t, repos, 2)
+}
+
+func TestHandlerSyncRepo(t *testing.T) {
+	te := NewTestEnv(t)
+	name := te.RandomString()
+	require.NoError(t, te.server.db.Create(&model.Repo{
+		Name:       name,
+		Interval:   "@every 1h",
+		Image:      "alpine:latest",
+		StorageDir: "/data",
+		Envs: model.StringMap{
+			"UPSTREAM": "http://foo.com",
+		},
+	}).Error)
+
+	require.NoError(t, te.server.db.Create(&model.RepoMeta{Name: name}).Error)
+
+	cli := te.RESTClient()
+	resp, err := cli.R().Post(fmt.Sprintf("/repos/%s/sync", name))
+	require.NoError(t, err)
+	require.True(t, resp.IsSuccess(), "Unexpected response: %s", resp.Body())
+
+	pollUntilTimeout(t, time.Minute, func() bool {
+		_, exist := te.server.syncingContainers.Load(name)
+		return !exist
+	})
+
+	meta := model.RepoMeta{
+		Name: name,
+	}
+	require.NoError(t, te.server.db.First(&meta).Error)
+	require.EqualValues(t, "http://foo.com", meta.Upstream)
+	require.NotEmpty(t, meta.PrevRun)
+	require.NotEmpty(t, meta.LastSuccess)
 }
