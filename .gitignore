@@ -3,6 +3,7 @@ yukictl
 yukid
 
 .idea/
+dist/
 
 *.swp
 *.[oa]

@@ -1,0 +1,40 @@
+before:
+  hooks:
+    - go mod tidy
+# TODO: publish docker images
+# https://goreleaser.com/customization/docker/#how-it-works
+builds:
+  -
+    id: yukictl
+    binary: yukictl
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/yukictl
+    goos:
+      - linux
+    goarch:
+      - amd64
+    gcflags:
+      - all=-trimpath
+  -
+    id: yukid
+    binary: yukid
+    main: ./cmd/yukid
+    goos:
+      - linux
+    goarch:
+      - amd64
+    gcflags:
+      - all=-trimpath
+archives:
+  - format: binary
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+changelog:
+  use: github-native
+
+# modelines, feel free to remove those if you don't want/use them:
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# vim: set ts=2 sw=2 tw=0 fo=cnqoj
