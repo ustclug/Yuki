@@ -12,11 +12,6 @@ import (
 	"github.com/ustclug/Yuki/pkg/fs"
 )
 
-func init() {
-	viper.SetEnvPrefix("YUKI")
-	viper.SetConfigFile("/etc/yuki/daemon.toml")
-}
-
 type AppConfig struct {
 	Debug bool `mapstructure:"debug,omitempty" validate:"-"`
 	// DbURL contains username and password
@@ -55,11 +50,12 @@ type Config struct {
 	GetSizer              fs.GetSizer
 }
 
-func LoadConfig() (*Config, error) {
+func LoadConfig(configPath string) (*Config, error) {
+	viper.SetConfigFile(configPath)
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, err
 	}
-	appCfg := AppConfig{
+	appCfg := &AppConfig{
 		Debug:                 false,
 		DockerEndpoint:        "unix:///var/run/docker.sock",
 		Owner:                 fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
@@ -108,8 +104,6 @@ func LoadConfig() (*Config, error) {
 		cfg.LogLevel = slog.LevelWarn
 	case "error":
 		cfg.LogLevel = slog.LevelError
-	case "info":
-		fallthrough
 	default:
 		cfg.LogLevel = slog.LevelInfo
 	}

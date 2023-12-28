@@ -5,25 +5,18 @@ import (
 	"time"
 
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/require"
 )
 
-func TestDefaultTimeoutConfig(t *testing.T) {
+func TestLoadDefaultConfig(t *testing.T) {
 	viper.Reset()
-	viper.SetConfigFile("../../dist/daemon.toml")
-	_, err := LoadConfig()
-	if err != nil {
-		t.Fatal(err)
-	}
+	_, err := LoadConfig("../../dist/daemon.toml")
+	require.NoError(t, err)
 }
 
-func TestSyncTimeoutConfig(t *testing.T) {
+func TestLoadSyncTimeoutConfig(t *testing.T) {
 	viper.Reset()
-	viper.SetConfigFile("../../test/fixtures/sync_timeout.toml")
-	config, err := LoadConfig()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if config.SyncTimeout != time.Second*15 {
-		t.Fatalf("Expected SyncTimeout to be 15s, got %s", config.SyncTimeout)
-	}
+	config, err := LoadConfig("../../test/fixtures/sync_timeout.toml")
+	require.NoError(t, err)
+	require.EqualValues(t, time.Second*15, config.SyncTimeout)
 }

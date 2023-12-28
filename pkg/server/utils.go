@@ -81,7 +81,7 @@ func newHTTPError(code int, msg string) error {
 	}
 }
 
-func (s *Server) waitForSyncV2(name, ctID, storageDir string) {
+func (s *Server) waitForSync(name, ctID, storageDir string) {
 	var ctx context.Context
 	if s.config.SyncTimeout > 0 {
 		var cancel context.CancelFunc
@@ -272,7 +272,7 @@ func (s *Server) waitRunningContainers() error {
 		dir := ct.Labels["org.ustcmirror.storage-dir"]
 		ctID := ct.ID
 		s.syncStatus.Store(name, struct{}{})
-		go s.waitForSyncV2(name, ctID, dir)
+		go s.waitForSync(name, ctID, dir)
 	}
 	return nil
 }
@@ -480,7 +480,7 @@ func (s *Server) syncRepo(ctx context.Context, name string, debug bool) error {
 	if err != nil {
 		s.logger.Error("Fail to update RepoMeta", slogErrAttr(err), slog.String("repo", name))
 	}
-	go s.waitForSyncV2(name, ctID, repo.StorageDir)
+	go s.waitForSync(name, ctID, repo.StorageDir)
 
 	return nil
 }

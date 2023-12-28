@@ -4,6 +4,7 @@ import (
 	"fmt"
 )
 
+// Deprecated: Use github.com/docker/go-units.HumanSize instead.
 func PrettySize(size int64) string {
 	if size < 0 {
 		return "unknown"

@@ -34,8 +34,8 @@ type Server struct {
 	getSize func(string) int64
 }
 
-func New() (*Server, error) {
-	cfg, err := LoadConfig()
+func New(configPath string) (*Server, error) {
+	cfg, err := LoadConfig(configPath)
 	if err != nil {
 		return nil, err
 	}
