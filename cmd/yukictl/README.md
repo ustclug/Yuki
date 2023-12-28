@@ -60,16 +60,6 @@ $ yukictl reload
 
 #### 获取同步日志
 
-当前的同步日志:
-```bash
-$ yukictl ct logs <container ID or repo name>
-```
-
-跟踪并从倒数第 5 行开始:
-```bash
-$ yukictl ct logs --tail 5 -f <container ID or repo name>
-```
-
 列出以往的同步日志:
 ```bash
 $ yukictl repo logs --stats <repo name>
