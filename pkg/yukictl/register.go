@@ -4,7 +4,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/ustclug/Yuki/pkg/yukictl/cmd"
-	"github.com/ustclug/Yuki/pkg/yukictl/cmd/ct"
 	"github.com/ustclug/Yuki/pkg/yukictl/cmd/meta"
 	"github.com/ustclug/Yuki/pkg/yukictl/cmd/repo"
 	"github.com/ustclug/Yuki/pkg/yukictl/factory"
@@ -13,7 +12,6 @@ import (
 func Register(root *cobra.Command, f factory.Factory) {
 	root.AddCommand(
 		cmd.NewCmdCompletion(),
-		ct.NewCmdContainer(f),
 		cmd.NewCmdExport(f),
 		meta.NewCmdMeta(f),
 		cmd.NewCmdReload(f),

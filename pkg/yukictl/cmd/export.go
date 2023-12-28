@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -52,7 +51,7 @@ func (o *exportOptions) Run(f factory.Factory) error {
 	if len(o.dir) > 0 {
 		for _, r := range repos {
 			data, _ := yaml.Marshal(r)
-			err := ioutil.WriteFile(filepath.Join(o.dir, r.Name+".yaml"), data, 0644)
+			err := os.WriteFile(filepath.Join(o.dir, r.Name+".yaml"), data, 0644)
 			if err != nil {
 				return err
 			}

@@ -2,10 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 
-	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/cobra"
 
@@ -25,7 +23,7 @@ func (o *syncOptions) Complete(args []string) error {
 
 func (o *syncOptions) Run(f factory.Factory) error {
 	req := f.RESTClient().R()
-	u, err := f.MakeURL("api/v1/containers/%s", o.name)
+	u, err := f.MakeURL("api/v1/repo/%s/sync", o.name)
 	if err != nil {
 		return err
 	}
@@ -41,24 +39,8 @@ func (o *syncOptions) Run(f factory.Factory) error {
 		return fmt.Errorf("%s", errMsg.Message)
 	}
 
-	if !o.debug {
-		fmt.Printf("Syncing <%s>\n", o.name)
-		return nil
-	}
-
-	u.Path += "/logs"
-	resp, err = f.RESTClient().R().
-		SetError(&errMsg).
-		SetDoNotParseResponse(true).
-		SetQueryParam("follow", strconv.FormatBool(true)).
-		Get(u.String())
-	if err != nil {
-		return err
-	}
-	body := resp.RawBody()
-	defer body.Close()
-	_, err = stdcopy.StdCopy(os.Stdout, os.Stderr, body)
-	return err
+	fmt.Printf("Syncing <%s>\n", o.name)
+	return nil
 }
 
 func NewCmdSync(f factory.Factory) *cobra.Command {

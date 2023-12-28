@@ -4,22 +4,6 @@ import (
 	"time"
 )
 
-// Container provides the ID and labels of a container.
-type Container struct {
-	ID     string
-	Labels map[string]string
-}
-
-// ContainerDetail describes a container in detail.
-type ContainerDetail struct {
-	ID      string `json:"id"`
-	Image   string `json:"image"`
-	Created int64  `json:"created"`
-	State   string `json:"state"`
-	Status  string `json:"status"`
-	Name    string `json:"name"`
-}
-
 // LogFileStat describes a log file.
 type LogFileStat struct {
 	Name  string    `json:"name"`
@@ -66,17 +50,6 @@ type RepoSummary struct {
 	Interval   string `bson:"interval" json:"interval"`
 	Image      string `bson:"image" json:"image"`
 	StorageDir string `bson:"storageDir" json:"storageDir" validate:"required"`
-}
-
-type PreSyncPayload struct {
-	Name string
-}
-
-type PostSyncPayload struct {
-	ID       string
-	Name     string
-	Dir      string
-	ExitCode int
 }
 
 type ListRepoMetasResponse = []GetMetaResponse
