@@ -12,10 +12,9 @@ import (
 func Register(root *cobra.Command, f factory.Factory) {
 	root.AddCommand(
 		cmd.NewCmdCompletion(),
-		cmd.NewCmdExport(f),
-		meta.NewCmdMeta(f),
 		cmd.NewCmdReload(f),
-		repo.NewCmdRepo(f),
 		cmd.NewCmdSync(f),
+		meta.NewCmdMeta(f),
+		repo.NewCmdRepo(f),
 	)
 }

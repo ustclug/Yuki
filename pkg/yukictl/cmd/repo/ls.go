@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/ustclug/Yuki/pkg/api"
+	"github.com/ustclug/Yuki/pkg/model"
 	"github.com/ustclug/Yuki/pkg/tabwriter"
 	"github.com/ustclug/Yuki/pkg/yukictl/factory"
 )
@@ -24,7 +25,7 @@ func (o *repoLsOptions) Run(f factory.Factory) error {
 	req := f.RESTClient().R().SetError(&errMsg)
 	encoder := f.JSONEncoder(os.Stdout)
 	if len(o.name) > 0 {
-		var result api.Repository
+		var result model.Repo
 		resp, err := req.SetResult(&result).SetPathParam("name", o.name).Get("api/v1/repos/{name}")
 		if err != nil {
 			return err
@@ -35,7 +36,7 @@ func (o *repoLsOptions) Run(f factory.Factory) error {
 		return encoder.Encode(result)
 	}
 
-	var result []api.RepoSummary
+	var result api.ListReposResponse
 	resp, err := req.SetResult(&result).Get("api/v1/repos")
 	if err != nil {
 		return err

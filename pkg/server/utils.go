@@ -440,15 +440,14 @@ func (s *Server) syncRepo(ctx context.Context, name string, debug bool) error {
 		})
 	}
 
-	labels := api.M{
-		api.LabelRepoName:   repo.Name,
-		api.LabelStorageDir: repo.StorageDir,
-	}
 	containerConfig := &container.Config{
 		Image:     repo.Image,
 		OpenStdin: true,
 		Env:       envs,
-		Labels:    labels,
+		Labels: map[string]string{
+			api.LabelRepoName:   repo.Name,
+			api.LabelStorageDir: repo.StorageDir,
+		},
 	}
 	hostConfig := &container.HostConfig{
 		SecurityOpt: securityOpt,
