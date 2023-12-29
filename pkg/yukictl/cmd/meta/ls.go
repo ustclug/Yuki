@@ -2,7 +2,6 @@ package meta
 
 import (
 	"fmt"
-	"net/url"
 	"os"
 	"time"
 
@@ -50,28 +49,19 @@ type lsOptions struct {
 	name string
 }
 
-func (o *lsOptions) Complete(args []string) error {
-	if len(args) > 0 {
-		o.name = args[0]
-	}
-	return nil
-}
-
 func (o *lsOptions) Run(f factory.Factory) error {
 	var (
-		u      *url.URL
 		err    error
 		errMsg echo.HTTPError
 	)
 	req := f.RESTClient().R().SetError(&errMsg)
 	encoder := f.JSONEncoder(os.Stdout)
 	if len(o.name) > 0 {
-		u, err = f.MakeURL("api/v1/metas/%s", o.name)
-		if err != nil {
-			return err
-		}
 		var result api.Meta
-		resp, err := req.SetResult(&result).Get(u.String())
+		resp, err := req.
+			SetResult(&result).
+			SetPathParam("name", o.name).
+			Get("api/v1/metas/{name}")
 		if err != nil {
 			return err
 		}
@@ -81,12 +71,8 @@ func (o *lsOptions) Run(f factory.Factory) error {
 		var out outputMeta
 		return encoder.Encode(out.From(result))
 	}
-	u, err = f.MakeURL("api/v1/metas")
-	if err != nil {
-		return err
-	}
 	var result []api.Meta
-	resp, err := req.SetResult(&result).Get(u.String())
+	resp, err := req.SetResult(&result).Get("api/v1/metas")
 	if err != nil {
 		return err
 	}
@@ -108,9 +94,8 @@ func NewCmdMetaLs(f factory.Factory) *cobra.Command {
 		Use:   "ls",
 		Short: "List one or all metadata",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			err := o.Complete(args)
-			if err != nil {
-				return err
+			if len(args) > 0 {
+				o.name = args[0]
 			}
 			return o.Run(f)
 		},

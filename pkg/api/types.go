@@ -1,16 +1,5 @@
 package api
 
-import (
-	"time"
-)
-
-// LogFileStat describes a log file.
-type LogFileStat struct {
-	Name  string    `json:"name"`
-	Size  int64     `json:"size"`
-	Mtime time.Time `json:"mtime"`
-}
-
 // Meta represents the metadata of a Repository.
 type Meta struct {
 	Name        string `bson:"_id" json:"name"`
@@ -76,7 +65,6 @@ type ListReposResponseItem struct {
 type ListReposResponse = []ListReposResponseItem
 
 type GetRepoLogsRequest struct {
-	N     int  `query:"n" validate:"min=0"`
-	Tail  int  `query:"tail" validate:"min=0"`
-	Stats bool `query:"stats"`
+	N    int `query:"n" validate:"min=0"`
+	Tail int `query:"tail" validate:"min=0"`
 }

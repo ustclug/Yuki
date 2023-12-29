@@ -5,16 +5,15 @@ import (
 	"io"
 
 	"github.com/go-resty/resty/v2"
-
-	"github.com/ustclug/Yuki/pkg/yukictl/globalflag"
+	"github.com/spf13/pflag"
 )
 
 type factoryImpl struct {
-	*globalflag.FlagSet
+	remote string
 }
 
 func (f *factoryImpl) RESTClient() *resty.Client {
-	return resty.New()
+	return resty.New().SetBaseURL(f.remote)
 }
 
 func (f *factoryImpl) JSONEncoder(w io.Writer) *json.Encoder {
@@ -23,9 +22,8 @@ func (f *factoryImpl) JSONEncoder(w io.Writer) *json.Encoder {
 	return encoder
 }
 
-func New(flags *globalflag.FlagSet) Factory {
-	s := factoryImpl{
-		FlagSet: flags,
-	}
+func New(flags *pflag.FlagSet) Factory {
+	s := factoryImpl{}
+	flags.StringVarP(&s.remote, "remote", "r", "http://127.0.0.1:9999/", "Remote address")
 	return &s
 }

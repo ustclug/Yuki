@@ -13,20 +13,12 @@ type rmOptions struct {
 	name string
 }
 
-func (o *rmOptions) Complete(args []string) error {
-	o.name = args[0]
-	return nil
-}
-
 func (o *rmOptions) Run(f factory.Factory) error {
-	u, err := f.MakeURL("api/v1/repositories/%s", o.name)
-	if err != nil {
-		return err
-	}
 	var errMsg echo.HTTPError
 	resp, err := f.RESTClient().R().
 		SetError(&errMsg).
-		Delete(u.String())
+		SetPathParam("name", o.name).
+		Delete("api/v1/repos/{name}")
 	if err != nil {
 		return err
 	}
@@ -43,12 +35,9 @@ func NewCmdRepoRm(f factory.Factory) *cobra.Command {
 		Use:     "rm",
 		Short:   "Remove repository from database",
 		Example: "  yukictl repo rm REPO",
-		Args:    cobra.MinimumNArgs(1),
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			err := o.Complete(args)
-			if err != nil {
-				return err
-			}
+			o.name = args[0]
 			return o.Run(f)
 		},
 	}

@@ -15,22 +15,14 @@ type syncOptions struct {
 	name  string
 }
 
-func (o *syncOptions) Complete(args []string) error {
-	o.name = args[0]
-	return nil
-}
-
 func (o *syncOptions) Run(f factory.Factory) error {
 	req := f.RESTClient().R()
-	u, err := f.MakeURL("api/v1/repo/%s/sync", o.name)
-	if err != nil {
-		return err
-	}
 	var errMsg echo.HTTPError
 	resp, err := req.
 		SetError(&errMsg).
 		SetQueryParam("debug", strconv.FormatBool(o.debug)).
-		Post(u.String())
+		SetPathParam("name", o.name).
+		Post("api/v1/repo/{name}/sync")
 	if err != nil {
 		return err
 	}
@@ -46,14 +38,11 @@ func NewCmdSync(f factory.Factory) *cobra.Command {
 	o := syncOptions{}
 	cmd := &cobra.Command{
 		Use:     "sync",
-		Args:    cobra.MinimumNArgs(1),
+		Args:    cobra.ExactArgs(1),
 		Example: "  yukictl sync REPO",
 		Short:   "Sync local repository with remote",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			err := o.Complete(args)
-			if err != nil {
-				return err
-			}
+			o.name = args[0]
 			return o.Run(f)
 		},
 	}

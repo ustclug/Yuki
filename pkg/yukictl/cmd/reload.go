@@ -13,24 +13,14 @@ type reloadOptions struct {
 	repo string
 }
 
-func (o *reloadOptions) Complete(args []string) error {
-	if len(args) > 0 {
-		o.repo = args[0]
-	}
-	return nil
-}
-
 func (o *reloadOptions) Run(f factory.Factory) error {
 	req := f.RESTClient().R()
-	u, err := f.MakeURL("api/v1/repositories")
-	if err != nil {
-		return err
-	}
+	path := "api/v1/repos"
 	if len(o.repo) > 0 {
-		u.Path += "/" + o.repo
+		path += "/" + o.repo
 	}
 	var errMsg echo.HTTPError
-	resp, err := req.SetError(&errMsg).Post(u.String())
+	resp, err := req.SetError(&errMsg).Post(path)
 	if err != nil {
 		return err
 	}
@@ -51,9 +41,8 @@ func NewCmdReload(f factory.Factory) *cobra.Command {
 		Use:   "reload [name]",
 		Short: "Reload config of one or all repos",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			err := o.Complete(args)
-			if err != nil {
-				return err
+			if len(args) > 0 {
+				o.repo = args[0]
 			}
 			return o.Run(f)
 		},

@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/docker/docker/errdefs"
@@ -272,30 +271,6 @@ func (s *Server) handlerGetRepoLogs(c echo.Context) error {
 		const msg = "Fail to list log files"
 		l.Error(msg, slogErrAttr(err))
 		return newHTTPError(http.StatusInternalServerError, msg)
-	}
-
-	if req.Stats {
-		var infos []api.LogFileStat
-		for _, f := range files {
-			name := f.Name()
-			if !strings.HasPrefix(name, "result.log.") {
-				continue
-			}
-			fi, err := f.Info()
-			if err != nil {
-				l.Warn("Fail to stat file", slogErrAttr(err), slog.String("file", name))
-				continue
-			}
-			infos = append(infos, api.LogFileStat{
-				Name:  name,
-				Size:  fi.Size(),
-				Mtime: fi.ModTime(),
-			})
-		}
-		sort.Slice(infos, func(i, j int) bool {
-			return infos[j].Mtime.After(infos[i].Mtime)
-		})
-		return c.JSON(http.StatusOK, infos)
 	}
 
 	wantedName := fmt.Sprintf("result.log.%d", req.N)

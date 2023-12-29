@@ -15,32 +15,23 @@ import (
 )
 
 type exportOptions struct {
-	args []string
-	dir  string
-}
-
-func (o *exportOptions) Complete(args []string) error {
-	o.args = args
-	return nil
+	names []string
+	dir   string
 }
 
 func (o *exportOptions) Run(f factory.Factory) error {
 	req := f.RESTClient().R()
-	if len(o.args) > 0 {
-		req.SetQueryParam("names", strings.Join(o.args, ","))
+	if len(o.names) > 0 {
+		req.SetQueryParam("names", strings.Join(o.names, ","))
 	}
 	var (
 		repos  []api.Repository
 		errMsg echo.HTTPError
 	)
-	u, err := f.MakeURL("api/v1/config")
-	if err != nil {
-		return err
-	}
 	resp, err := req.
 		SetResult(&repos).
 		SetError(&errMsg).
-		Get(u.String())
+		Get("api/v1/config")
 	if err != nil {
 		return fmt.Errorf("send request: %s", err)
 	}
@@ -66,10 +57,7 @@ func NewCmdExport(f factory.Factory) *cobra.Command {
 		Use:   "export [name]",
 		Short: "Export config",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			err := o.Complete(args)
-			if err != nil {
-				return err
-			}
+			o.names = args
 			return o.Run(f)
 		},
 	}
