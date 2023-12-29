@@ -1,22 +1,8 @@
 package api
 
-// Meta represents the metadata of a Repository.
-type Meta struct {
-	Name        string `bson:"_id" json:"name"`
-	Upstream    string `bson:"-" json:"upstream"`
-	Syncing     bool   `bson:"-" json:"syncing"`
-	Size        int64  `bson:"size" json:"size"`
-	ExitCode    int    `bson:"exitCode" json:"exitCode"`
-	LastSuccess int64  `bson:"lastSuccess,omitempty" json:"lastSuccess"`
-	CreatedAt   int64  `bson:"createdAt,omitempty" json:"createdAt"`
-	UpdatedAt   int64  `bson:"updatedAt,omitempty" json:"updatedAt"`
-	PrevRun     int64  `bson:"prevRun,omitempty" json:"prevRun"`
-	NextRun     int64  `bson:"-" json:"nextRun"`
-}
+type ListRepoMetasResponse = []GetRepoMetaResponse
 
-type ListRepoMetasResponse = []GetMetaResponse
-
-type GetMetaResponse struct {
+type GetRepoMetaResponse struct {
 	Name        string `json:"name"`
 	Upstream    string `json:"upstream"`
 	Syncing     bool   `json:"syncing"`

@@ -10,40 +10,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/ustclug/Yuki/pkg/api"
+	"github.com/ustclug/Yuki/pkg/tabwriter"
 	"github.com/ustclug/Yuki/pkg/yukictl/factory"
 )
-
-type outputMeta struct {
-	api.Meta    `json:",inline"`
-	Size        string     `json:"size"`
-	LastSuccess *time.Time `json:"lastSuccess,omitempty"`
-	CreatedAt   *struct{}  `json:"createdAt,omitempty"` // ignore
-	UpdatedAt   *time.Time `json:"updatedAt,omitempty"`
-	PrevRun     *time.Time `json:"prevRun,omitempty"`
-	NextRun     *time.Time `json:"nextRun,omitempty"`
-}
-
-func (o *outputMeta) From(m api.Meta) *outputMeta {
-	o.Meta = m
-	o.Size = units.BytesSize(float64(m.Size))
-	if m.LastSuccess > 0 {
-		t := time.Unix(m.LastSuccess, 0)
-		o.LastSuccess = &t
-	}
-	if m.UpdatedAt > 0 {
-		t := time.Unix(m.UpdatedAt, 0)
-		o.UpdatedAt = &t
-	}
-	if m.PrevRun > 0 {
-		t := time.Unix(m.PrevRun, 0)
-		o.PrevRun = &t
-	}
-	if m.NextRun > 0 {
-		t := time.Unix(m.NextRun, 0)
-		o.NextRun = &t
-	}
-	return o
-}
 
 type lsOptions struct {
 	name string
@@ -57,7 +26,7 @@ func (o *lsOptions) Run(f factory.Factory) error {
 	req := f.RESTClient().R().SetError(&errMsg)
 	encoder := f.JSONEncoder(os.Stdout)
 	if len(o.name) > 0 {
-		var result api.Meta
+		var result api.GetRepoMetaResponse
 		resp, err := req.
 			SetResult(&result).
 			SetPathParam("name", o.name).
@@ -68,10 +37,10 @@ func (o *lsOptions) Run(f factory.Factory) error {
 		if resp.IsError() {
 			return fmt.Errorf("%s", errMsg.Message)
 		}
-		var out outputMeta
-		return encoder.Encode(out.From(result))
+		return encoder.Encode(result)
 	}
-	var result []api.Meta
+
+	var result api.ListRepoMetasResponse
 	resp, err := req.SetResult(&result).Get("api/v1/metas")
 	if err != nil {
 		return err
@@ -79,13 +48,27 @@ func (o *lsOptions) Run(f factory.Factory) error {
 	if resp.IsError() {
 		return fmt.Errorf("%s", errMsg.Message)
 	}
-	outs := make([]outputMeta, 0, len(result))
+	tw := tabwriter.New(os.Stdout)
+	tw.SetHeader([]string{"name", "upstream", "syncing", "size", "last-success", "next-run"})
 	for _, r := range result {
-		var out outputMeta
-		out.From(r)
-		outs = append(outs, out)
+		lastSuccess := ""
+		nextRun := ""
+		if r.LastSuccess > 0 {
+			lastSuccess = time.Unix(r.LastSuccess, 0).Format(time.RFC3339)
+		}
+		if r.NextRun > 0 {
+			nextRun = time.Unix(r.NextRun, 0).Format(time.RFC3339)
+		}
+		tw.Append(
+			r.Name,
+			r.Upstream,
+			r.Syncing,
+			units.BytesSize(float64(r.Size)),
+			lastSuccess,
+			nextRun,
+		)
 	}
-	return encoder.Encode(outs)
+	return tw.Render()
 }
 
 func NewCmdMetaLs(f factory.Factory) *cobra.Command {

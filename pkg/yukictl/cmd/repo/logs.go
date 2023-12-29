@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -21,27 +22,31 @@ type logsOptions struct {
 func (o *logsOptions) Run(cmd *cobra.Command, f factory.Factory) error {
 	flags := cmd.Flags()
 
-	var errMsg echo.HTTPError
-	req := f.RESTClient().R().SetError(&errMsg)
-
+	req := f.RESTClient().R()
 	if flags.Changed("nth") {
-		req.SetQueryParam("n", strconv.FormatUint(uint64(o.nth), 10))
+		req.SetQueryParam("n", strconv.Itoa(int(o.nth)))
 	}
 	if flags.Changed("tail") {
-		req.SetQueryParam("tail", strconv.FormatUint(uint64(o.tail), 10))
+		req.SetQueryParam("tail", strconv.Itoa(int(o.tail)))
 	}
 
-	resp, err := req.SetDoNotParseResponse(true).
+	resp, err := req.
+		SetDoNotParseResponse(true).
 		SetPathParam("name", o.name).
 		Get("api/v1/repos/{name}/logs")
 	if err != nil {
 		return err
 	}
-	if resp.IsError() {
-		return fmt.Errorf("%s", errMsg.Message)
-	}
 	body := resp.RawBody()
 	defer body.Close()
+	if resp.IsError() {
+		var errMsg echo.HTTPError
+		err = json.NewDecoder(body).Decode(&errMsg)
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("%s", errMsg.Message)
+	}
 	_, err = io.Copy(os.Stdout, body)
 	return err
 }

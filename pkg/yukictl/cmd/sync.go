@@ -22,7 +22,7 @@ func (o *syncOptions) Run(f factory.Factory) error {
 		SetError(&errMsg).
 		SetQueryParam("debug", strconv.FormatBool(o.debug)).
 		SetPathParam("name", o.name).
-		Post("api/v1/repo/{name}/sync")
+		Post("api/v1/repos/{name}/sync")
 	if err != nil {
 		return err
 	}

@@ -59,7 +59,7 @@ storageDir: "/tmp"
 	require.NoError(t, err)
 	require.True(t, resp.IsSuccess(), "Unexpected response: %s", resp.Body())
 
-	var meta api.GetMetaResponse
+	var meta api.GetRepoMetaResponse
 	for {
 		resp, err = restCli.R().SetResult(&meta).Get("http://127.0.0.1:9999/api/v1/metas/foo")
 		require.NoError(t, err)

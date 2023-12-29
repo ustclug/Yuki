@@ -43,14 +43,14 @@ func getRequiredParamFromEchoContext(c echo.Context, name string) (string, error
 	return val, nil
 }
 
-func (s *Server) convertModelRepoMetaToGetMetaResponse(in model.RepoMeta, jobs map[string]cron.Entry) api.GetMetaResponse {
+func (s *Server) convertModelRepoMetaToGetMetaResponse(in model.RepoMeta, jobs map[string]cron.Entry) api.GetRepoMetaResponse {
 	_, syncing := s.syncingContainers.Load(in.Name)
 	var nextRun int64
 	job, ok := jobs[in.Name]
 	if ok {
 		nextRun = job.Next.Unix()
 	}
-	return api.GetMetaResponse{
+	return api.GetRepoMetaResponse{
 		Name:        in.Name,
 		Upstream:    in.Upstream,
 		Syncing:     syncing,

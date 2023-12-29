@@ -50,7 +50,8 @@ type Config struct {
 	GetSizer              fs.GetSizer
 }
 
-func loadConfig(v *viper.Viper, configPath string) (*Config, error) {
+func loadConfig(configPath string) (*Config, error) {
+	v := viper.New()
 	v.SetConfigFile(configPath)
 	if err := v.ReadInConfig(); err != nil {
 		return nil, err

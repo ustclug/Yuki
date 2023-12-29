@@ -117,12 +117,12 @@ func (s *Server) loadRepo(c echo.Context, logger *slog.Logger, dirs []string, fi
 		}
 		err = yaml.Unmarshal(data, &repo)
 		if err != nil {
-			return nil, newHTTPError(http.StatusBadRequest, err.Error())
+			return nil, newHTTPError(http.StatusBadRequest, fmt.Sprintf("Fail to parse config: %q: %v", file, err))
 		}
 	}
 
 	if err := s.e.Validator.Validate(&repo); err != nil {
-		return nil, err
+		return nil, newHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid config: %q: %v", file, err))
 	}
 
 	logDir := filepath.Join(s.config.LogDir, repo.Name)
@@ -260,7 +260,7 @@ func (s *Server) handlerGetRepoLogs(c echo.Context) error {
 	var req api.GetRepoLogsRequest
 	err = bindAndValidate(c, &req)
 	if err != nil {
-		return err
+		return newHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	logDir := filepath.Join(s.config.LogDir, repo)

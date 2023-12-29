@@ -9,7 +9,8 @@ import (
 
 func main() {
 	rootCmd := &cobra.Command{
-		Use: "yukictl",
+		Use:          "yukictl",
+		SilenceUsage: true,
 	}
 	f := factory.New(rootCmd.PersistentFlags())
 	yukictl.Register(rootCmd, f)
