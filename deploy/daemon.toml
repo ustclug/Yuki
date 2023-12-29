@@ -1,6 +1,7 @@
 #debug = true
 
-db_url = "test"
+# Path to sqlite3 db
+db_url = "/tmp/yukid.db"
 
 #db_name = "mirror"
 
