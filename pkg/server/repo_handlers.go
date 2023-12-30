@@ -1,10 +1,8 @@
 package server
 
 import (
-	"compress/gzip"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -19,7 +17,6 @@ import (
 	"github.com/ustclug/Yuki/pkg/api"
 	"github.com/ustclug/Yuki/pkg/model"
 	"github.com/ustclug/Yuki/pkg/set"
-	"github.com/ustclug/Yuki/pkg/tail"
 )
 
 func (s *Server) handlerListRepos(c echo.Context) error {
@@ -228,96 +225,6 @@ func (s *Server) handlerReloadRepo(c echo.Context) error {
 		return err
 	}
 	return c.NoContent(http.StatusNoContent)
-}
-
-func decompressGzip(content io.Reader) (fp string, err error) {
-	gr, err := gzip.NewReader(content)
-	if err != nil {
-		return "", fmt.Errorf("read gzip: %w", err)
-	}
-	defer gr.Close()
-	tmpfile, err := os.CreateTemp("", ".repo_log")
-	if err != nil {
-		return "", fmt.Errorf("create temp: %w", err)
-	}
-	defer tmpfile.Close()
-	_, err = io.Copy(tmpfile, gr)
-	if err != nil {
-		return "", fmt.Errorf("copy: %w", err)
-	}
-	return tmpfile.Name(), nil
-}
-
-func (s *Server) handlerGetRepoLogs(c echo.Context) error {
-	l := getLogger(c)
-	l.Debug("Invoked")
-
-	repo, err := getRequiredParamFromEchoContext(c, "name")
-	if err != nil {
-		return err
-	}
-
-	var req api.GetRepoLogsRequest
-	err = bindAndValidate(c, &req)
-	if err != nil {
-		return newHTTPError(http.StatusBadRequest, err.Error())
-	}
-
-	logDir := filepath.Join(s.config.LogDir, repo)
-	_ = os.MkdirAll(logDir, 0o755)
-
-	files, err := os.ReadDir(logDir)
-	if err != nil {
-		const msg = "Fail to list log files"
-		l.Error(msg, slogErrAttr(err))
-		return newHTTPError(http.StatusInternalServerError, msg)
-	}
-
-	wantedName := fmt.Sprintf("result.log.%d", req.N)
-	fileName := ""
-	for _, f := range files {
-		realName := f.Name()
-		if realName == wantedName || (realName == wantedName+".gz") {
-			// result.log.0
-			// result.log.1.gz
-			// result.log.2.gz
-			// result.log.10.gz
-			fileName = realName
-			break
-		}
-	}
-	if len(fileName) == 0 {
-		return newHTTPError(http.StatusNotFound, fmt.Sprintf("No such file: %q", wantedName))
-	}
-
-	content, err := os.Open(filepath.Join(logDir, fileName))
-	if err != nil {
-		const msg = "Fail to open log file"
-		l.Error(msg, slogErrAttr(err))
-		return newHTTPError(http.StatusInternalServerError, msg)
-	}
-	defer content.Close()
-
-	var t *tail.Tail
-
-	switch filepath.Ext(fileName) {
-	case ".gz":
-		fp, err := decompressGzip(content)
-		if err != nil {
-			return err
-		}
-		tmpfile, err := os.Open(fp)
-		if err != nil {
-			return err
-		}
-		defer tmpfile.Close()
-		t = tail.New(tmpfile, req.Tail)
-	default:
-		t = tail.New(content, req.Tail)
-	}
-
-	_, err = t.WriteTo(c.Response())
-	return err
 }
 
 func (s *Server) handlerSyncRepo(c echo.Context) error {

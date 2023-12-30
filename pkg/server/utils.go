@@ -67,14 +67,6 @@ func slogErrAttr(err error) slog.Attr {
 	return slog.Any("err", err)
 }
 
-func bindAndValidate[T any](c echo.Context, input *T) error {
-	err := c.Bind(input)
-	if err != nil {
-		return err
-	}
-	return c.Validate(input)
-}
-
 func newHTTPError(code int, msg string) error {
 	return &echo.HTTPError{
 		Code:    code,
