@@ -13,8 +13,7 @@ import (
 )
 
 type AppConfig struct {
-	Debug bool `mapstructure:"debug,omitempty" validate:"-"`
-	// DbURL contains username and password
+	Debug          bool   `mapstructure:"debug,omitempty" validate:"-"`
 	DbURL          string `mapstructure:"db_url,omitempty" validate:"required"`
 	FileSystem     string `mapstructure:"fs,omitempty" validate:"omitempty,oneof=xfs zfs default"`
 	DockerEndpoint string `mapstructure:"docker_endpoint,omitempty" validate:"omitempty,unix_addr|tcp_addr"`

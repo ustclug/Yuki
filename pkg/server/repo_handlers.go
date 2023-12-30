@@ -49,7 +49,7 @@ func (s *Server) handlerGetRepo(c echo.Context) error {
 	l := getLogger(c)
 	l.Debug("Invoked")
 
-	name, err := getRequiredParamFromEchoContext(c, "name")
+	name, err := getRepoNameFromRoute(c)
 	if err != nil {
 		return err
 	}
@@ -77,7 +77,7 @@ func (s *Server) handlerRemoveRepo(c echo.Context) error {
 	l := getLogger(c)
 	l.Debug("Invoked")
 
-	name, err := getRequiredParamFromEchoContext(c, "name")
+	name, err := getRepoNameFromRoute(c)
 	if err != nil {
 		return err
 	}
@@ -216,7 +216,7 @@ func (s *Server) handlerReloadRepo(c echo.Context) error {
 	l := getLogger(c)
 	l.Debug("Invoked")
 
-	name, err := getRequiredParamFromEchoContext(c, "name")
+	name, err := getRepoNameFromRoute(c)
 	if err != nil {
 		return err
 	}
@@ -231,7 +231,7 @@ func (s *Server) handlerSyncRepo(c echo.Context) error {
 	l := getLogger(c)
 	l.Debug("Invoked")
 
-	name, err := getRequiredParamFromEchoContext(c, "name")
+	name, err := getRepoNameFromRoute(c)
 	if err != nil {
 		return err
 	}

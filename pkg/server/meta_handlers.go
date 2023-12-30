@@ -35,7 +35,7 @@ func (s *Server) handlerGetRepoMeta(c echo.Context) error {
 	l := getLogger(c)
 	l.Debug("Invoked")
 
-	name, err := getRequiredParamFromEchoContext(c, "name")
+	name, err := getRepoNameFromRoute(c)
 	if err != nil {
 		return err
 	}

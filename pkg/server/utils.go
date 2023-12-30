@@ -34,11 +34,10 @@ func (s *Server) getDB(c echo.Context) *gorm.DB {
 	return s.db.WithContext(c.Request().Context())
 }
 
-//nolint:unparam
-func getRequiredParamFromEchoContext(c echo.Context, name string) (string, error) {
-	val := c.Param(name)
+func getRepoNameFromRoute(c echo.Context) (string, error) {
+	val := c.Param("name")
 	if len(val) == 0 {
-		return "", newHTTPError(http.StatusBadRequest, "Missing required parameter: "+name)
+		return "", newHTTPError(http.StatusBadRequest, "Missing required repo name")
 	}
 	return val, nil
 }
