@@ -406,29 +406,12 @@ func (s *Server) syncRepo(ctx context.Context, name string, debug bool) error {
 		envs = append(envs, k+"="+v)
 	}
 
-	mounts := []mount.Mount{
-		{
-			// TODO: make it configurable?
-			Type:   mount.TypeTmpfs,
-			Target: "/tmp",
-		},
-		{
-			Type:   mount.TypeBind,
-			Source: repo.StorageDir,
-			Target: "/data",
-		},
-		{
-			Type:   mount.TypeBind,
-			Source: filepath.Join(s.config.LogDir, name),
-			Target: "/log",
-		},
+	binds := []string{
+		repo.StorageDir + ":/data",
+		filepath.Join(s.config.LogDir, name) + ":/log",
 	}
 	for k, v := range repo.Volumes {
-		mounts = append(mounts, mount.Mount{
-			Type:   mount.TypeBind,
-			Source: k,
-			Target: v,
-		})
+		binds = append(binds, k+":"+v)
 	}
 
 	containerConfig := &container.Config{
@@ -442,7 +425,16 @@ func (s *Server) syncRepo(ctx context.Context, name string, debug bool) error {
 	}
 	hostConfig := &container.HostConfig{
 		SecurityOpt: securityOpt,
-		Mounts:      mounts,
+		// NOTE: difference between "-v" and "--mount":
+		// https://docs.docker.com/storage/bind-mounts/#choose-the--v-or---mount-flag
+		Mounts: []mount.Mount{
+			{
+				// TODO: make it configurable?
+				Type:   mount.TypeTmpfs,
+				Target: "/tmp",
+			},
+		},
+		Binds: binds,
 	}
 	networkingConfig := &network.NetworkingConfig{
 		EndpointsConfig: make(map[string]*network.EndpointSettings, 1),
