@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 
@@ -68,7 +67,7 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
-	if err := os.MkdirAll(cfg.LogDir, os.ModePerm); err != nil {
+	if err := os.MkdirAll(cfg.RepoLogsDir, os.ModePerm); err != nil {
 		return nil, err
 	}
 	for _, dir := range cfg.RepoConfigDir {
@@ -84,7 +83,7 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 
 	// workaround a systemd bug.
 	// See also https://github.com/ustclug/Yuki/issues/4
-	logfile, err := os.OpenFile(filepath.Join(cfg.LogDir, "yukid.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	logfile, err := os.OpenFile(cfg.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +142,7 @@ func (s *Server) Start(rootCtx context.Context) error {
 		return fmt.Errorf("init db: %w", err)
 	}
 
-	err = s.cron.AddFunc(s.config.ImagesUpgradeInterval, s.upgradeImages)
+	err = s.cron.AddFunc(s.config.ImagesUpgradeCron, s.upgradeImages)
 	if err != nil {
 		return fmt.Errorf("add cronjob to upgrade images: %w", err)
 	}

@@ -51,7 +51,7 @@ func TestHandlerGetRepoLogs(t *testing.T) {
 	_ = os.MkdirAll(repoLogDir, 0o755)
 
 	te.server.config = &Config{
-		LogDir: logDir,
+		RepoLogsDir: logDir,
 	}
 	log0Name := filepath.Join(repoLogDir, "result.log.0")
 	require.NoError(t, os.WriteFile(log0Name, []byte("log0"), 0o644))

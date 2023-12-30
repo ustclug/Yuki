@@ -4,7 +4,8 @@ type StringMap map[string]string
 
 // Repo represents a Repository.
 type Repo struct {
-	Name        string    `gorm:"primaryKey" json:"name" validate:"required"`
+	Name string `gorm:"primaryKey" json:"name" validate:"required"`
+	// TODO: rename to Cron?
 	Interval    string    `json:"interval" validate:"required,cron"`
 	Image       string    `json:"image" validate:"required,containsrune=:"`
 	StorageDir  string    `json:"storageDir" validate:"required,dir"`

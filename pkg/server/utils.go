@@ -408,7 +408,7 @@ func (s *Server) syncRepo(ctx context.Context, name string, debug bool) error {
 
 	binds := []string{
 		repo.StorageDir + ":/data",
-		filepath.Join(s.config.LogDir, name) + ":/log",
+		filepath.Join(s.config.RepoLogsDir, name) + ":/log",
 	}
 	for k, v := range repo.Volumes {
 		binds = append(binds, k+":"+v)
