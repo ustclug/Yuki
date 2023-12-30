@@ -21,13 +21,8 @@ yukid 的配置，路径 `/etc/yuki/daemon.toml`
 ## 以及在日志里输出程序里打印日志的位置
 #debug = true
 
-## 设置 MongoDB 地址
-## 完整格式为
-## [mongodb://][user:pass@]host1[:port1][,host2[:port2],...][/database][?options]
-#db_url = "127.0.0.1:27017"
-
-## 设置 db 名字
-#db_name = "mirror"
+## 设置 Sqlite3 数据库文件的路径
+#db_url = "/path/to/yukid.db"
 
 ## 数据所在位置的文件系统
 ## 可选的值为 "zfs" | "xfs" | "default"

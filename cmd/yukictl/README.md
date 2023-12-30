@@ -8,7 +8,6 @@
   - [获取同步状态](#获取同步状态)
   - [手动开始同步任务](#手动开始同步任务)
   - [更新仓库同步配置](#更新仓库同步配置)
-  - [获取同步日志](#获取同步日志)
 
 ### Introduction
 
@@ -58,14 +57,3 @@ $ yukictl reload
 
 若需要删除仓库，则可以删除相应的配置文件然后执行 `yukictl repo rm <repo>` 或直接 `yukictl reload` 来从数据库里删除配置。
 
-#### 获取同步日志
-
-列出以往的同步日志:
-```bash
-$ yukictl repo logs --stats <repo name>
-```
-
-查看以往倒数第二次同步日志的倒数 10 行:
-```bash
-$ yukictl repo logs -n 1 --tail 10 <repo name>
-```
