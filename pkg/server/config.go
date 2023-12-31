@@ -13,25 +13,22 @@ import (
 )
 
 type AppConfig struct {
-	Debug          bool   `mapstructure:"debug,omitempty" validate:"-"`
-	DbURL          string `mapstructure:"db_url,omitempty" validate:"required"`
-	FileSystem     string `mapstructure:"fs,omitempty" validate:"omitempty,oneof=xfs zfs default"`
-	DockerEndpoint string `mapstructure:"docker_endpoint,omitempty" validate:"omitempty,unix_addr|tcp_addr"`
-
-	Owner   string `mapstructure:"owner,omitempty" validate:"-"`
-	LogFile string `mapstructure:"log_file,omitempty" validate:"filepath"`
-	// TODO: rename to RepoLogsDir?
-	LogDir        string   `mapstructure:"log_dir,omitempty" validate:"-"`
-	RepoConfigDir []string `mapstructure:"repo_config_dir,omitempty" validate:"required"`
-	LogLevel      string   `mapstructure:"log_level,omitempty" validate:"omitempty,oneof=debug info warn error"`
-	ListenAddr    string   `mapstructure:"listen_addr,omitempty" validate:"omitempty,hostname_port"`
-	BindIP        string   `mapstructure:"bind_ip,omitempty" validate:"omitempty,ip"`
-	NamePrefix    string   `mapstructure:"name_prefix,omitempty" validate:"-"`
-	PostSync      []string `mapstructure:"post_sync,omitempty" validate:"-"`
-	// TODO: rename to ImagesUpgradeCron?
-	ImagesUpgradeInterval string        `mapstructure:"images_upgrade_interval,omitempty" validate:"omitempty,cron"`
-	SyncTimeout           time.Duration `mapstructure:"sync_timeout,omitempty" validate:"omitempty,gte=0"`
-	SeccompProfile        string        `mapstructure:"seccomp_profile,omitempty" validate:"-"`
+	Debug             bool          `mapstructure:"debug"`
+	DbURL             string        `mapstructure:"db_url" validate:"required"`
+	FileSystem        string        `mapstructure:"fs" validate:"oneof=xfs zfs default"`
+	DockerEndpoint    string        `mapstructure:"docker_endpoint" validate:"unix_addr|tcp_addr"`
+	Owner             string        `mapstructure:"owner"`
+	LogFile           string        `mapstructure:"log_file" validate:"filepath"`
+	RepoLogsDir       string        `mapstructure:"repo_logs_dir" validate:"dirpath"`
+	RepoConfigDir     []string      `mapstructure:"repo_config_dir" validate:"required"`
+	LogLevel          string        `mapstructure:"log_level" validate:"oneof=debug info warn error"`
+	ListenAddr        string        `mapstructure:"listen_addr" validate:"hostname_port"`
+	BindIP            string        `mapstructure:"bind_ip" validate:"omitempty,ip"`
+	NamePrefix        string        `mapstructure:"name_prefix"`
+	PostSync          []string      `mapstructure:"post_sync"`
+	ImagesUpgradeCron string        `mapstructure:"images_upgrade_cron" validate:"cron"`
+	SyncTimeout       time.Duration `mapstructure:"sync_timeout" validate:"min=0"`
+	SeccompProfile    string        `mapstructure:"seccomp_profile" validate:"omitempty,filepath"`
 }
 
 type Config struct {
@@ -59,22 +56,23 @@ func loadConfig(configPath string) (*Config, error) {
 	if err := v.ReadInConfig(); err != nil {
 		return nil, err
 	}
-	appCfg := &AppConfig{
-		Debug:                 false,
-		DockerEndpoint:        "unix:///var/run/docker.sock",
-		LogFile:               "/dev/stderr",
-		Owner:                 fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
-		LogDir:                "/var/log/yuki/",
-		ListenAddr:            "127.0.0.1:9999",
-		NamePrefix:            "syncing-",
-		LogLevel:              "info",
-		ImagesUpgradeInterval: "@every 1h",
+	appCfg := AppConfig{
+		Debug:             false,
+		FileSystem:        "default",
+		DockerEndpoint:    "unix:///var/run/docker.sock",
+		LogFile:           "/dev/stderr",
+		Owner:             fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
+		RepoLogsDir:       "/var/log/yuki/",
+		ListenAddr:        "127.0.0.1:9999",
+		NamePrefix:        "syncing-",
+		LogLevel:          "info",
+		ImagesUpgradeCron: "@every 1h",
 	}
-	if err := v.Unmarshal(appCfg); err != nil {
+	if err := v.Unmarshal(&appCfg); err != nil {
 		return nil, err
 	}
 	validate := validator.New()
-	if err := validate.Struct(appCfg); err != nil {
+	if err := validate.Struct(&appCfg); err != nil {
 		return nil, err
 	}
 	cfg := Config{
@@ -84,12 +82,12 @@ func loadConfig(configPath string) (*Config, error) {
 		Owner:             appCfg.Owner,
 		LogFile:           appCfg.LogFile,
 		RepoConfigDir:     appCfg.RepoConfigDir,
-		RepoLogsDir:       appCfg.LogDir,
+		RepoLogsDir:       appCfg.RepoLogsDir,
 		ListenAddr:        appCfg.ListenAddr,
 		BindIP:            appCfg.BindIP,
 		NamePrefix:        appCfg.NamePrefix,
 		PostSync:          appCfg.PostSync,
-		ImagesUpgradeCron: appCfg.ImagesUpgradeInterval,
+		ImagesUpgradeCron: appCfg.ImagesUpgradeCron,
 		SyncTimeout:       appCfg.SyncTimeout,
 		SeccompProfile:    appCfg.SeccompProfile,
 	}
