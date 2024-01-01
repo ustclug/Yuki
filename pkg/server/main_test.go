@@ -49,8 +49,12 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	v := validator.New()
 	e.Validator = echoValidator(v.Struct)
 
-	// Connect to a temporary sqlite database.
-	db, err := gorm.Open(sqlite.Open(""), &gorm.Config{
+	dbFile, err := os.CreateTemp("", "yukid*.db")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_ = os.Remove(dbFile.Name())
+	})
+	db, err := gorm.Open(sqlite.Open(dbFile.Name()), &gorm.Config{
 		QueryFields: true,
 	})
 	require.NoError(t, err)
