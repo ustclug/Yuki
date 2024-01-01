@@ -121,7 +121,7 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 				slog.Duration("latency", v.Latency),
 			}
 			l := getLogger(c)
-			l.LogAttrs(context.Background(), slog.LevelInfo, "REQUEST", attrs...)
+			l.LogAttrs(context.Background(), slog.LevelDebug, "REQUEST", attrs...)
 			return nil
 		},
 	}))
