@@ -123,10 +123,8 @@ func (s *Server) waitForSync(name, ctID, storageDir string) {
 	}
 	go func() {
 		envs := []string{
-			fmt.Sprintf("ID=%s", ctID),
-			fmt.Sprintf("Name=%s", name),
-			fmt.Sprintf("Dir=%s", storageDir),
-			fmt.Sprintf("ExitCode=%d", code),
+			fmt.Sprintf("NAME=%s", name),
+			fmt.Sprintf("DIR=%s", storageDir),
 		}
 		for _, cmd := range s.config.PostSync {
 			prog := exec.Command("sh", "-c", cmd)
