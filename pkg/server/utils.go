@@ -372,10 +372,6 @@ func (s *Server) syncRepo(ctx context.Context, name string, debug bool) error {
 		return fmt.Errorf("get repo %q: %w", name, errNotFound)
 	}
 
-	envMap := map[string]string{}
-	for k, v := range repo.Envs {
-		envMap[k] = v
-	}
 	if len(repo.BindIP) == 0 {
 		repo.BindIP = s.config.BindIP
 	}
@@ -388,6 +384,7 @@ func (s *Server) syncRepo(ctx context.Context, name string, debug bool) error {
 		securityOpt = append(securityOpt, "seccomp="+s.config.SeccompProfile)
 	}
 
+	envMap := repo.Envs
 	envMap["REPO"] = repo.Name
 	envMap["OWNER"] = repo.User
 	envMap["BIND_ADDRESS"] = repo.BindIP
@@ -395,8 +392,6 @@ func (s *Server) syncRepo(ctx context.Context, name string, debug bool) error {
 	envMap["LOG_ROTATE_CYCLE"] = strconv.Itoa(repo.LogRotCycle)
 	if debug {
 		envMap["DEBUG"] = "true"
-	} else if envMap["DEBUG"] == "" {
-		envMap["DEBUG"] = "false"
 	}
 
 	envs := make([]string, 0, len(envMap))
