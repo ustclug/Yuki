@@ -79,9 +79,9 @@ repo_config_dir = ["/path/to/config-dir"]
 ## 默认值为空
 #post_sync = ["/path/to/the/program"]
 
-## 设置更新用到的 docker images 的频率，格式为 crontab
-## 默认值为 "@every 1h"
-#images_upgrade_cron = "@every 1h"
+## 设置更新用到的 docker images 的频率
+## 默认值为 "1h"
+#images_upgrade_interval = "1h"
 
 ## 同步超时时间，如果超过了这个时间，同步容器会被强制停止
 ## 支持使用 time.ParseDuration() 支持的时间格式，诸如 "10m", "1h" 等

@@ -27,30 +27,25 @@ Configure yukid:
 
 ```bash
 sudo mkdir /etc/yuki/
+sudo useradd -m mirror
+mkdir /tmp/repo-logs/ /tmp/repo-configs/
 
 cat <<EOF | sudo tee /etc/yuki/daemon.toml
-
 db_url = "/tmp/yukid.db"
-
-listen_addr = "127.0.0.1:9999"
-
 # uid:gid
-owner = "1000:1000"
-
+owner = "$(id -u mirror):$(id -g mirror)"
 repo_logs_dir = "/tmp/repo-logs/"
-
 repo_config_dir = "/tmp/repo-configs/"
-
-images_upgrade_cron = "@every 1h"
 EOF
 ```
 
 Configure systemd service:
 
 ```bash
-curl 'https://raw.githubusercontent.com/ustclug/Yuki/master/dist/yukid.service' | sudo tee /etc/systemd/system/yukid.service
+curl 'https://raw.githubusercontent.com/ustclug/Yuki/master/deploy/yukid.service' | sudo tee /etc/systemd/system/yukid.service
 systemctl enable yukid
 systemctl start yukid
+systemctl status yukid
 ```
 
 Setup repository:
@@ -63,7 +58,7 @@ mkdir /tmp/repos/docker-ce
 cat <<EOF > /tmp/repo-configs/docker-ce.yaml
 name: docker-ce
 # every 1 hour
-interval: "0 * * * *"
+cron: "0 * * * *"
 storageDir: /tmp/repos/docker-ce
 image: ustcmirror/rsync:latest
 logRotCycle: 2
