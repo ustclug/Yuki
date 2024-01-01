@@ -383,6 +383,9 @@ func (s *Server) syncRepo(ctx context.Context, name string, debug bool) error {
 	}
 
 	envMap := repo.Envs
+	if len(envMap) == 0 {
+		envMap = make(map[string]string)
+	}
 	envMap["REPO"] = repo.Name
 	envMap["OWNER"] = repo.User
 	envMap["BIND_ADDRESS"] = repo.BindIP
