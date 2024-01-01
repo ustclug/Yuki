@@ -10,13 +10,13 @@ import (
 
 func PollUntilTimeout(t *testing.T, timeout time.Duration, f func() bool) {
 	timer := time.NewTimer(timeout)
+	ticker := time.NewTicker(time.Second)
 	t.Cleanup(func() {
 		if !timer.Stop() {
 			<-timer.C
 		}
+		ticker.Stop()
 	})
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
 loop:
 	for {
 		select {
