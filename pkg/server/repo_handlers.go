@@ -143,11 +143,18 @@ func (s *Server) loadRepo(c echo.Context, logger *slog.Logger, dirs []string, fi
 		l.Error(msg, slogErrAttr(err))
 		return nil, newHTTPError(http.StatusInternalServerError, msg)
 	}
+
+	upstream := getUpstream(repo.Image, repo.Envs)
 	err = db.
-		Clauses(clause.OnConflict{DoNothing: true}).
+		Clauses(clause.OnConflict{
+			DoUpdates: clause.Assignments(map[string]any{
+				"upstream": upstream,
+			}),
+		}).
 		Create(&model.RepoMeta{
-			Name: repo.Name,
-			Size: s.getSize(repo.StorageDir),
+			Name:     repo.Name,
+			Upstream: upstream,
+			Size:     s.getSize(repo.StorageDir),
 		}).Error
 	if err != nil {
 		const msg = "Fail to create RepoMeta"

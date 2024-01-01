@@ -38,19 +38,20 @@ func TestHandlerListRepos(t *testing.T) {
 
 func TestHandlerReloadAllRepos(t *testing.T) {
 	te := NewTestEnv(t)
-	configDir, err := os.MkdirTemp("", t.Name())
+	stateDir, err := os.MkdirTemp("", t.Name())
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		_ = os.RemoveAll(configDir)
+		_ = os.RemoveAll(stateDir)
 	})
 	te.server.config = &Config{
-		RepoConfigDir: []string{"/no/such/dir", configDir},
+		RepoLogsDir:   filepath.Join(stateDir, "logs"),
+		RepoConfigDir: []string{"/no/such/dir", stateDir},
 	}
 
 	for i := 0; i < 2; i++ {
 		writeFile(
 			t,
-			filepath.Join(configDir, fmt.Sprintf("repo%d.yaml", i)),
+			filepath.Join(stateDir, fmt.Sprintf("repo%d.yaml", i)),
 			fmt.Sprintf(`
 name: repo%d
 interval: "* * * * *"
