@@ -1,7 +1,7 @@
 README
 =======
 
-[![Build Status](https://github.com/ustclug/Yuki/workflows/build/badge.svg)](https://github.com/ustclug/Yuki/actions)
+[![Build Status](https://github.com/ustclug/Yuki/workflows/pr-presubmit-checks/badge.svg)](https://github.com/ustclug/Yuki/actions)
 [![Go Report](https://goreportcard.com/badge/github.com/ustclug/Yuki)](https://goreportcard.com/report/github.com/ustclug/Yuki)
 
 - [Requirements](#requirements)
@@ -13,41 +13,77 @@ Sync local repositories with remote.
 ## Requirements
 
 * Docker
-* MongoDB
+* SQLite
 
 ## Quickstart
 
-Download the binary from the [Release](https://github.com/ustclug/Yuki/releases) page, for example:
+Download the binaries from the [Release](https://github.com/ustclug/Yuki/releases) page, for example:
 
-```
-$ wget https://github.com/ustclug/Yuki/releases/download/v0.2.2/yuki-v0.2.2-linux-amd64.tar.gz
+```bash
+wget https://github.com/ustclug/Yuki/releases/download/v0.2.2/yuki-v0.2.2-linux-amd64.tar.gz
 ```
 
 Configure yukid:
 
-```
-# mkdir /etc/yuki/
-# chown mirror:mirror /etc/yuki
-$ curl 'https://raw.githubusercontent.com/ustclug/Yuki/master/dist/daemon.toml' > /etc/yuki/daemon.toml
-$ vim /etc/yuki/daemon.toml
+```bash
+sudo mkdir /etc/yuki/
+
+cat <<EOF | sudo tee /etc/yuki/daemon.toml
+
+db_url = "/tmp/yukid.db"
+
+listen_addr = "127.0.0.1:9999"
+
+# uid:gid
+owner = "1000:1000"
+
+repo_logs_dir = "/tmp/repo-logs/"
+
+repo_config_dir = "/tmp/repo-configs/"
+
+images_upgrade_cron = "@every 1h"
+EOF
 ```
 
-Run MongoDB:
+Configure systemd service:
 
-```
-$ docker run -p 127.0.0.1:27017:27017 -tid --name mongo mongo:3.6
-```
-
-Create systemd service:
-```
-# curl 'https://raw.githubusercontent.com/ustclug/Yuki/master/dist/yukid.service' > /etc/systemd/system/yukid.service
+```bash
+curl 'https://raw.githubusercontent.com/ustclug/Yuki/master/dist/yukid.service' | sudo tee /etc/systemd/system/yukid.service
+systemctl enable yukid
+systemctl start yukid
 ```
 
-Start yukid:
+Setup repository:
+
+```bash
+# The repository directory must be created in advance
+mkdir /tmp/repos/docker-ce
+
+# Sync docker-ce repository from mirrors.bfsu.edu.cn
+cat <<EOF > /tmp/repo-configs/docker-ce.yaml
+name: docker-ce
+# every 1 hour
+interval: "0 * * * *"
+storageDir: /tmp/repos/docker-ce
+image: ustcmirror/rsync:latest
+logRotCycle: 2
+envs:
+  RSYNC_HOST: mirrors.bfsu.edu.cn
+  RSYNC_PATH: docker-ce/
+  RSYNC_EXCLUDE: --exclude=.~tmp~/
+  RSYNC_EXTRA: --size-only
+  RSYNC_MAXDELETE: "50000"
+EOF
+
+yukictl reload
+# Verify
+yukictl repo ls
+
+# Trigger synchronization immediately
+yukictl sync openresty
 ```
-# systemctl enable yukid
-# systemctl start yukid
-```
+
+For more details of the configuration file, please refer to the [yukid handbook](./cmd/yukid/README.md).
 
 ## Handbook
 

@@ -22,62 +22,77 @@ yukid 的配置，路径 `/etc/yuki/daemon.toml`
 #debug = true
 
 ## 设置 sqlite 数据库文件的路径
-## 例如
-## file:data.db
+## 格式可以是文件路径或者是 url（如果需要设置特定参数的话）。例如：
+## /var/run/yukid/data.db
 ## file:///home/fred/data.db?mode=ro&cache=private
 ## 参考 https://www.sqlite.org/c3ref/open.html
 db_url = "/path/to/yukid.db"
-
-## 数据所在位置的文件系统
-## 可选的值为 "zfs" | "xfs" | "default"
-## 影响获取仓库大小的方式，如果是 "default" 的话仓库大小恒为 `-1`
-fs = "default"
 
 ## 每个仓库的同步配置存放的文件夹
 ## 每个配置的后缀名必须是 `.yaml`
 ## 配置的格式参考下方 Repo Configuration
 repo_config_dir = ["/path/to/config-dir"]
 
+## 设置同步日志存放的文件夹
+## 默认值是 /var/log/yuki/
+#repo_logs_dir = "/var/log/yuki/"
+
+## 数据所在位置的文件系统
+## 可选的值为 "zfs" | "xfs" | "default"
+## 影响获取仓库大小的方式，如果是 "default" 的话仓库大小恒为 `-1`
+## 默认值是 "default"
+#fs = "default"
+
 ## 设置 Docker Daemon 地址
 ## unix local socket: unix:///var/run/docker.sock
 ## tcp: tcp://127.0.0.1:2375
+## 默认值是 "unix:///var/run/docker.sock"
 #docker_endpoint = "unix:///var/run/docker.sock"
 
 ## 设置同步程序的运行时的 uid 跟 gid，会影响仓库文件的 uid 跟 gid
 ## 格式为 uid:gid
+## 默认值是 yukid 进程的 uid 跟 gid
 #owner = "1000:1000"
 
-## 设置同步日志存放的文件夹
-#repo_logs_dir = "/var/log/yuki/"
+## 设置 yukid 的日志文件
+## 默认值是 "/dev/stderr"
+#log_file = "/path/to/yukid.log"
 
 ## 设置 log level
 ## 可选的值为 "debug" | "info" | "warn" | "error"
+## 默认值是 "info"
 #log_level = "info"
 
 ## 设置监听地址
+## 默认值是 "127.0.0.1:9999"
 #listen_addr = "127.0.0.1:9999"
 
 ## 设置同步仓库的时候默认绑定的 IP
+## 默认值为空，即不绑定
 #bind_ip = "1.2.3.4"
 
 ## 设置创建的 container 的名字前缀
+## 默认值是 "syncing-"
 #name_prefix = "syncing-"
 
 ## 设置同步完后执行的命令
+## 默认值为空
 #post_sync = ["/path/to/the/program"]
 
-## 设置更新用到的 docker images 的频率
-## 格式为 crontab
+## 设置更新用到的 docker images 的频率，格式为 crontab
+## 默认值为 "@every 1h"
 #images_upgrade_cron = "@every 1h"
 
 ## 同步超时时间，如果超过了这个时间，同步容器会被强制停止
 ## 支持使用 time.ParseDuration() 支持的时间格式，诸如 "10m", "1h" 等
 ## 如果为 0 的话则不会超时。注意修改的配置仅对新启动的同步容器生效
+## 默认值为 0
 #sync_timeout = "48h"
 
 ## 修改同步时的 seccomp profile，用于特殊用途的容器
 ## 例如，使用 seccomp user notify 的程序需要放行一些相关的系统调用
 ## 留空时使用 docker daemon 默认的 seccomp 配置
+## 默认值为空
 #seccomp_profile = "/path/to/seccomp/profile.json"
 ```
 
@@ -95,7 +110,7 @@ image: ustcmirror/rsync:latest # required
 interval: 2 2 31 4 * # required
 storageDir: /srv/repo/bioc # required
 logRotCycle: 1 # 保留多少次同步日志
-bindIP: 1.2.3.4 # 可选
+bindIP: 1.2.3.4 # 同步的时候绑定的 IP，可选，默认为空
 network: host # 容器所属的 docker network，可选，默认为 host
 retry: 2 # 同步失败后的重试次数
 envs: # 传给同步程序的环境变量
@@ -111,7 +126,7 @@ volumes: # 同步的时候需要挂载的 volume
 
 当存在多个目录时，配置将被字段级合并，同名字段 last win。举例：
 
-daemon.yaml
+daemon.toml
 
 ```yaml
 repo_config_dir = ["common/", "override/"]
