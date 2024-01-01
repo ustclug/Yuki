@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/cobra"
@@ -18,9 +17,11 @@ type syncOptions struct {
 func (o *syncOptions) Run(f factory.Factory) error {
 	req := f.RESTClient().R()
 	var errMsg echo.HTTPError
+	if o.debug {
+		req.SetQueryParam("debug", "true")
+	}
 	resp, err := req.
 		SetError(&errMsg).
-		SetQueryParam("debug", strconv.FormatBool(o.debug)).
 		SetPathParam("name", o.name).
 		Post("api/v1/repos/{name}/sync")
 	if err != nil {
