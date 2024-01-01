@@ -25,7 +25,7 @@ func (s *Server) handlerListRepos(c echo.Context) error {
 
 	var repos []model.Repo
 	err := s.getDB(c).
-		Select("name", "interval", "image", "storage_dir").
+		Select("name", "cron", "image", "storage_dir").
 		Find(&repos).Error
 	if err != nil {
 		const msg = "Fail to list Repos"
@@ -37,7 +37,7 @@ func (s *Server) handlerListRepos(c echo.Context) error {
 	for i, repo := range repos {
 		resp[i] = api.ListReposResponseItem{
 			Name:       repo.Name,
-			Interval:   repo.Interval,
+			Cron:       repo.Cron,
 			Image:      repo.Image,
 			StorageDir: repo.StorageDir,
 		}
@@ -137,7 +137,7 @@ func (s *Server) loadRepo(c echo.Context, logger *slog.Logger, dirs []string, fi
 		l.Error(msg, slogErrAttr(err))
 		return nil, newHTTPError(http.StatusInternalServerError, msg)
 	}
-	err = s.cron.AddJob(repo.Name, repo.Interval, s.newJob(repo.Name))
+	err = s.cron.AddJob(repo.Name, repo.Cron, s.newJob(repo.Name))
 	if err != nil {
 		const msg = "Fail to add cronjob"
 		l.Error(msg, slogErrAttr(err))

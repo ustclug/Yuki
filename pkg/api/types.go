@@ -16,14 +16,9 @@ type GetRepoMetaResponse struct {
 
 type ListReposResponseItem struct {
 	Name       string `json:"name"`
-	Interval   string `json:"interval"`
+	Cron       string `json:"cron"`
 	Image      string `json:"image"`
 	StorageDir string `json:"storageDir"`
 }
 
 type ListReposResponse = []ListReposResponseItem
-
-type GetRepoLogsRequest struct {
-	N    int `query:"n" validate:"min=0"`
-	Tail int `query:"tail" validate:"min=0"`
-}

@@ -45,7 +45,7 @@ repo_config_dir = "%s/config/"
 
 	testutils.WriteFile(t, filepath.Join(tmpdir, "config/foo.yaml"), `
 name: "foo"
-interval: "@every 1h"
+cron: "@every 1h"
 image: "ustcmirror/test:latest"
 storageDir: "/tmp"
 `)

@@ -322,12 +322,12 @@ func (s *Server) newJob(name string) cron.FuncJob {
 
 func (s *Server) scheduleRepos() error {
 	var repos []model.Repo
-	err := s.db.Select("name", "interval").Find(&repos).Error
+	err := s.db.Select("name", "cron").Find(&repos).Error
 	if err != nil {
 		return fmt.Errorf("list repos: %w", err)
 	}
 	for _, r := range repos {
-		err = s.cron.AddJob(r.Name, r.Interval, s.newJob(r.Name))
+		err = s.cron.AddJob(r.Name, r.Cron, s.newJob(r.Name))
 		if err != nil {
 			return fmt.Errorf("add job for repo %q: %w", r.Name, err)
 		}

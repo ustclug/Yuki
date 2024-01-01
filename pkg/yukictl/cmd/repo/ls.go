@@ -47,12 +47,12 @@ func (o *repoLsOptions) Run(f factory.Factory) error {
 	printer := tabwriter.New(os.Stdout)
 	printer.SetHeader([]string{
 		"name",
-		"interval",
+		"cron",
 		"image",
 		"storage-dir",
 	})
 	for _, r := range result {
-		printer.Append(r.Name, r.Interval, r.Image, r.StorageDir)
+		printer.Append(r.Name, r.Cron, r.Image, r.StorageDir)
 	}
 	return printer.Render()
 }

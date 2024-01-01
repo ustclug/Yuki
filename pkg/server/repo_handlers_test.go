@@ -55,7 +55,7 @@ func TestHandlerReloadAllRepos(t *testing.T) {
 			filepath.Join(stateDir, fmt.Sprintf("repo%d.yaml", i)),
 			fmt.Sprintf(`
 name: repo%d
-interval: "* * * * *"
+cron: "* * * * *"
 image: "alpine:latest"
 storageDir: /tmp
 `, i),
@@ -77,7 +77,7 @@ func TestHandlerSyncRepo(t *testing.T) {
 	name := te.RandomString()
 	require.NoError(t, te.server.db.Create(&model.Repo{
 		Name:       name,
-		Interval:   "@every 1h",
+		Cron:       "@every 1h",
 		Image:      "alpine:latest",
 		StorageDir: "/data",
 		Envs: model.StringMap{
