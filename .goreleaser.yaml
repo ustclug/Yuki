@@ -17,7 +17,7 @@ builds:
     flags:
       - -trimpath
     ldflags:
-      - -s -w
+      - -s -w -X github.com/ustclug/Yuki/pkg/info.Version={{.Version}} -X github.com/ustclug/Yuki/pkg/info.BuildDate={{.Date}}
   -
     id: yukid
     binary: yukid
@@ -31,6 +31,8 @@ builds:
       - amd64
     flags:
       - -trimpath
+    ldflags:
+      - -s -w -X github.com/ustclug/Yuki/pkg/info.Version={{.Version}} -X github.com/ustclug/Yuki/pkg/info.BuildDate={{.Date}}
 archives:
   - format: binary
 checksum:

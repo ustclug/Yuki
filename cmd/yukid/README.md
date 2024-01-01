@@ -21,8 +21,12 @@ yukid 的配置，路径 `/etc/yuki/daemon.toml`
 ## 以及在日志里输出程序里打印日志的位置
 #debug = true
 
-## 设置 Sqlite3 数据库文件的路径
-#db_url = "/path/to/yukid.db"
+## 设置 sqlite 数据库文件的路径
+## 例如
+## file:data.db
+## file:///home/fred/data.db?mode=ro&cache=private
+## 参考 https://www.sqlite.org/c3ref/open.html
+db_url = "/path/to/yukid.db"
 
 ## 数据所在位置的文件系统
 ## 可选的值为 "zfs" | "xfs" | "default"
@@ -43,8 +47,8 @@ repo_config_dir = ["/path/to/config-dir"]
 ## 格式为 uid:gid
 #owner = "1000:1000"
 
-## 设置日志所在文件夹
-#log_dir = "/var/log/yuki/"
+## 设置同步日志存放的文件夹
+#repo_logs_dir = "/var/log/yuki/"
 
 ## 设置 log level
 ## 可选的值为 "debug" | "info" | "warn" | "error"
@@ -64,7 +68,7 @@ repo_config_dir = ["/path/to/config-dir"]
 
 ## 设置更新用到的 docker images 的频率
 ## 格式为 crontab
-#images_upgrade_interval = "@every 1h"
+#images_upgrade_cron = "@every 1h"
 
 ## 同步超时时间，如果超过了这个时间，同步容器会被强制停止
 ## 支持使用 time.ParseDuration() 支持的时间格式，诸如 "10m", "1h" 等
