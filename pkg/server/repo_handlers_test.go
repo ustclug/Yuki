@@ -11,6 +11,7 @@ import (
 
 	"github.com/ustclug/Yuki/pkg/api"
 	"github.com/ustclug/Yuki/pkg/model"
+	testutils "github.com/ustclug/Yuki/test/utils"
 )
 
 func TestHandlerListRepos(t *testing.T) {
@@ -49,7 +50,7 @@ func TestHandlerReloadAllRepos(t *testing.T) {
 	}
 
 	for i := 0; i < 2; i++ {
-		writeFile(
+		testutils.WriteFile(
 			t,
 			filepath.Join(stateDir, fmt.Sprintf("repo%d.yaml", i)),
 			fmt.Sprintf(`
@@ -91,7 +92,7 @@ func TestHandlerSyncRepo(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, resp.IsSuccess(), "Unexpected response: %s", resp.Body())
 
-	pollUntilTimeout(t, time.Minute, func() bool {
+	testutils.PollUntilTimeout(t, time.Minute, func() bool {
 		_, exist := te.server.syncingContainers.Load(name)
 		return !exist
 	})

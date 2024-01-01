@@ -13,6 +13,7 @@ import (
 	"github.com/ustclug/Yuki/pkg/api"
 	"github.com/ustclug/Yuki/pkg/docker"
 	"github.com/ustclug/Yuki/pkg/model"
+	testutils "github.com/ustclug/Yuki/test/utils"
 )
 
 func TestInitRepoMetas(t *testing.T) {
@@ -112,7 +113,7 @@ func TestWaitRunningContainers(t *testing.T) {
 	_, ok := te.server.syncingContainers.Load("repo0")
 	require.True(t, ok)
 
-	pollUntilTimeout(t, time.Minute, func() bool {
+	testutils.PollUntilTimeout(t, time.Minute, func() bool {
 		_, exist := te.server.syncingContainers.Load("repo0")
 		return !exist
 	})

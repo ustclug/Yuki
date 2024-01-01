@@ -6,11 +6,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-)
 
-func writeFile(t *testing.T, path, content string) {
-	require.NoError(t, os.WriteFile(path, []byte(content), 0o644))
-}
+	testutils "github.com/ustclug/Yuki/test/utils"
+)
 
 func TestLoadSyncTimeoutConfig(t *testing.T) {
 	f, err := os.CreateTemp("", "sync_timeout*.toml")
@@ -20,7 +18,7 @@ func TestLoadSyncTimeoutConfig(t *testing.T) {
 		_ = os.Remove(f.Name())
 	})
 
-	writeFile(t, f.Name(), `
+	testutils.WriteFile(t, f.Name(), `
 db_url = "test"
 
 repo_logs_dir = "/tmp/log_yuki/"
