@@ -14,18 +14,23 @@ builds:
       - linux
     goarch:
       - amd64
-    gcflags:
-      - all=-trimpath
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
   -
     id: yukid
     binary: yukid
     main: ./cmd/yukid
+    env:
+      # required by sqlite
+      - CGO_ENABLED=1
     goos:
       - linux
     goarch:
       - amd64
-    gcflags:
-      - all=-trimpath
+    flags:
+      - -trimpath
 archives:
   - format: binary
 checksum:
