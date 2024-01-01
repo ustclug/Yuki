@@ -2,7 +2,7 @@ package integration
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -11,6 +11,7 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ustclug/Yuki/pkg/fs"
 	testutils "github.com/ustclug/Yuki/test/utils"
 
 	"github.com/ustclug/Yuki/pkg/api"
@@ -23,15 +24,23 @@ func TestSyncRepo(t *testing.T) {
 	t.Cleanup(func() {
 		_ = os.RemoveAll(tmpdir)
 	})
+	logDir := filepath.Join(tmpdir, "log")
+	cfgDir := filepath.Join(tmpdir, "config")
+	os.MkdirAll(logDir, 0755)
+	os.MkdirAll(cfgDir, 0755)
+	cfg := server.Config{
+		DbURL:          filepath.Join(tmpdir, "yukid.db"),
+		DockerEndpoint: server.DefaultAppConfig.DockerEndpoint,
+		Owner:          server.DefaultAppConfig.Owner,
+		LogFile:        server.DefaultAppConfig.LogFile,
+		RepoLogsDir:    logDir,
+		RepoConfigDir:  []string{cfgDir},
+		LogLevel:       slog.LevelInfo,
+		ListenAddr:     "127.0.0.1:0",
+		GetSizer:       fs.New(fs.DEFAULT),
+	}
 
-	configPath := filepath.Join(tmpdir, "config.toml")
-	testutils.WriteFile(t, configPath, fmt.Sprintf(`
-db_url = "%s/yukid.db"
-repo_logs_dir = "%s/log/"
-repo_config_dir = "%s/config/"
-`, tmpdir, tmpdir, tmpdir))
-
-	srv, err := server.New(configPath)
+	srv, err := server.NewWithConfig(&cfg)
 	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -50,19 +59,22 @@ image: "ustcmirror/test:latest"
 storageDir: "/tmp"
 `)
 
-	time.Sleep(5 * time.Second)
-	restCli := resty.New()
-	resp, err := restCli.R().Post("http://127.0.0.1:9999/api/v1/repos/foo")
+	time.Sleep(3 * time.Second)
+	if t.Failed() {
+		return
+	}
+	restCli := resty.New().SetBaseURL("http://" + srv.ListenAddr())
+	resp, err := restCli.R().Post("/api/v1/repos/foo")
 	require.NoError(t, err)
 	require.True(t, resp.IsSuccess(), "Unexpected response: %s", resp.Body())
 
-	resp, err = restCli.R().Post("http://127.0.0.1:9999/api/v1/repos/foo/sync")
+	resp, err = restCli.R().Post("/api/v1/repos/foo/sync")
 	require.NoError(t, err)
 	require.True(t, resp.IsSuccess(), "Unexpected response: %s", resp.Body())
 
 	var meta api.GetRepoMetaResponse
 	testutils.PollUntilTimeout(t, 5*time.Minute, func() bool {
-		resp, err = restCli.R().SetResult(&meta).Get("http://127.0.0.1:9999/api/v1/metas/foo")
+		resp, err = restCli.R().SetResult(&meta).Get("/api/v1/metas/foo")
 		require.NoError(t, err)
 		require.True(t, resp.IsSuccess(), "Unexpected response: %s", resp.Body())
 		if !meta.Syncing {

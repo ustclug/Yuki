@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
@@ -66,14 +67,6 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 	})
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
-	}
-	if err := os.MkdirAll(cfg.RepoLogsDir, os.ModePerm); err != nil {
-		return nil, err
-	}
-	for _, dir := range cfg.RepoConfigDir {
-		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-			return nil, err
-		}
 	}
 
 	dockerCli, err := docker.NewClient(cfg.DockerEndpoint)
@@ -142,11 +135,6 @@ func (s *Server) Start(rootCtx context.Context) error {
 		return fmt.Errorf("init db: %w", err)
 	}
 
-	err = s.cron.AddFunc(s.config.ImagesUpgradeCron, s.upgradeImages)
-	if err != nil {
-		return fmt.Errorf("add cronjob to upgrade images: %w", err)
-	}
-
 	l.Info("Cleaning dead containers")
 	err = s.cleanDeadContainers()
 	if err != nil {
@@ -171,6 +159,21 @@ func (s *Server) Start(rootCtx context.Context) error {
 		return fmt.Errorf("init meta: %w", err)
 	}
 
+	if s.config.ImagesUpgradeInterval > 0 {
+		go func() {
+			ticker := time.NewTicker(s.config.ImagesUpgradeInterval)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					s.upgradeImages()
+				}
+			}
+		}()
+	}
+
 	go func() {
 		l.Info("Running HTTP server", slog.String("addr", s.config.ListenAddr))
 		if err := s.e.Start(s.config.ListenAddr); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -188,6 +191,12 @@ func (s *Server) Start(rootCtx context.Context) error {
 		return nil
 	}
 	return caused
+}
+
+// ListenAddr returns the actual address the server is listening on.
+// It is useful when the server is configured to listen on a random port.
+func (s *Server) ListenAddr() string {
+	return s.e.Listener.Addr().String()
 }
 
 func (s *Server) registerAPIs(e *echo.Echo) {
