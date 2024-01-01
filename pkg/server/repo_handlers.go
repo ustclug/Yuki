@@ -177,7 +177,7 @@ func (s *Server) handlerReloadAllRepos(c echo.Context) error {
 		return newHTTPError(http.StatusInternalServerError, msg)
 	}
 
-	l.Info("Reloading all repos")
+	l.Debug("Reloading all repos")
 	toDelete := set.New(repoNames...)
 	for _, dir := range s.config.RepoConfigDir {
 		infos, err := os.ReadDir(dir)
@@ -200,8 +200,8 @@ func (s *Server) handlerReloadAllRepos(c echo.Context) error {
 		}
 	}
 
-	l.Info("Deleting unnecessary repos")
 	toDeleteNames := toDelete.ToList()
+	l.Debug("Deleting unnecessary repos", slog.Any("repos", toDeleteNames))
 	err = db.Where("name IN ?", toDeleteNames).Delete(&model.Repo{}).Error
 	if err != nil {
 		const msg = "Fail to delete Repos"
