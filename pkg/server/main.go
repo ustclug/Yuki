@@ -8,18 +8,19 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/spf13/viper"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
 	"github.com/ustclug/Yuki/pkg/cron"
 	"github.com/ustclug/Yuki/pkg/docker"
+	"github.com/ustclug/Yuki/pkg/fs"
 	"github.com/ustclug/Yuki/pkg/model"
 )
 
@@ -28,7 +29,7 @@ type Server struct {
 
 	e         *echo.Echo
 	dockerCli docker.Client
-	config    *Config
+	config    Config
 	cron      *cron.Cron
 	db        *gorm.DB
 	logger    *slog.Logger
@@ -36,32 +37,24 @@ type Server struct {
 }
 
 func New(configPath string) (*Server, error) {
-	cfg, err := loadConfig(configPath)
+	v := viper.New()
+	v.SetConfigFile(configPath)
+	err := v.ReadInConfig()
 	if err != nil {
+		return nil, err
+	}
+	cfg := DefaultConfig
+	if err := v.Unmarshal(&cfg); err != nil {
+		return nil, err
+	}
+	validate := validator.New()
+	if err := validate.Struct(&cfg); err != nil {
 		return nil, err
 	}
 	return NewWithConfig(cfg)
 }
 
-func newSlogger(writer io.Writer, addSource bool, level slog.Leveler) *slog.Logger {
-	return slog.New(slog.NewTextHandler(writer, &slog.HandlerOptions{
-		AddSource: addSource,
-		Level:     level,
-		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
-			// Taken from https://gist.github.com/HalCanary/6bd335057c65f3b803088cc55b9ebd2b
-			if a.Key == slog.SourceKey {
-				source, _ := a.Value.Any().(*slog.Source)
-				if source != nil {
-					_, after, _ := strings.Cut(source.File, "Yuki")
-					source.File = after
-				}
-			}
-			return a
-		},
-	}))
-}
-
-func NewWithConfig(cfg *Config) (*Server, error) {
+func NewWithConfig(cfg Config) (*Server, error) {
 	db, err := gorm.Open(sqlite.Open(cfg.DbURL), &gorm.Config{
 		QueryFields: true,
 	})
@@ -80,7 +73,20 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	slogger := newSlogger(logfile, cfg.Debug, cfg.LogLevel)
+
+	var logLvl slog.Level
+	switch cfg.LogLevel {
+	case "debug":
+		logLvl = slog.LevelDebug
+	case "warn":
+		logLvl = slog.LevelWarn
+	case "error":
+		logLvl = slog.LevelError
+	default:
+		logLvl = slog.LevelInfo
+	}
+
+	slogger := newSlogger(logfile, cfg.Debug, logLvl)
 
 	s := Server{
 		e:         echo.New(),
@@ -89,12 +95,18 @@ func NewWithConfig(cfg *Config) (*Server, error) {
 		logger:    slogger,
 		dockerCli: dockerCli,
 		config:    cfg,
-
-		getSize: cfg.GetSizer.GetSize,
+	}
+	switch cfg.FileSystem {
+	case "zfs":
+		s.getSize = fs.New(fs.ZFS).GetSize
+	case "xfs":
+		s.getSize = fs.New(fs.XFS).GetSize
+	default:
+		s.getSize = fs.New(fs.DEFAULT).GetSize
 	}
 
-	v := validator.New()
-	s.e.Validator = echoValidator(v.Struct)
+	validate := validator.New()
+	s.e.Validator = echoValidator(validate.Struct)
 	s.e.Debug = cfg.Debug
 	s.e.HideBanner = true
 	s.e.Logger.SetOutput(io.Discard)

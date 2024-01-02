@@ -2,7 +2,6 @@ package integration
 
 import (
 	"context"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -11,7 +10,6 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ustclug/Yuki/pkg/fs"
 	testutils "github.com/ustclug/Yuki/test/utils"
 
 	"github.com/ustclug/Yuki/pkg/api"
@@ -28,19 +26,13 @@ func TestSyncRepo(t *testing.T) {
 	cfgDir := filepath.Join(tmpdir, "config")
 	os.MkdirAll(logDir, 0755)
 	os.MkdirAll(cfgDir, 0755)
-	cfg := server.Config{
-		DbURL:          filepath.Join(tmpdir, "yukid.db"),
-		DockerEndpoint: server.DefaultAppConfig.DockerEndpoint,
-		Owner:          server.DefaultAppConfig.Owner,
-		LogFile:        server.DefaultAppConfig.LogFile,
-		RepoLogsDir:    logDir,
-		RepoConfigDir:  []string{cfgDir},
-		LogLevel:       slog.LevelInfo,
-		ListenAddr:     "127.0.0.1:0",
-		GetSizer:       fs.New(fs.DEFAULT),
-	}
 
-	srv, err := server.NewWithConfig(&cfg)
+	cfg := server.DefaultConfig
+	cfg.DbURL = filepath.Join(tmpdir, "yukid.db")
+	cfg.RepoConfigDir = []string{cfgDir}
+	cfg.RepoLogsDir = logDir
+	cfg.ListenAddr = "127.0.0.1:0"
+	srv, err := server.NewWithConfig(cfg)
 	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -52,7 +44,7 @@ func TestSyncRepo(t *testing.T) {
 		cancel()
 	}()
 
-	testutils.WriteFile(t, filepath.Join(tmpdir, "config/foo.yaml"), `
+	testutils.WriteFile(t, filepath.Join(cfgDir, "foo.yaml"), `
 name: "foo"
 cron: "@every 1h"
 image: "ustcmirror/test:latest"

@@ -44,7 +44,7 @@ func TestHandlerReloadAllRepos(t *testing.T) {
 	t.Cleanup(func() {
 		_ = os.RemoveAll(stateDir)
 	})
-	te.server.config = &Config{
+	te.server.config = Config{
 		RepoLogsDir:   filepath.Join(stateDir, "logs"),
 		RepoConfigDir: []string{"/no/such/dir", stateDir},
 	}

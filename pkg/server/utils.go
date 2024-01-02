@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os/exec"
@@ -272,7 +273,7 @@ func (s *Server) waitRunningContainers() error {
 func (s *Server) upgradeImages() {
 	db := s.db
 	logger := s.logger
-	logger.Info("Upgrading images")
+	logger.Debug("Upgrading images")
 
 	var images []string
 	err := db.Model(&model.Repo{}).
@@ -298,7 +299,7 @@ func (s *Server) upgradeImages() {
 	}
 	_ = eg.Wait()
 
-	logger.Info("Removing dangling images")
+	logger.Debug("Removing dangling images")
 
 	err = s.dockerCli.RemoveDanglingImages()
 	if err != nil {
@@ -466,4 +467,22 @@ func (s *Server) syncRepo(ctx context.Context, name string, debug bool) error {
 	go s.waitForSync(name, ctID, repo.StorageDir)
 
 	return nil
+}
+
+func newSlogger(writer io.Writer, addSource bool, level slog.Leveler) *slog.Logger {
+	return slog.New(slog.NewTextHandler(writer, &slog.HandlerOptions{
+		AddSource: addSource,
+		Level:     level,
+		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			// Taken from https://gist.github.com/HalCanary/6bd335057c65f3b803088cc55b9ebd2b
+			if a.Key == slog.SourceKey {
+				source, _ := a.Value.Any().(*slog.Source)
+				if source != nil {
+					_, after, _ := strings.Cut(source.File, "Yuki")
+					source.File = after
+				}
+			}
+			return a
+		},
+	}))
 }

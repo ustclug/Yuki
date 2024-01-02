@@ -6,7 +6,7 @@ type StringMap map[string]string
 type Repo struct {
 	Name        string    `gorm:"primaryKey" json:"name" validate:"required"`
 	Cron        string    `json:"cron" validate:"required,cron"`
-	Image       string    `json:"image" validate:"required,containsrune=:"`
+	Image       string    `json:"image" validate:"required"`
 	StorageDir  string    `json:"storageDir" validate:"required,dir"`
 	User        string    `json:"user"`
 	BindIP      string    `json:"bindIP" validate:"omitempty,ip"`

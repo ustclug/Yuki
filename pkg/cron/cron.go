@@ -17,20 +17,11 @@ type FuncJob = cron.FuncJob
 
 var scheduledJobs sync.Map
 
-// Parse parses job specification.
-func Parse(spec string) (cron.Schedule, error) {
-	return cron.ParseStandard(spec)
-}
-
 // New returns an instance of Cron.
 func New() *Cron {
 	c := cron.New()
 	c.Start()
 	return &Cron{c}
-}
-
-func (c *Cron) Entries() []cron.Entry {
-	return c.inner.Entries()
 }
 
 // Jobs returns a map of job names to job.
@@ -54,11 +45,6 @@ func (c *Cron) Jobs() map[string]cron.Entry {
 	return ret
 }
 
-func (c *Cron) AddFunc(spec string, cmd func()) error {
-	_, err := c.inner.AddFunc(spec, cmd)
-	return err
-}
-
 // AddJob removes the job with the same name first and adds a new job.
 func (c *Cron) AddJob(name, spec string, cmd FuncJob) error {
 	c.RemoveJob(name)
@@ -68,12 +54,6 @@ func (c *Cron) AddJob(name, spec string, cmd FuncJob) error {
 	}
 	scheduledJobs.Store(name, id)
 	return nil
-}
-
-// HasJob returns whether the given job exists.
-func (c *Cron) HasJob(name string) bool {
-	_, ok := scheduledJobs.Load(name)
-	return ok
 }
 
 // RemoveJob remove the job with the given name.

@@ -10,25 +10,19 @@ import (
 	testutils "github.com/ustclug/Yuki/test/utils"
 )
 
-func TestLoadSyncTimeoutConfig(t *testing.T) {
-	f, err := os.CreateTemp("", "sync_timeout*.toml")
+func TestLoadConfig(t *testing.T) {
+	tmp, err := os.CreateTemp("", "TestLoadConfig*.toml")
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		_ = f.Close()
-		_ = os.Remove(f.Name())
-	})
-
-	testutils.WriteFile(t, f.Name(), `
-db_url = "test"
-
-repo_logs_dir = "/tmp/log_yuki/"
-
-repo_config_dir = "/tmp/config_yuki"
-
+	defer os.Remove(tmp.Name())
+	defer tmp.Close()
+	testutils.WriteFile(t, tmp.Name(), `
+db_url = ":memory:"
+repo_logs_dir = "/tmp"
+repo_config_dir = "/tmp"
 sync_timeout = "15s"
 `)
-
-	config, err := loadConfig(f.Name())
+	srv, err := New(tmp.Name())
 	require.NoError(t, err)
-	require.EqualValues(t, time.Second*15, config.SyncTimeout)
+	require.EqualValues(t, time.Second*15, srv.config.SyncTimeout)
+	require.EqualValues(t, "/tmp", srv.config.RepoConfigDir[0])
 }

@@ -52,6 +52,7 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	dbFile, err := os.CreateTemp("", "yukid*.db")
 	require.NoError(t, err)
 	t.Cleanup(func() {
+		_ = dbFile.Close()
 		_ = os.Remove(dbFile.Name())
 	})
 	db, err := gorm.Open(sqlite.Open(dbFile.Name()), &gorm.Config{
@@ -65,7 +66,6 @@ func NewTestEnv(t *testing.T) *TestEnv {
 		db:        db,
 		cron:      cron.New(),
 		logger:    slogger,
-		config:    &Config{},
 		dockerCli: fakedocker.NewClient(),
 		getSize:   fs.New(fs.DEFAULT).GetSize,
 	}
