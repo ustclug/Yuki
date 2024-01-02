@@ -8,29 +8,27 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"sync"
-	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	cmap "github.com/orcaman/concurrent-map/v2"
+	"github.com/robfig/cron/v3"
 	"github.com/spf13/viper"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
-	"github.com/ustclug/Yuki/pkg/cron"
 	"github.com/ustclug/Yuki/pkg/docker"
 	"github.com/ustclug/Yuki/pkg/fs"
 	"github.com/ustclug/Yuki/pkg/model"
 )
 
 type Server struct {
-	syncingContainers sync.Map
+	repoSchedules cmap.ConcurrentMap[string, cron.Schedule]
 
 	e         *echo.Echo
 	dockerCli docker.Client
 	config    Config
-	cron      *cron.Cron
 	db        *gorm.DB
 	logger    *slog.Logger
 	getSize   func(string) int64
@@ -91,12 +89,12 @@ func NewWithConfig(cfg Config) (*Server, error) {
 	slogger := newSlogger(logfile, cfg.Debug, logLvl)
 
 	s := Server{
-		e:         echo.New(),
-		cron:      cron.New(),
-		db:        db,
-		logger:    slogger,
-		dockerCli: dockerCli,
-		config:    cfg,
+		e:             echo.New(),
+		db:            db,
+		logger:        slogger,
+		dockerCli:     dockerCli,
+		config:        cfg,
+		repoSchedules: cmap.New[cron.Schedule](),
 	}
 	switch cfg.FileSystem {
 	case "zfs":
@@ -149,6 +147,12 @@ func (s *Server) Start(rootCtx context.Context) error {
 		return fmt.Errorf("init db: %w", err)
 	}
 
+	l.Info("Initializing repo metas")
+	err = s.initRepoMetas()
+	if err != nil {
+		return fmt.Errorf("init meta: %w", err)
+	}
+
 	l.Info("Cleaning dead containers")
 	err = s.cleanDeadContainers()
 	if err != nil {
@@ -161,32 +165,8 @@ func (s *Server) Start(rootCtx context.Context) error {
 		return fmt.Errorf("wait running containers: %w", err)
 	}
 
-	l.Info("Scheduling repos")
-	err = s.scheduleRepos()
-	if err != nil {
-		return fmt.Errorf("schedule repos: %w", err)
-	}
-
-	l.Info("Initializing repo metas")
-	err = s.initRepoMetas()
-	if err != nil {
-		return fmt.Errorf("init meta: %w", err)
-	}
-
-	if s.config.ImagesUpgradeInterval > 0 {
-		go func() {
-			ticker := time.NewTicker(s.config.ImagesUpgradeInterval)
-			defer ticker.Stop()
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-ticker.C:
-					s.upgradeImages()
-				}
-			}
-		}()
-	}
+	l.Info("Scheduling tasks")
+	s.scheduleTasks(ctx)
 
 	go func() {
 		l.Info("Running HTTP server", slog.String("addr", s.config.ListenAddr))

@@ -13,11 +13,12 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	cmap "github.com/orcaman/concurrent-map/v2"
+	"github.com/robfig/cron/v3"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
-	"github.com/ustclug/Yuki/pkg/cron"
 	fakedocker "github.com/ustclug/Yuki/pkg/docker/fake"
 	"github.com/ustclug/Yuki/pkg/fs"
 	"github.com/ustclug/Yuki/pkg/model"
@@ -70,10 +71,11 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	s := &Server{
 		e:         e,
 		db:        db,
-		cron:      cron.New(),
 		logger:    slogger,
 		dockerCli: fakedocker.NewClient(),
 		getSize:   fs.New(fs.DEFAULT).GetSize,
+
+		repoSchedules: cmap.New[cron.Schedule](),
 	}
 	s.e.Use(setLogger(slogger))
 	s.e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{

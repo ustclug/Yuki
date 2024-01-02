@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/robfig/cron/v3"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ustclug/Yuki/pkg/api"
@@ -84,6 +85,8 @@ func TestHandlerSyncRepo(t *testing.T) {
 			"UPSTREAM": "http://foo.com",
 		},
 	}).Error)
+	schedule, _ := cron.ParseStandard("@every 1h")
+	te.server.repoSchedules.Set(name, schedule)
 
 	require.NoError(t, te.server.db.Create(&model.RepoMeta{Name: name}).Error)
 
@@ -92,16 +95,17 @@ func TestHandlerSyncRepo(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, resp.IsSuccess(), "Unexpected response: %s", resp.Body())
 
-	testutils.PollUntilTimeout(t, time.Minute, func() bool {
-		_, exist := te.server.syncingContainers.Load(name)
-		return !exist
-	})
-
 	meta := model.RepoMeta{
 		Name: name,
 	}
+	testutils.PollUntilTimeout(t, time.Minute, func() bool {
+		require.NoError(t, te.server.db.First(&meta).Error)
+		return !meta.Syncing
+	})
+
 	require.NoError(t, te.server.db.First(&meta).Error)
 	require.EqualValues(t, "http://foo.com", meta.Upstream)
 	require.NotEmpty(t, meta.PrevRun)
 	require.NotEmpty(t, meta.LastSuccess)
+	require.NotEmpty(t, meta.NextRun)
 }

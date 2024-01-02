@@ -21,9 +21,11 @@ func TestInitRepoMetas(t *testing.T) {
 	require.NoError(t, te.server.db.Create([]model.Repo{
 		{
 			Name: "repo0",
+			Cron: "@every 1h",
 		},
 		{
 			Name: "repo1",
+			Cron: "@every 1h",
 		},
 	}).Error)
 	require.NoError(t, te.server.db.Create([]model.RepoMeta{
@@ -95,6 +97,9 @@ func TestUpgradeImages(t *testing.T) {
 
 func TestWaitRunningContainers(t *testing.T) {
 	te := NewTestEnv(t)
+	require.NoError(t, te.server.db.Create(&model.RepoMeta{
+		Name: "repo0",
+	}).Error)
 	_, err := te.server.dockerCli.RunContainer(
 		context.TODO(),
 		&container.Config{
@@ -110,11 +115,14 @@ func TestWaitRunningContainers(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, te.server.waitRunningContainers())
 
-	_, ok := te.server.syncingContainers.Load("repo0")
-	require.True(t, ok)
+	meta := model.RepoMeta{
+		Name: "repo0",
+	}
+	require.NoError(t, te.server.db.First(&meta).Error)
+	require.True(t, meta.Syncing)
 
 	testutils.PollUntilTimeout(t, time.Minute, func() bool {
-		_, exist := te.server.syncingContainers.Load("repo0")
-		return !exist
+		require.NoError(t, te.server.db.First(&meta).Error)
+		return !meta.Syncing
 	})
 }

@@ -21,6 +21,7 @@ type Client interface {
 	// The specified image will be pulled automatically if it does not exist.
 	RunContainer(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, containerName string) (id string, err error)
 	PullImage(ctx context.Context, image string) error
+	// TODO: rename to WaitContainerWithTimeout
 	WaitContainer(ctx context.Context, id string) (int, error)
 	RemoveContainerWithTimeout(id string, timeout time.Duration) error
 	ListContainersWithTimeout(running bool, timeout time.Duration) ([]types.Container, error)

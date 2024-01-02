@@ -8,9 +8,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/errdefs"
 	"github.com/labstack/echo/v4"
+	"github.com/robfig/cron/v3"
 	"gorm.io/gorm/clause"
 	"sigs.k8s.io/yaml"
 
@@ -137,24 +139,24 @@ func (s *Server) loadRepo(c echo.Context, logger *slog.Logger, dirs []string, fi
 		l.Error(msg, slogErrAttr(err))
 		return nil, newHTTPError(http.StatusInternalServerError, msg)
 	}
-	err = s.cron.AddJob(repo.Name, repo.Cron, s.newJob(repo.Name))
-	if err != nil {
-		const msg = "Fail to add cronjob"
-		l.Error(msg, slogErrAttr(err))
-		return nil, newHTTPError(http.StatusInternalServerError, msg)
-	}
+
+	schedule, _ := cron.ParseStandard(repo.Cron)
+	s.repoSchedules.Set(repo.Name, schedule)
 
 	upstream := getUpstream(repo.Image, repo.Envs)
+	nextRun := schedule.Next(time.Now()).Unix()
 	err = db.
 		Clauses(clause.OnConflict{
 			DoUpdates: clause.Assignments(map[string]any{
 				"upstream": upstream,
+				"next_run": nextRun,
 			}),
 		}).
 		Create(&model.RepoMeta{
 			Name:     repo.Name,
 			Upstream: upstream,
 			Size:     s.getSize(repo.StorageDir),
+			NextRun:  nextRun,
 		}).Error
 	if err != nil {
 		const msg = "Fail to create RepoMeta"
@@ -212,9 +214,6 @@ func (s *Server) handlerReloadAllRepos(c echo.Context) error {
 	if err != nil {
 		const msg = "Fail to delete RepoMetas"
 		l.Error(msg, slogErrAttr(err))
-	}
-	for name := range toDelete {
-		s.cron.RemoveJob(name)
 	}
 	return c.NoContent(http.StatusNoContent)
 }

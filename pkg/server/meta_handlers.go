@@ -24,9 +24,8 @@ func (s *Server) handlerListRepoMetas(c echo.Context) error {
 		}
 	}
 	resp := make(api.ListRepoMetasResponse, len(metas))
-	jobs := s.cron.Jobs()
 	for i, meta := range metas {
-		resp[i] = s.convertModelRepoMetaToGetMetaResponse(meta, jobs)
+		resp[i] = s.convertModelRepoMetaToGetMetaResponse(meta)
 	}
 	return c.JSON(http.StatusOK, resp)
 }
@@ -62,6 +61,6 @@ func (s *Server) handlerGetRepoMeta(c echo.Context) error {
 		}
 	}
 
-	resp := s.convertModelRepoMetaToGetMetaResponse(meta, s.cron.Jobs())
+	resp := s.convertModelRepoMetaToGetMetaResponse(meta)
 	return c.JSON(http.StatusOK, resp)
 }

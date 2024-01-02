@@ -43,23 +43,17 @@ func getRepoNameFromRoute(c echo.Context) (string, error) {
 	return val, nil
 }
 
-func (s *Server) convertModelRepoMetaToGetMetaResponse(in model.RepoMeta, jobs map[string]cron.Entry) api.GetRepoMetaResponse {
-	_, syncing := s.syncingContainers.Load(in.Name)
-	var nextRun int64
-	job, ok := jobs[in.Name]
-	if ok {
-		nextRun = job.Next.Unix()
-	}
+func (s *Server) convertModelRepoMetaToGetMetaResponse(in model.RepoMeta) api.GetRepoMetaResponse {
 	return api.GetRepoMetaResponse{
 		Name:        in.Name,
 		Upstream:    in.Upstream,
-		Syncing:     syncing,
+		Syncing:     in.Syncing,
 		Size:        in.Size,
 		ExitCode:    in.ExitCode,
 		LastSuccess: in.LastSuccess,
 		UpdatedAt:   in.UpdatedAt,
 		PrevRun:     in.PrevRun,
-		NextRun:     nextRun,
+		NextRun:     in.NextRun,
 	}
 }
 
@@ -108,19 +102,17 @@ func (s *Server) waitForSync(name, ctID, storageDir string) {
 	}
 
 	err = s.db.
+		Model(&model.RepoMeta{}).
 		Where(model.RepoMeta{Name: name}).
-		Updates(&model.RepoMeta{
-			Size:        s.getSize(storageDir),
-			ExitCode:    code,
-			LastSuccess: lastSuccess,
+		Updates(map[string]any{
+			"size":         s.getSize(storageDir),
+			"exit_code":    code,
+			"last_success": lastSuccess,
+			"syncing":      false,
 		}).Error
 	if err != nil {
 		l.Error("Fail to update RepoMeta", slogErrAttr(err))
 	}
-
-	// NOTE: Only change status after RepoMeta is updated, b/c we need to determine
-	// if synchronization is completed in unit test, and then verify RepoMeta.
-	s.syncingContainers.Delete(name)
 
 	if len(s.config.PostSync) == 0 {
 		return
@@ -267,7 +259,13 @@ func (s *Server) waitRunningContainers() error {
 		name := ct.Labels[api.LabelRepoName]
 		dir := ct.Labels[api.LabelStorageDir]
 		ctID := ct.ID
-		s.syncingContainers.Store(name, struct{}{})
+		err := s.db.
+			Where(model.RepoMeta{Name: name}).
+			Updates(&model.RepoMeta{Syncing: true}).
+			Error
+		if err != nil {
+			s.logger.Error("Fail to set syncing to true", slogErrAttr(err), slog.String("repo", name))
+		}
 		go s.waitForSync(name, ctID, dir)
 	}
 	return nil
@@ -310,49 +308,74 @@ func (s *Server) upgradeImages() {
 	}
 }
 
-func (s *Server) newJob(name string) cron.FuncJob {
-	l := s.logger.With(slog.String("repo", name))
-	return func() {
-		err := s.syncRepo(context.Background(), name, false)
-		if err != nil {
-			if errdefs.IsConflict(err) {
-				l.Warn("Still syncing")
-			} else {
-				l.Error("Fail to sync", slogErrAttr(err))
+func (s *Server) scheduleTasks(ctx context.Context) {
+	// sync repos
+	go func() {
+		ticker := time.NewTicker(time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case now := <-ticker.C:
+				var metas []model.RepoMeta
+				s.db.Select("name").Where("next_run <= ?", now.Unix()).Find(&metas)
+				for _, meta := range metas {
+					name := meta.Name
+					go func() {
+						l := s.logger.With(slog.String("repo", name))
+						err := s.syncRepo(context.Background(), name, false)
+						if err != nil {
+							if errdefs.IsConflict(err) {
+								l.Warn("Still syncing")
+							} else {
+								l.Error("Fail to sync", slogErrAttr(err))
+							}
+						}
+					}()
+				}
 			}
 		}
-	}
-}
+	}()
 
-func (s *Server) scheduleRepos() error {
-	var repos []model.Repo
-	err := s.db.Select("name", "cron").Find(&repos).Error
-	if err != nil {
-		return fmt.Errorf("list repos: %w", err)
+	// upgrade images
+	if s.config.ImagesUpgradeInterval > 0 {
+		go func() {
+			ticker := time.NewTicker(s.config.ImagesUpgradeInterval)
+			defer ticker.Stop()
+			for {
+				// fire immediately
+				s.upgradeImages()
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+				}
+			}
+		}()
 	}
-	for _, r := range repos {
-		err = s.cron.AddJob(r.Name, r.Cron, s.newJob(r.Name))
-		if err != nil {
-			return fmt.Errorf("add job for repo %q: %w", r.Name, err)
-		}
-	}
-	return nil
 }
 
 func (s *Server) initRepoMetas() error {
 	db := s.db
 	var repos []model.Repo
-	return db.Select("name", "storage_dir").
+	return db.Select("name", "storage_dir", "cron").
 		FindInBatches(&repos, 10, func(*gorm.DB, int) error {
 			for _, repo := range repos {
+				schedule, _ := cron.ParseStandard(repo.Cron)
+				s.repoSchedules.Set(repo.Name, schedule)
+				nextRun := schedule.Next(time.Now()).Unix()
 				size := s.getSize(repo.StorageDir)
 				err := db.Clauses(clause.OnConflict{
 					DoUpdates: clause.Assignments(map[string]any{
-						"size": size,
+						"size":     size,
+						"syncing":  false,
+						"next_run": nextRun,
 					}),
 				}).Create(&model.RepoMeta{
 					Name:     repo.Name,
 					Size:     size,
+					NextRun:  nextRun,
 					ExitCode: -1,
 				}).Error
 				if err != nil {
@@ -372,6 +395,24 @@ func (s *Server) syncRepo(ctx context.Context, name string, debug bool) error {
 	}
 	if res.RowsAffected == 0 {
 		return fmt.Errorf("get repo %q: %w", name, errNotFound)
+	}
+
+	// Update next_run unconditionally
+	logger := s.logger.With(slog.String("repo", name))
+	now := time.Now()
+	var nextRun int64
+	schedule, ok := s.repoSchedules.Get(repo.Name)
+	if ok {
+		nextRun = schedule.Next(now).Unix()
+	} else {
+		logger.Warn("No schedule found for repo. Fallback to 1 hour")
+		nextRun = now.Add(time.Hour).Unix()
+	}
+	err := db.
+		Where(model.RepoMeta{Name: name}).
+		Updates(&model.RepoMeta{NextRun: nextRun}).Error
+	if err != nil {
+		logger.Error("Fail to update next_run", slogErrAttr(err))
 	}
 
 	if len(repo.BindIP) == 0 {
@@ -457,15 +498,15 @@ func (s *Server) syncRepo(ctx context.Context, name string, debug bool) error {
 		return fmt.Errorf("run container: %w", err)
 	}
 
-	s.syncingContainers.Store(name, struct{}{})
 	err = db.
 		Where(model.RepoMeta{Name: name}).
 		Updates(&model.RepoMeta{
 			Upstream: getUpstream(repo.Image, repo.Envs),
-			PrevRun:  time.Now().Unix(),
+			PrevRun:  now.Unix(),
+			Syncing:  true,
 		}).Error
 	if err != nil {
-		s.logger.Error("Fail to update RepoMeta", slogErrAttr(err), slog.String("repo", name))
+		logger.Error("Fail to update RepoMeta", slogErrAttr(err))
 	}
 	go s.waitForSync(name, ctID, repo.StorageDir)
 
