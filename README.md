@@ -84,3 +84,14 @@ For more details of the configuration file, please refer to the [yukid handbook]
 
 * [yukid](./cmd/yukid/README.md): Yuki daemon
 * [yukictl](./cmd/yukictl/README.md): Yuki cli
+
+## Migration Guide
+
+### v0.3.x -> v0.4.x
+
+```bash
+sed -i.bak ’s/log_dir/repo_logs_dir/’ /etc/yuki/daemon.toml
+# Also remember to update the `images_upgrade_interval` field in /etc/yuki/daemon.toml if it is set.
+
+sed -i.bak ’s/interval/cron/‘ /path/to/repo/configs/*.yaml
+```
