@@ -75,7 +75,7 @@ yukictl reload
 yukictl repo ls
 
 # Trigger synchronization immediately
-yukictl sync openresty
+yukictl sync docker-ce
 ```
 
 For more details of the configuration file, please refer to the [yukid handbook](./cmd/yukid/README.md).

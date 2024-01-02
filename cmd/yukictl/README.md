@@ -37,7 +37,7 @@ $ yukictl meta ls [repo]
 $ yukictl sync <repo>
 ```
 
-开启同步任务的 debug 模式，并查看同步日志
+开启同步任务的 debug 模式
 ```bash
 $ yukictl sync --debug <repo>
 ```
@@ -55,5 +55,5 @@ $ yukictl reload <repo>
 $ yukictl reload
 ```
 
-若需要删除仓库，则可以删除相应的配置文件然后执行 `yukictl repo rm <repo>` 或直接 `yukictl reload` 来从数据库里删除配置。
+若需要删除仓库，则可以删除相应的配置文件，然后执行 `yukictl repo rm <repo>` 或 `yukictl reload` 来从数据库里删除配置。
 
