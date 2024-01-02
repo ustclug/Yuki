@@ -97,7 +97,6 @@ func (s *Server) waitForSync(name, ctID, storageDir string) {
 			code = -2
 		}
 	}
-	s.syncingContainers.Delete(name)
 	err = s.dockerCli.RemoveContainerWithTimeout(ctID, time.Second*20)
 	if err != nil {
 		l.Error("Fail to remove container", slogErrAttr(err))
@@ -118,6 +117,10 @@ func (s *Server) waitForSync(name, ctID, storageDir string) {
 	if err != nil {
 		l.Error("Fail to update RepoMeta", slogErrAttr(err))
 	}
+
+	// NOTE: Only change status after RepoMeta is updated, b/c we need to determine
+	// if synchronization is completed in unit test, and then verify RepoMeta.
+	s.syncingContainers.Delete(name)
 
 	if len(s.config.PostSync) == 0 {
 		return

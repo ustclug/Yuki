@@ -56,9 +56,15 @@ func NewTestEnv(t *testing.T) *TestEnv {
 		_ = os.Remove(dbFile.Name())
 	})
 	db, err := gorm.Open(sqlite.Open(dbFile.Name()), &gorm.Config{
-		QueryFields: true,
+		QueryFields:            true,
+		SkipDefaultTransaction: true,
 	})
 	require.NoError(t, err)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	// To resolve the "database is locked" error.
+	// See also https://github.com/mattn/go-sqlite3/issues/209
+	sqlDB.SetMaxOpenConns(1)
 	require.NoError(t, model.AutoMigrate(db))
 
 	s := &Server{

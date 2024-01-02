@@ -55,8 +55,10 @@ func New(configPath string) (*Server, error) {
 }
 
 func NewWithConfig(cfg Config) (*Server, error) {
+	// TODO: enforce shared cache mode?
 	db, err := gorm.Open(sqlite.Open(cfg.DbURL), &gorm.Config{
-		QueryFields: true,
+		QueryFields:            true,
+		SkipDefaultTransaction: true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)

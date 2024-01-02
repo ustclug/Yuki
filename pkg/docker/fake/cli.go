@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -15,10 +16,13 @@ import (
 )
 
 type Client struct {
+	mu         sync.Mutex
 	containers []types.Container
 }
 
 func (f *Client) RunContainer(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, containerName string) (id string, err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	for _, ct := range f.containers {
 		if ct.Names[0] == containerName {
 			return "", errdefs.Conflict(errors.New("container already exists"))
@@ -40,6 +44,8 @@ func (f *Client) PullImage(ctx context.Context, image string) error {
 }
 
 func (f *Client) WaitContainer(ctx context.Context, id string) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	for i, ct := range f.containers {
 		if ct.ID == id {
 			time.Sleep(5 * time.Second)
@@ -51,6 +57,8 @@ func (f *Client) WaitContainer(ctx context.Context, id string) (int, error) {
 }
 
 func (f *Client) RemoveContainerWithTimeout(id string, timeout time.Duration) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	cts := make([]types.Container, 0, len(f.containers))
 	for _, ct := range f.containers {
 		if ct.ID != id {
@@ -62,6 +70,8 @@ func (f *Client) RemoveContainerWithTimeout(id string, timeout time.Duration) er
 }
 
 func (f *Client) ListContainersWithTimeout(running bool, timeout time.Duration) ([]types.Container, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	return f.containers, nil
 }
 
