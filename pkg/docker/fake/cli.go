@@ -17,25 +17,23 @@ import (
 
 type Client struct {
 	mu         sync.Mutex
-	containers []types.Container
+	containers map[string]types.Container
 }
 
 func (f *Client) RunContainer(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, containerName string) (id string, err error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	for _, ct := range f.containers {
-		if ct.Names[0] == containerName {
-			return "", errdefs.Conflict(errors.New("container already exists"))
-		}
+	_, ok := f.containers[containerName]
+	if ok {
+		return "", errdefs.Conflict(errors.New("container already exists"))
 	}
-	id = fmt.Sprintf("fake-%d", len(f.containers))
-	f.containers = append(f.containers, types.Container{
-		ID:     id,
+	f.containers[containerName] = types.Container{
+		ID:     containerName,
 		Names:  []string{containerName},
 		Labels: config.Labels,
 		Status: "running",
-	})
-	return id, nil
+	}
+	return containerName, nil
 }
 
 func (f *Client) PullImage(ctx context.Context, image string) error {
@@ -43,36 +41,40 @@ func (f *Client) PullImage(ctx context.Context, image string) error {
 	panic("implement me")
 }
 
-func (f *Client) WaitContainer(ctx context.Context, id string) (int, error) {
+func (f *Client) WaitContainerWithTimeout(id string, timeout time.Duration) (int, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	for i, ct := range f.containers {
-		if ct.ID == id {
-			time.Sleep(5 * time.Second)
-			f.containers[i].Status = "exited"
-			return 0, nil
-		}
+
+	ct, ok := f.containers[id]
+	if !ok {
+		return 0, fmt.Errorf("container %s not found", id)
 	}
-	return 0, fmt.Errorf("container %s not found", id)
+	const delay = 5 * time.Second
+	if timeout < delay {
+		time.Sleep(timeout)
+		return 0, context.DeadlineExceeded
+	}
+	time.Sleep(delay)
+	ct.Status = "exited"
+	f.containers[id] = ct
+	return 0, nil
 }
 
 func (f *Client) RemoveContainerWithTimeout(id string, timeout time.Duration) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	cts := make([]types.Container, 0, len(f.containers))
-	for _, ct := range f.containers {
-		if ct.ID != id {
-			cts = append(cts, ct)
-		}
-	}
-	f.containers = cts
+	delete(f.containers, id)
 	return nil
 }
 
 func (f *Client) ListContainersWithTimeout(running bool, timeout time.Duration) ([]types.Container, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return f.containers, nil
+	l := make([]types.Container, 0, len(f.containers))
+	for _, ct := range f.containers {
+		l = append(l, ct)
+	}
+	return l, nil
 }
 
 func (f *Client) RemoveDanglingImages() error {
@@ -80,5 +82,7 @@ func (f *Client) RemoveDanglingImages() error {
 }
 
 func NewClient() docker.Client {
-	return &Client{}
+	return &Client{
+		containers: make(map[string]types.Container),
+	}
 }

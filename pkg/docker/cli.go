@@ -21,8 +21,7 @@ type Client interface {
 	// The specified image will be pulled automatically if it does not exist.
 	RunContainer(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, containerName string) (id string, err error)
 	PullImage(ctx context.Context, image string) error
-	// TODO: rename to WaitContainerWithTimeout
-	WaitContainer(ctx context.Context, id string) (int, error)
+	WaitContainerWithTimeout(id string, timeout time.Duration) (int, error)
 	RemoveContainerWithTimeout(id string, timeout time.Duration) error
 	ListContainersWithTimeout(running bool, timeout time.Duration) ([]types.Container, error)
 	RemoveDanglingImages() error
@@ -108,7 +107,13 @@ func (c *clientImpl) RemoveContainerWithTimeout(id string, timeout time.Duration
 	})
 }
 
-func (c *clientImpl) WaitContainer(ctx context.Context, id string) (int, error) {
+func (c *clientImpl) WaitContainerWithTimeout(id string, timeout time.Duration) (int, error) {
+	ctx := context.Background()
+	if timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+	}
 	stream, errCh := c.client.ContainerWait(ctx, id, container.WaitConditionNotRunning)
 	select {
 	case err := <-errCh:
