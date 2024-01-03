@@ -40,20 +40,45 @@ func TestHandlerListRepos(t *testing.T) {
 
 func TestHandlerReloadAllRepos(t *testing.T) {
 	te := NewTestEnv(t)
-	stateDir, err := os.MkdirTemp("", t.Name())
+	rootDir, err := os.MkdirTemp("", t.Name())
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		_ = os.RemoveAll(stateDir)
+		_ = os.RemoveAll(rootDir)
 	})
+	cfgDir1 := filepath.Join(rootDir, "cfg1")
+	cfgDir2 := filepath.Join(rootDir, "cfg2")
+	require.NoError(t, os.Mkdir(cfgDir1, 0o755))
+	require.NoError(t, os.Mkdir(cfgDir2, 0o755))
 	te.server.config = Config{
-		RepoLogsDir:   filepath.Join(stateDir, "logs"),
-		RepoConfigDir: []string{"/no/such/dir", stateDir},
+		RepoLogsDir:   filepath.Join(rootDir, "logs"),
+		RepoConfigDir: []string{"/no/such/dir", cfgDir1, cfgDir2},
 	}
+	te.server.repoSchedules.Set("should-be-deleted", cron.Schedule(nil))
+
+	require.NoError(t, te.server.db.Create([]model.Repo{
+		{
+			Name: "should-be-deleted",
+		},
+		{
+			Name: "repo0",
+			Cron: "1 * * * *",
+		},
+	}).Error)
+
+	require.NoError(t, te.server.db.Create([]model.RepoMeta{
+		{
+			Name: "should-be-deleted",
+		},
+		{
+			Name:     "repo0",
+			Upstream: "http://foo.com",
+		},
+	}).Error)
 
 	for i := 0; i < 2; i++ {
 		testutils.WriteFile(
 			t,
-			filepath.Join(stateDir, fmt.Sprintf("repo%d.yaml", i)),
+			filepath.Join(cfgDir1, fmt.Sprintf("repo%d.yaml", i)),
 			fmt.Sprintf(`
 name: repo%d
 cron: "* * * * *"
@@ -62,15 +87,38 @@ storageDir: /tmp
 `, i),
 		)
 	}
+	testutils.WriteFile(t, filepath.Join(cfgDir2, "repo0.yaml"), `
+image: ubuntu
+envs:
+  UPSTREAM: http://bar.com
+`)
 
 	cli := te.RESTClient()
 	resp, err := cli.R().Post("/repos")
 	require.NoError(t, err)
 	require.True(t, resp.IsSuccess(), "Unexpected response: %s", resp.Body())
 
+	require.EqualValues(t, 2, te.server.repoSchedules.Count())
+
 	var repos []model.Repo
-	require.NoError(t, te.server.db.Find(&repos).Error)
+	require.NoError(t, te.server.db.Order("name").Find(&repos).Error)
 	require.Len(t, repos, 2)
+
+	require.EqualValues(t, "repo0", repos[0].Name)
+	require.EqualValues(t, "ubuntu", repos[0].Image)
+	require.EqualValues(t, "* * * * *", repos[0].Cron)
+	require.NotEmpty(t, repos[0].Envs)
+
+	require.EqualValues(t, "repo1", repos[1].Name)
+	require.EqualValues(t, "alpine:latest", repos[1].Image)
+
+	var metas []model.RepoMeta
+	require.NoError(t, te.server.db.Order("name").Find(&metas).Error)
+	require.Len(t, repos, 2)
+	require.EqualValues(t, "repo0", metas[0].Name)
+	require.EqualValues(t, "http://bar.com", metas[0].Upstream)
+
+	require.EqualValues(t, "repo1", metas[1].Name)
 }
 
 func TestHandlerSyncRepo(t *testing.T) {
@@ -108,4 +156,27 @@ func TestHandlerSyncRepo(t *testing.T) {
 	require.NotEmpty(t, meta.PrevRun)
 	require.NotEmpty(t, meta.LastSuccess)
 	require.NotEmpty(t, meta.NextRun)
+}
+
+func TestHandlerRemoveRepo(t *testing.T) {
+	te := NewTestEnv(t)
+	name := te.RandomString()
+	require.NoError(t, te.server.db.Create(&model.Repo{
+		Name:       name,
+		Cron:       "@every 1h",
+		Image:      "alpine:latest",
+		StorageDir: "/data",
+	}).Error)
+	require.NoError(t, te.server.db.Create(&model.RepoMeta{Name: name}).Error)
+	schedule, _ := cron.ParseStandard("@every 1h")
+	te.server.repoSchedules.Set(name, schedule)
+
+	cli := te.RESTClient()
+	resp, err := cli.R().Delete(fmt.Sprintf("/repos/%s", name))
+	require.NoError(t, err)
+	require.True(t, resp.IsSuccess(), "Unexpected response: %s", resp.Body())
+
+	require.False(t, te.server.repoSchedules.Has(name))
+	require.ErrorContains(t, te.server.db.First(&model.Repo{Name: name}).Error, "record not found")
+	require.ErrorContains(t, te.server.db.First(&model.RepoMeta{Name: name}).Error, "record not found")
 }

@@ -58,9 +58,7 @@ func (s *Server) handlerGetRepo(c echo.Context) error {
 
 	var repo model.Repo
 	res := s.getDB(c).
-		Where(model.Repo{
-			Name: name,
-		}).
+		Where(model.Repo{Name: name}).
 		Limit(1).
 		Find(&repo)
 	if err != nil {
@@ -95,7 +93,7 @@ func (s *Server) handlerRemoveRepo(c echo.Context) error {
 	if err != nil {
 		l.Error("Fail to delete RepoMeta", slogErrAttr(err), slog.String("repo", name))
 	}
-
+	s.repoSchedules.Remove(name)
 	return c.NoContent(http.StatusNoContent)
 }
 
@@ -215,6 +213,9 @@ func (s *Server) handlerReloadAllRepos(c echo.Context) error {
 		const msg = "Fail to delete RepoMetas"
 		l.Error(msg, slogErrAttr(err))
 	}
+	for name := range toDelete {
+		s.repoSchedules.Remove(name)
+	}
 	return c.NoContent(http.StatusNoContent)
 }
 
@@ -249,8 +250,9 @@ func (s *Server) handlerSyncRepo(c echo.Context) error {
 		if errors.Is(err, errNotFound) {
 			return newHTTPError(http.StatusNotFound, "Repo not found")
 		}
-		if errdefs.IsConflict(err) {
-			return newHTTPError(http.StatusConflict, err.Error())
+		var dkErr errdefs.ErrConflict
+		if errors.As(err, &dkErr) {
+			return newHTTPError(http.StatusConflict, "Repo is syncing")
 		}
 		const msg = "Fail to sync Repo"
 		l.Error(msg, slogErrAttr(err))
