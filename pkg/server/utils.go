@@ -300,7 +300,7 @@ func (s *Server) upgradeImages() {
 func (s *Server) scheduleTasks(ctx context.Context) {
 	// sync repos
 	go func() {
-		ticker := time.NewTicker(time.Minute)
+		ticker := time.NewTicker(time.Second * 10)
 		defer ticker.Stop()
 		for {
 			var metas []model.RepoMeta
