@@ -50,7 +50,7 @@ func (f *Client) WaitContainerWithTimeout(id string, timeout time.Duration) (int
 		return 0, fmt.Errorf("container %s not found", id)
 	}
 	const delay = 5 * time.Second
-	if timeout < delay {
+	if timeout > 0 && timeout < delay {
 		time.Sleep(timeout)
 		return 0, context.DeadlineExceeded
 	}

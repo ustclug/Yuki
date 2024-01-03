@@ -9,6 +9,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/errdefs"
@@ -42,7 +43,7 @@ type clientImpl struct {
 	client *client.Client
 }
 
-func (c *clientImpl) listImages(timeout time.Duration) ([]types.ImageSummary, error) {
+func (c *clientImpl) listImages(timeout time.Duration) ([]image.Summary, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	return c.client.ImageList(ctx, types.ImageListOptions{
@@ -92,7 +93,7 @@ func (c *clientImpl) ListContainersWithTimeout(running bool, timeout time.Durati
 		args.Add("status", status)
 	}
 
-	return c.client.ContainerList(ctx, types.ContainerListOptions{
+	return c.client.ContainerList(ctx, container.ListOptions{
 		All:     true,
 		Filters: args,
 	})
@@ -101,7 +102,7 @@ func (c *clientImpl) ListContainersWithTimeout(running bool, timeout time.Durati
 func (c *clientImpl) RemoveContainerWithTimeout(id string, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	return c.client.ContainerRemove(ctx, id, types.ContainerRemoveOptions{
+	return c.client.ContainerRemove(ctx, id, container.RemoveOptions{
 		RemoveVolumes: true,
 		Force:         true,
 	})
@@ -151,7 +152,7 @@ func (c *clientImpl) RunContainer(ctx context.Context, config *container.Config,
 		}
 	}
 
-	err = c.client.ContainerStart(ctx, ct.ID, types.ContainerStartOptions{})
+	err = c.client.ContainerStart(ctx, ct.ID, container.StartOptions{})
 	if err != nil {
 		return "", fmt.Errorf("start container: %w", err)
 	}

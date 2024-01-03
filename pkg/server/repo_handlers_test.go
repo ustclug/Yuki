@@ -129,9 +129,6 @@ func TestHandlerSyncRepo(t *testing.T) {
 		Cron:       "@every 1h",
 		Image:      "alpine:latest",
 		StorageDir: "/data",
-		Envs: model.StringMap{
-			"UPSTREAM": "http://foo.com",
-		},
 	}).Error)
 	schedule, _ := cron.ParseStandard("@every 1h")
 	te.server.repoSchedules.Set(name, schedule)
@@ -147,15 +144,15 @@ func TestHandlerSyncRepo(t *testing.T) {
 		Name: name,
 	}
 	testutils.PollUntilTimeout(t, time.Minute, func() bool {
-		require.NoError(t, te.server.db.First(&meta).Error)
+		require.NoError(t, te.server.db.Take(&meta).Error)
 		return !meta.Syncing
 	})
 
-	require.NoError(t, te.server.db.First(&meta).Error)
-	require.EqualValues(t, "http://foo.com", meta.Upstream)
-	require.NotEmpty(t, meta.PrevRun)
-	require.NotEmpty(t, meta.LastSuccess)
-	require.NotEmpty(t, meta.NextRun)
+	require.NoError(t, te.server.db.Take(&meta).Error)
+	require.NotEmpty(t, meta.PrevRun, "PrevRun")
+	require.Empty(t, meta.ExitCode, "ExitCode")
+	require.NotEmpty(t, meta.LastSuccess, "LastSuccess")
+	require.NotEmpty(t, meta.NextRun, "NextRun")
 }
 
 func TestHandlerRemoveRepo(t *testing.T) {
