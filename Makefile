@@ -1,6 +1,6 @@
 .PHONY: lint
 lint:
-	golangci-lint run ./...
+	golangci-lint run --fix ./...
 
 .PHONY: unit-test
 unit-test:
@@ -18,6 +18,8 @@ yukid:
 yukictl:
 	go build -trimpath ./cmd/yukictl
 
+BUILD_IMAGE ?= golang:1.21-bookworm
+
 .PHONY: yukid-linux
 yukid-linux:
 	@docker run \
@@ -25,5 +27,5 @@ yukid-linux:
 		--mount source=go-cache,destination=/root/.cache/go-build \
 		--mount source=go-mod,destination=/go/pkg/mod \
 		-v $(PWD):/app \
-		golang:1.21-bookworm \
+		$(BUILD_IMAGE) \
 		bash -c 'cd /app && make yukid'

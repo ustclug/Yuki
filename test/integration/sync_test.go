@@ -10,10 +10,9 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/require"
 
-	testutils "github.com/ustclug/Yuki/test/utils"
-
 	"github.com/ustclug/Yuki/pkg/api"
 	"github.com/ustclug/Yuki/pkg/server"
+	testutils "github.com/ustclug/Yuki/test/utils"
 )
 
 func TestSyncRepo(t *testing.T) {

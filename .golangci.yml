@@ -34,6 +34,7 @@ linters:
   enable:
   - exhaustive
   - exportloopref
+  - gci
   - gochecknoinits
   - goconst
   - gocritic
@@ -52,6 +53,11 @@ linters:
   - whitespace
 
 linters-settings:
+  gci:
+    sections:
+      - standard # Standard section: captures all standard packages.
+      - default # Default section: contains all imports that could not be matched to another section type.
+      - prefix(github.com/ustclug/Yuki)
   exhaustive:
     # Only run exhaustive check on switches with "//exhaustive:enforce" comment.
     explicit-exhaustive-switch: true
