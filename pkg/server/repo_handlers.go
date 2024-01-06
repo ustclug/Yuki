@@ -122,8 +122,14 @@ func (s *Server) loadRepo(c echo.Context, logger *slog.Logger, dirs []string, fi
 		return nil, newHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid config: %q: %v", file, err))
 	}
 
+	schedule, err := cron.ParseStandard(repo.Cron)
+	if err != nil {
+		return nil, newHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid cron: %q: %v", repo.Cron, err))
+	}
+	s.repoSchedules.Set(repo.Name, schedule)
+
 	logDir := filepath.Join(s.config.RepoLogsDir, repo.Name)
-	err := os.MkdirAll(logDir, 0o755)
+	err = os.MkdirAll(logDir, 0o755)
 	if err != nil {
 		return nil, newHTTPError(http.StatusInternalServerError, fmt.Sprintf("Fail to create log dir: %q", logDir))
 	}
@@ -137,9 +143,6 @@ func (s *Server) loadRepo(c echo.Context, logger *slog.Logger, dirs []string, fi
 		l.Error(msg, slogErrAttr(err))
 		return nil, newHTTPError(http.StatusInternalServerError, msg)
 	}
-
-	schedule, _ := cron.ParseStandard(repo.Cron)
-	s.repoSchedules.Set(repo.Name, schedule)
 
 	upstream := getUpstream(repo.Image, repo.Envs)
 	nextRun := schedule.Next(time.Now()).Unix()

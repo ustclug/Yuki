@@ -4,8 +4,9 @@ type StringMap map[string]string
 
 // Repo represents a Repository.
 type Repo struct {
-	Name        string    `gorm:"primaryKey" json:"name" validate:"required"`
-	Cron        string    `json:"cron" validate:"required,cron"`
+	Name string `gorm:"primaryKey" json:"name" validate:"required"`
+	// NOTE: the cron validator does not support */number syntax
+	Cron        string    `json:"cron" validate:"required"`
 	Image       string    `json:"image" validate:"required"`
 	StorageDir  string    `json:"storageDir" validate:"required,dir"`
 	User        string    `json:"user"`
