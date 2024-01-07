@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
@@ -53,7 +54,12 @@ func New(configPath string) (*Server, error) {
 }
 
 func NewWithConfig(cfg Config) (*Server, error) {
-	db, err := gorm.Open(sqlite.Open(cfg.DbURL), &gorm.Config{
+	dbURL := cfg.DbURL
+	if strings.IndexRune(dbURL, '?') < 0 {
+		// enable WAL mode by default to improve performance
+		dbURL += "?_journal_mode=WAL"
+	}
+	db, err := gorm.Open(sqlite.Open(dbURL), &gorm.Config{
 		QueryFields: true,
 	})
 	if err != nil {
