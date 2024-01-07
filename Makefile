@@ -10,13 +10,25 @@ unit-test:
 integration-test:
 	go test -v ./test/integration/...
 
+git_commit := $(shell git rev-parse HEAD)
+build_date := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
+
+VERSION ?= $(shell git describe --tags)
+OUT_DIR ?= $(PWD)
+
 .PHONY: yukid
 yukid:
-	go build -trimpath ./cmd/yukid
+	go build -ldflags "-X github.com/ustclug/Yuki/pkg/info.BuildDate=$(build_date) \
+		-X github.com/ustclug/Yuki/pkg/info.GitCommit=$(git_commit) \
+		-X github.com/ustclug/Yuki/pkg/info.Version=$(VERSION)" \
+		-trimpath -o $(OUT_DIR)/yukid ./cmd/yukid
 
 .PHONY: yukictl
 yukictl:
-	go build -trimpath ./cmd/yukictl
+	go build -ldflags "-X github.com/ustclug/Yuki/pkg/info.BuildDate=$(build_date) \
+		-X github.com/ustclug/Yuki/pkg/info.GitCommit=$(git_commit) \
+		-X github.com/ustclug/Yuki/pkg/info.Version=$(version)" \
+		-trimpath ./cmd/yukictl
 
 BUILD_IMAGE ?= golang:1.21-bookworm
 
