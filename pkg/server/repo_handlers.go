@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/errdefs"
+	"github.com/cpuguy83/go-docker/errdefs"
 	"github.com/labstack/echo/v4"
 	"github.com/robfig/cron/v3"
 	"gorm.io/gorm/clause"
@@ -253,9 +253,7 @@ func (s *Server) handlerSyncRepo(c echo.Context) error {
 		if errors.Is(err, errNotFound) {
 			return newHTTPError(http.StatusNotFound, "Repo not found")
 		}
-		// https://github.com/moby/moby/issues/47018
-		var dkErr errdefs.ErrConflict
-		if errors.As(err, &dkErr) {
+		if errdefs.IsConflict(err) {
 			return newHTTPError(http.StatusConflict, "Repo is syncing")
 		}
 		const msg = "Fail to sync Repo"

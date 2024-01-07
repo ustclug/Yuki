@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ustclug/Yuki/pkg/api"
@@ -102,15 +100,13 @@ func TestWaitRunningContainers(t *testing.T) {
 	}).Error)
 	_, err := te.server.dockerCli.RunContainer(
 		context.TODO(),
-		&container.Config{
+		docker.RunContainerConfig{
+			Name: "sync-repo0",
 			Labels: map[string]string{
 				api.LabelRepoName:   "repo0",
 				api.LabelStorageDir: "/data",
 			},
 		},
-		&container.HostConfig{},
-		&network.NetworkingConfig{},
-		"sync-repo0",
 	)
 	require.NoError(t, err)
 	require.NoError(t, te.server.waitRunningContainers())
