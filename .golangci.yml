@@ -32,6 +32,7 @@ run:
 # https://golangci-lint.run/usage/linters/
 linters:
   enable:
+  - depguard
   - exhaustive
   - exportloopref
   - gci
@@ -53,6 +54,12 @@ linters:
   - whitespace
 
 linters-settings:
+  depguard:
+    rules:
+      main:
+        deny:
+          - pkg: github.com/docker/docker
+            msg: https://github.com/ustclug/Yuki/issues/44
   gci:
     sections:
       - standard # Standard section: captures all standard packages.
