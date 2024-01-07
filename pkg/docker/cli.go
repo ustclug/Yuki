@@ -99,12 +99,14 @@ func (c *clientImpl) RunContainer(ctx context.Context, config RunContainerConfig
 		}
 	}
 	ct, err := c.client.ContainerService().Create(ctx, "", setCfg)
-	if errdefs.IsNotFound(err) {
-		err = c.pullImage(ctx, config.Image)
-		if err != nil {
-			return "", fmt.Errorf("pull image: %w", err)
+	if err != nil {
+		if errdefs.IsNotFound(err) {
+			err = c.pullImage(ctx, config.Image)
+			if err != nil {
+				return "", fmt.Errorf("pull image: %w", err)
+			}
+			ct, err = c.client.ContainerService().Create(ctx, "", setCfg)
 		}
-		ct, err = c.client.ContainerService().Create(ctx, "", setCfg)
 		if err != nil {
 			return "", fmt.Errorf("create container: %w", err)
 		}
