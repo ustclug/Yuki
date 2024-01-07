@@ -66,7 +66,7 @@ func (f *Client) ListContainersWithTimeout(running bool, timeout time.Duration) 
 }
 
 func (f *Client) UpgradeImages(refs []string) error {
-	return nil
+	panic("not implemented")
 }
 
 func NewClient() docker.Client {

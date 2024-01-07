@@ -51,8 +51,14 @@ type fakeImageClient struct {
 	pullImage func(ctx context.Context, image string) error
 }
 
-func (f *fakeImageClient) PullImage(ctx context.Context, image string) error {
-	return f.pullImage(ctx, image)
+func (f *fakeImageClient) UpgradeImages(refs []string) error {
+	for _, ref := range refs {
+		err := f.pullImage(context.Background(), ref)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func TestUpgradeImages(t *testing.T) {
