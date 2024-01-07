@@ -1,8 +1,9 @@
 # Build output files
-yukictl
-yukid
+/yukictl
+/yukid
 
 .idea/
+dist/
 
 *.swp
 *.[oa]

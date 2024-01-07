@@ -1,0 +1,64 @@
+name: Presubmit Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - master
+    paths:
+      - '**.go'
+
+concurrency:
+  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          check-latest: true
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.55.0
+          skip-build-cache: true
+          skip-pkg-cache: true
+
+  unit-test:
+    name: Unit Test
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Install Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: stable
+        check-latest: true
+    - name: Test
+      run: |
+        make unit-test
+
+  integration-test:
+    name: Integration Test
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Install Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: stable
+        check-latest: true
+    - name: Integration Test
+      run: |
+        set -euo pipefail
+        docker pull ustcmirror/test
+        make integration-test

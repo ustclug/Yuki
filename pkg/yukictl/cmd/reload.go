@@ -6,7 +6,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/cobra"
 
-	"github.com/ustclug/Yuki/pkg/utils"
 	"github.com/ustclug/Yuki/pkg/yukictl/factory"
 )
 
@@ -14,24 +13,14 @@ type reloadOptions struct {
 	repo string
 }
 
-func (o *reloadOptions) Complete(args []string) error {
-	if len(args) > 0 {
-		o.repo = args[0]
-	}
-	return nil
-}
-
 func (o *reloadOptions) Run(f factory.Factory) error {
 	req := f.RESTClient().R()
-	u, err := f.MakeURL("api/v1/repositories")
-	if err != nil {
-		return err
-	}
+	path := "api/v1/repos"
 	if len(o.repo) > 0 {
-		u.Path += "/" + o.repo
+		path += "/" + o.repo
 	}
 	var errMsg echo.HTTPError
-	resp, err := req.SetError(&errMsg).Post(u.String())
+	resp, err := req.SetError(&errMsg).Post(path)
 	if err != nil {
 		return err
 	}
@@ -51,9 +40,11 @@ func NewCmdReload(f factory.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "reload [name]",
 		Short: "Reload config of one or all repos",
-		Run: func(cmd *cobra.Command, args []string) {
-			utils.CheckError(o.Complete(args))
-			utils.CheckError(o.Run(f))
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				o.repo = args[0]
+			}
+			return o.Run(f)
 		},
 	}
 	return cmd

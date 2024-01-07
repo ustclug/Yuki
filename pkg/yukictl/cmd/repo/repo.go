@@ -13,7 +13,6 @@ func NewCmdRepo(f factory.Factory) *cobra.Command {
 	}
 	cmd.AddCommand(
 		NewCmdRepoLs(f),
-		NewCmdRepoLogs(f),
 		NewCmdRepoRm(f),
 	)
 	return cmd

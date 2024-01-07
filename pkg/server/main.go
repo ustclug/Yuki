@@ -4,435 +4,207 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"log/slog"
+	"net/http"
 	"os"
-	"os/exec"
-	"path"
-	"reflect"
-	"sync"
-	"time"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/errdefs"
+	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/sirupsen/logrus"
+	cmap "github.com/orcaman/concurrent-map/v2"
+	"github.com/robfig/cron/v3"
 	"github.com/spf13/viper"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 
-	"github.com/ustclug/Yuki/pkg/api"
-	"github.com/ustclug/Yuki/pkg/core"
-	"github.com/ustclug/Yuki/pkg/cron"
-	"github.com/ustclug/Yuki/pkg/gpool"
+	"github.com/ustclug/Yuki/pkg/docker"
+	"github.com/ustclug/Yuki/pkg/fs"
+	"github.com/ustclug/Yuki/pkg/model"
 )
 
 type Server struct {
-	e          *echo.Echo
-	c          *core.Core
-	ctx        context.Context
-	syncStatus sync.Map
-	gpool      gpool.Pool
-	config     *Config
-	cron       *cron.Cron
-	quit       chan struct{}
-	preSyncCh  chan api.PreSyncPayload
-	postSyncCh chan api.PostSyncPayload
+	repoSchedules cmap.ConcurrentMap[string, cron.Schedule]
+
+	e         *echo.Echo
+	dockerCli docker.Client
+	config    Config
+	db        *gorm.DB
+	logger    *slog.Logger
+	getSize   func(string) int64
 }
 
-func init() {
-	viper.SetEnvPrefix("YUKI")
-	viper.SetConfigFile("/etc/yuki/daemon.toml")
-}
-
-func New() (*Server, error) {
-	cfg, err := LoadConfig()
+func New(configPath string) (*Server, error) {
+	v := viper.New()
+	v.SetConfigFile(configPath)
+	err := v.ReadInConfig()
 	if err != nil {
+		return nil, err
+	}
+	cfg := DefaultConfig
+	if err := v.Unmarshal(&cfg); err != nil {
+		return nil, err
+	}
+	validate := validator.New()
+	if err := validate.Struct(&cfg); err != nil {
 		return nil, err
 	}
 	return NewWithConfig(cfg)
 }
 
-type varAndDefVal struct {
-	Var    interface{}
-	DefVal interface{}
-}
-
-func setDefault(us []varAndDefVal) {
-	for _, u := range us {
-		val := reflect.ValueOf(u.Var)
-		dstType := val.Type().Elem()
-		dstVal := reflect.Indirect(val)
-		if reflect.DeepEqual(dstVal.Interface(), reflect.Zero(dstType).Interface()) {
-			dstVal.Set(reflect.ValueOf(u.DefVal))
-		}
-	}
-}
-
-func NewWithConfig(cfg *Config) (*Server, error) {
-	setDefault([]varAndDefVal{
-		{&cfg.DbURL, DefaultServerConfig.DbURL},
-		{&cfg.DbName, DefaultServerConfig.DbName},
-		{&cfg.DockerEndpoint, DefaultServerConfig.DockerEndpoint},
-
-		{&cfg.Owner, DefaultServerConfig.Owner},
-		{&cfg.LogDir, DefaultServerConfig.LogDir},
-		{&cfg.ListenAddr, DefaultServerConfig.ListenAddr},
-		{&cfg.NamePrefix, DefaultServerConfig.NamePrefix},
-		{&cfg.ImagesUpgradeInterval, DefaultServerConfig.ImagesUpgradeInterval},
+func NewWithConfig(cfg Config) (*Server, error) {
+	// TODO: enforce shared cache mode?
+	db, err := gorm.Open(sqlite.Open(cfg.DbURL), &gorm.Config{
+		QueryFields:            true,
+		SkipDefaultTransaction: true,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("open db: %w", err)
+	}
 
-	if err := os.MkdirAll(cfg.LogDir, os.ModePerm); err != nil {
-		return nil, err
-	}
-	for _, dir := range cfg.RepoConfigDir {
-		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-			return nil, err
-		}
-	}
-	coreCfg := core.Config{
-		Debug:          cfg.Debug,
-		DbURL:          cfg.DbURL,
-		DbName:         cfg.DbName,
-		GetSizer:       cfg.GetSizer,
-		DockerEndpoint: cfg.DockerEndpoint,
-	}
-	c, err := core.NewWithConfig(coreCfg)
+	dockerCli, err := docker.NewClient(cfg.DockerEndpoint)
 	if err != nil {
 		return nil, err
 	}
-	stopCh := make(chan struct{})
-	s := Server{
-		c:          c,
-		e:          echo.New(),
-		cron:       cron.New(),
-		config:     cfg,
-		gpool:      gpool.New(stopCh, gpool.WithMaxWorkers(5)),
-		quit:       stopCh,
-		preSyncCh:  make(chan api.PreSyncPayload),
-		postSyncCh: make(chan api.PostSyncPayload),
+
+	// workaround a systemd bug.
+	// See also https://github.com/ustclug/Yuki/issues/4
+	logfile, err := os.OpenFile(cfg.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return nil, err
 	}
 
-	s.e.Validator = &myValidator{NewValidator()}
+	var logLvl slog.Level
+	switch cfg.LogLevel {
+	case "debug":
+		logLvl = slog.LevelDebug
+	case "warn":
+		logLvl = slog.LevelWarn
+	case "error":
+		logLvl = slog.LevelError
+	default:
+		logLvl = slog.LevelInfo
+	}
+
+	slogger := newSlogger(logfile, cfg.Debug, logLvl)
+
+	s := Server{
+		e:             echo.New(),
+		db:            db,
+		logger:        slogger,
+		dockerCli:     dockerCli,
+		config:        cfg,
+		repoSchedules: cmap.New[cron.Schedule](),
+	}
+	switch cfg.FileSystem {
+	case "zfs":
+		s.getSize = fs.New(fs.ZFS).GetSize
+	case "xfs":
+		s.getSize = fs.New(fs.XFS).GetSize
+	default:
+		s.getSize = fs.New(fs.DEFAULT).GetSize
+	}
+
+	validate := validator.New()
+	s.e.Validator = echoValidator(validate.Struct)
 	s.e.Debug = cfg.Debug
 	s.e.HideBanner = true
-	s.e.HTTPErrorHandler = s.httpErrorHandler
-	s.e.Logger.SetOutput(ioutil.Discard)
+	s.e.Logger.SetOutput(io.Discard)
 
-	logfile, err := os.OpenFile(path.Join(cfg.LogDir, "yukid.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return nil, err
-	}
-	logrus.SetLevel(cfg.LogLevel)
-	logrus.SetReportCaller(cfg.Debug)
-	logrus.SetFormatter(new(logrus.TextFormatter))
-	logrus.SetOutput(logfile)
+	// Middlewares.
+	// The order matters.
+	s.e.Use(middleware.RequestID())
+	s.e.Use(setLogger(slogger))
+	s.e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		LogStatus:    true,
+		LogLatency:   true,
+		LogUserAgent: true,
+		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
+			attrs := []slog.Attr{
+				slog.Int("status", v.Status),
+				slog.String("user_agent", v.UserAgent),
+				slog.Duration("latency", v.Latency),
+			}
+			l := getLogger(c)
+			l.LogAttrs(context.Background(), slog.LevelDebug, "REQUEST", attrs...)
+			return nil
+		},
+	}))
 
-	// middlewares
-	s.e.Use(middleware.BodyLimit("2M"))
-
-	g := s.e.Group("/api/v1/")
-	s.registerAPIs(g)
+	s.registerAPIs(s.e)
 
 	return &s, nil
 }
 
-func (s *Server) schedRepos() {
-	repos := s.c.ListAllRepositories()
-	logrus.Infof("Scheduling %d repositories", len(repos))
-	for _, r := range repos {
-		if err := s.cron.AddJob(r.Name, r.Interval, s.newJob(r.Name)); err != nil {
-			logrus.WithField("repo", r.Name).Errorln(err)
-		}
+func (s *Server) Start(rootCtx context.Context) error {
+	l := s.logger
+	ctx, cancel := context.WithCancelCause(rootCtx)
+	defer cancel(context.Canceled)
+
+	l.Info("Initializing database")
+	err := model.AutoMigrate(s.db)
+	if err != nil {
+		return fmt.Errorf("init db: %w", err)
 	}
-}
 
-func (s *Server) newJob(name string) cron.FuncJob {
-	return func() {
-		ct, err := s.c.Sync(s.context(), core.SyncOptions{
-			LogDir:         s.config.LogDir,
-			DefaultOwner:   s.config.Owner,
-			NamePrefix:     s.config.NamePrefix,
-			Name:           name,
-			MountDir:       true,
-			DefaultBindIP:  s.config.BindIP,
-			SeccompProfile: s.config.SeccompProfile,
-		})
-		entry := logrus.WithField("repo", name)
-		if err != nil {
-			if errdefs.IsConflict(err) {
-				entry.Warningln(err)
-			} else {
-				entry.Errorln(err)
-			}
-			return
-		}
-		logrus.Infof("Syncing %s", name)
-		if err := s.waitForSync(ct); err != nil {
-			entry.Warningln(err)
-		}
+	l.Info("Initializing repo metas")
+	err = s.initRepoMetas()
+	if err != nil {
+		return fmt.Errorf("init meta: %w", err)
 	}
-}
 
-func (s *Server) Start(ctx context.Context) {
-	s.ctx = ctx
+	l.Info("Cleaning dead containers")
+	err = s.cleanDeadContainers()
+	if err != nil {
+		return fmt.Errorf("clean dead containers: %w", err)
+	}
 
-	logrus.Infof("Listening at %s", s.config.ListenAddr)
+	l.Info("Waiting running containers")
+	err = s.waitRunningContainers()
+	if err != nil {
+		return fmt.Errorf("wait running containers: %w", err)
+	}
+
+	l.Info("Scheduling tasks")
+	s.scheduleTasks(ctx)
+
 	go func() {
-		if err := s.e.Start(s.config.ListenAddr); err != nil {
-			logrus.Warnf("Shutting down the server: %v", err)
+		l.Info("Running HTTP server", slog.String("addr", s.config.ListenAddr))
+		if err := s.e.Start(s.config.ListenAddr); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			l.Error("Fail to run HTTP server", slogErrAttr(err))
+			cancel(err)
 		}
 	}()
 
-	go s.onPreSync()
-	go s.onPostSync()
+	<-ctx.Done()
+	l.Info("Shutting down HTTP server")
+	_ = s.e.Shutdown(context.Background())
 
-	s.cleanDeadContainers()
-
-	s.waitRunningContainers()
-
-	s.schedRepos()
-	s.c.InitMetas()
-
-	err := s.cron.AddFunc(s.config.ImagesUpgradeInterval, func() {
-		logrus.Info("Upgrading images")
-		s.upgradeImages()
-		logrus.Info("Cleaning images")
-		s.cleanImages()
-	})
-	if err != nil {
-		logrus.Fatalf("cron.AddFunc: %s", err)
+	caused := context.Cause(ctx)
+	if errors.Is(caused, context.Canceled) {
+		return nil
 	}
-
-	go func() {
-		ticker := time.NewTicker(time.Second * 20)
-		fail := 0
-		const threshold int = 3
-		for range ticker.C {
-			if err := s.c.PingMongoSession(); err != nil {
-				fail++
-				if fail > threshold {
-					logrus.Errorln("Failed to connect to MongoDB, exit...")
-					close(s.quit)
-					return
-				}
-				logrus.Warnf("Failed to connect to MongoDB: %d", fail)
-			} else if fail != 0 {
-				logrus.Warnln("Reconnected to MongoDB")
-				fail = 0
-			}
-		}
-	}()
-
-	select {
-	case <-ctx.Done():
-		close(s.quit)
-	case <-s.quit:
-	}
-	s.teardown()
+	return caused
 }
 
-func (s *Server) teardown() {
-	s.c.CloseMongoSession()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-	if err := s.e.Shutdown(ctx); err != nil {
-		logrus.Warningln(err)
-	}
+// ListenAddr returns the actual address the server is listening on.
+// It is useful when the server is configured to listen on a random port.
+func (s *Server) ListenAddr() string {
+	return s.e.Listener.Addr().String()
 }
 
-func (s *Server) context() context.Context {
-	return s.ctx
-}
+func (s *Server) registerAPIs(e *echo.Echo) {
+	v1API := e.Group("/api/v1/")
 
-func (s *Server) contextWithTimeout(timeout time.Duration) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(s.ctx, timeout)
-}
+	// public APIs
+	v1API.GET("metas", s.handlerListRepoMetas)
+	v1API.GET("metas/:name", s.handlerGetRepoMeta)
 
-func (s *Server) upgradeImages() {
-	var images []string
-	err := s.c.FindRepository(nil).Distinct("image", &images)
-	if err != nil {
-		return
-	}
-	var wg sync.WaitGroup
-	wg.Add(len(images))
-	for _, i := range images {
-		img := i
-		s.gpool.Submit(func() {
-			ctx, cancel := s.contextWithTimeout(time.Minute * 5)
-			err := s.c.PullImage(ctx, img)
-			cancel()
-			wg.Done()
-			if err != nil {
-				logrus.Warningf("pullImage: %s", err)
-			}
-		})
-	}
-	wg.Wait()
-}
-
-func (s *Server) cleanImages() {
-	ctx, cancel := s.contextWithTimeout(time.Second * 5)
-	defer cancel()
-	imgs, err := s.c.ListImages(ctx, map[string][]string{
-		"label":    {"org.ustcmirror.images=true"},
-		"dangling": {"true"},
-	})
-	if err != nil {
-		logrus.Warningf("listImages: %s", err)
-		return
-	}
-	for _, i := range imgs {
-		ctx, cancel := s.contextWithTimeout(time.Second * 5)
-		err := s.c.RemoveImage(ctx, i.ID)
-		cancel()
-		if err != nil {
-			logrus.Warningf("removeImage: %s", err)
-		}
-	}
-}
-
-func (s *Server) onPreSync() {
-	for {
-		select {
-		case <-s.quit:
-			return
-		case data := <-s.preSyncCh:
-			err := s.c.UpdatePrevRun(data.Name)
-			if err != nil {
-				logrus.WithField("repo", data.Name).Errorf("failed to update prevRun: %s", err)
-			}
-			s.syncStatus.Store(data.Name, struct{}{})
-		}
-	}
-}
-
-func (s *Server) onPostSync() {
-	cmds := s.config.PostSync
-	for {
-		select {
-		case <-s.quit:
-			return
-		case data := <-s.postSyncCh:
-			s.syncStatus.Delete(data.Name)
-			ctx, cancel := s.contextWithTimeout(time.Second * 20)
-			err := s.c.RemoveContainer(ctx, data.ID)
-			cancel()
-			entry := logrus.WithField("repo", data.Name)
-			if err != nil {
-				entry.Errorf("failed to remove container: %s", err)
-			}
-			err = s.c.UpsertRepoMeta(data.Name, data.Dir, data.ExitCode)
-			if err != nil {
-				entry.Errorf("failed to upsert repo meta: %s", err)
-			}
-			envs := []string{
-				fmt.Sprintf("ID=%s", data.ID),
-				fmt.Sprintf("Name=%s", data.Name),
-				fmt.Sprintf("Dir=%s", data.Dir),
-				fmt.Sprintf("ExitCode=%d", data.ExitCode),
-			}
-			go func() {
-				for _, cmd := range cmds {
-					prog := exec.Command("sh", "-c", cmd)
-					prog.Env = envs
-					if err := prog.Run(); err != nil {
-						logrus.WithFields(logrus.Fields{
-							"command": cmd,
-						}).Errorln(err)
-					}
-				}
-			}()
-		}
-	}
-}
-
-// cleanDeadContainers removes containers which status are `created`, `exited` or `dead`.
-func (s *Server) cleanDeadContainers() {
-	logrus.Info("Cleaning dead containers")
-
-	ctx, cancel := context.WithTimeout(context.TODO(), time.Second*10)
-	defer cancel()
-	cts, err := s.c.ListContainers(ctx, map[string][]string{
-		"label":  {"org.ustcmirror.syncing=true"},
-		"status": {"created", "exited", "dead"},
-	})
-	if err != nil {
-		logrus.Errorf("listContainers: %s", err)
-		return
-	}
-	for _, ct := range cts {
-		ctx, cancel := s.contextWithTimeout(time.Second * 20)
-		err := s.c.RemoveContainer(ctx, ct.ID)
-		cancel()
-		if err != nil {
-			logrus.WithField("container", ct.Names[0]).Errorf("removeContainer: %s", err)
-		}
-	}
-}
-
-// waitRunningContainers waits for all syncing containers to stop and remove them.
-func (s *Server) waitRunningContainers() {
-	cts, err := s.c.ListContainers(context.Background(), map[string][]string{
-		"label":  {"org.ustcmirror.syncing=true"},
-		"status": {"running"},
-	})
-	if err != nil {
-		logrus.Errorf("listContainers: %s", err)
-		return
-	}
-	for _, ct := range cts {
-		go func(ct types.Container) {
-			if err := s.waitForSync(&api.Container{
-				ID:     ct.ID,
-				Labels: ct.Labels,
-			}); err != nil {
-				logrus.WithField("container", ct.Names[0]).Warningf("waitForSync: %s", err)
-			}
-		}(ct)
-	}
-}
-
-// waitForSync emits `SyncStart` event at first, then blocks until the container stops and emits the `SyncEnd` event.
-func (s *Server) waitForSync(ct *api.Container) error {
-	s.preSyncCh <- api.PreSyncPayload{
-		Name: ct.Labels["org.ustcmirror.name"],
-	}
-
-	ctx := s.context()
-	if s.config.SyncTimeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, s.config.SyncTimeout)
-		defer cancel()
-	}
-
-	code, err := s.c.WaitContainer(ctx, ct.ID)
-	if err != nil {
-		if !errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			return err
-		} else {
-			// When the error is timeout, we expect that
-			// container will be stopped and removed in onPostSync() goroutine
-			// Here we set a special exit code to indicate that the container is timeout in meta.
-			code = -2
-		}
-	}
-
-	name, ok := ct.Labels["org.ustcmirror.name"]
-	if !ok {
-		return fmt.Errorf("missing label: org.ustcmirror.name")
-	}
-	dir, ok := ct.Labels["org.ustcmirror.storage-dir"]
-	if !ok {
-		return fmt.Errorf("missing label: org.ustcmirror.storage-dir")
-	}
-
-	s.postSyncCh <- api.PostSyncPayload{
-		ID:       ct.ID,
-		Name:     name,
-		Dir:      dir,
-		ExitCode: code,
-	}
-	// returns context.DeadlineExceeded when timeout
-	// or nil when it succeeded
-	return err
+	// private APIs
+	v1API.GET("repos", s.handlerListRepos)
+	v1API.GET("repos/:name", s.handlerGetRepo)
+	v1API.DELETE("repos/:name", s.handlerRemoveRepo)
+	v1API.POST("repos/:name", s.handlerReloadRepo)
+	v1API.POST("repos", s.handlerReloadAllRepos)
+	v1API.POST("repos/:name/sync", s.handlerSyncRepo)
 }

@@ -2,77 +2,97 @@ package server
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
+	"log/slog"
+	"net/http/httptest"
 	"os"
 	"testing"
 
-	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
+	"github.com/go-playground/validator/v10"
+	"github.com/go-resty/resty/v2"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+	cmap "github.com/orcaman/concurrent-map/v2"
+	"github.com/robfig/cron/v3"
 	"github.com/stretchr/testify/require"
-	"github.com/ustclug/Yuki/pkg/api"
-	"github.com/ustclug/Yuki/pkg/core"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+
+	fakedocker "github.com/ustclug/Yuki/pkg/docker/fake"
+	"github.com/ustclug/Yuki/pkg/fs"
+	"github.com/ustclug/Yuki/pkg/model"
 )
 
-func getTestingServer(ctx context.Context, prefix string, name string, storageDir string) (*Server, error) {
-	s, err := New()
-	if err != nil {
-		return nil, err
-	}
-
-	defer os.RemoveAll("/tmp/log_yuki")
-	defer os.RemoveAll("/tmp/config_yuki")
-
-	err = os.MkdirAll(storageDir, os.ModePerm)
-	if err != nil {
-		return nil, err
-	}
-	defer os.RemoveAll(storageDir)
-	// remove existing repository and container
-	_ = s.c.RemoveRepository(name)
-	_ = s.c.RemoveContainer(ctx, prefix+name)
-
-	s.ctx = ctx
-	go s.onPreSync()
-	go s.onPostSync()
-
-	return s, nil
+type TestEnv struct {
+	t       *testing.T
+	httpSrv *httptest.Server
+	server  *Server
 }
 
-func TestWaitForSync(t *testing.T) {
-	as := assert.New(t)
-	req := require.New(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func (t *TestEnv) RESTClient() *resty.Client {
+	return resty.New().SetBaseURL(t.httpSrv.URL + "/api/v1")
+}
 
-	viper.Reset()
-	viper.SetConfigFile("../../test/fixtures/sync_timeout.toml")
+func (t *TestEnv) RandomString() string {
+	var buf [6]byte
+	_, _ = rand.Read(buf[:])
+	suffix := base64.RawURLEncoding.EncodeToString(buf[:])
+	return t.t.Name() + suffix
+}
 
-	prefix := "syncing-"
-	name := "yuki-wait-test-sync-repo"
-	d := "/tmp/" + name
-	cycle := 10
+func NewTestEnv(t *testing.T) *TestEnv {
+	slogger := newSlogger(os.Stderr, true, slog.LevelInfo)
 
-	s, err := getTestingServer(ctx, prefix, name, d)
-	req.Nil(err)
+	e := echo.New()
+	e.HideBanner = true
+	e.HidePort = true
+	v := validator.New()
+	e.Validator = echoValidator(v.Struct)
 
-	err = s.c.AddRepository(api.Repository{
-		Name:        name,
-		Interval:    "1 * * * *",
-		Image:       "ustcmirror/test:latest",
-		StorageDir:  d,
-		LogRotCycle: &cycle,
-		Envs:        map[string]string{"SLEEP_INFINITY": "1"},
+	dbFile, err := os.CreateTemp("", "yukid*.db")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_ = dbFile.Close()
+		_ = os.Remove(dbFile.Name())
 	})
-	as.Nil(err)
-
-	ct, err := s.c.Sync(ctx, core.SyncOptions{
-		MountDir:   false,
-		Name:       name,
-		NamePrefix: prefix,
+	db, err := gorm.Open(sqlite.Open(dbFile.Name()), &gorm.Config{
+		QueryFields:            true,
+		SkipDefaultTransaction: true,
 	})
-	as.Nil(err)
-	defer s.c.RemoveContainer(ctx, ct.ID)
-	err = s.waitForSync(ct)
-	if err != context.DeadlineExceeded && err.Error() != "" {
-		t.Fatalf("Expected error to be context.DeadlineExceeded, got %v", err)
+	require.NoError(t, err)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	// To resolve the "database is locked" error.
+	// See also https://github.com/mattn/go-sqlite3/issues/209
+	sqlDB.SetMaxOpenConns(1)
+	require.NoError(t, model.AutoMigrate(db))
+
+	s := &Server{
+		e:         e,
+		db:        db,
+		logger:    slogger,
+		dockerCli: fakedocker.NewClient(),
+		getSize:   fs.New(fs.DEFAULT).GetSize,
+
+		repoSchedules: cmap.New[cron.Schedule](),
+	}
+	s.e.Use(setLogger(slogger))
+	s.e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		LogStatus: true,
+		LogMethod: true,
+		LogURI:    true,
+		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
+			l := getLogger(c)
+			l.LogAttrs(context.Background(), slog.LevelInfo, "REQUEST", slog.Int("status", v.Status))
+			return nil
+		},
+	}))
+	s.registerAPIs(e)
+	srv := httptest.NewServer(e)
+	return &TestEnv{
+		t:       t,
+		httpSrv: srv,
+		server:  s,
 	}
 }
