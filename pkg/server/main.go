@@ -55,7 +55,7 @@ func New(configPath string) (*Server, error) {
 
 func NewWithConfig(cfg Config) (*Server, error) {
 	dbURL := cfg.DbURL
-	if strings.IndexRune(dbURL, '?') < 0 {
+	if !strings.ContainsRune(dbURL, '?') {
 		// enable WAL mode by default to improve performance
 		dbURL += "?_journal_mode=WAL"
 	}
