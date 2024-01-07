@@ -1,9 +1,9 @@
 before:
   hooks:
     - go mod tidy
-# TODO: publish docker images
-# https://goreleaser.com/customization/docker/#how-it-works
 builds:
+  # NOTE: Currently, we cannot distribute yukid as a binary, because it requires CGO.
+  # Instead, we distribute it as a Docker image. Please refer to the release workflow for more details.
   -
     id: yukictl
     binary: yukictl
@@ -17,22 +17,7 @@ builds:
     flags:
       - -trimpath
     ldflags:
-      - -s -w -X github.com/ustclug/Yuki/pkg/info.Version={{.Version}} -X github.com/ustclug/Yuki/pkg/info.BuildDate={{.Date}}
-  -
-    id: yukid
-    binary: yukid
-    main: ./cmd/yukid
-    env:
-      # required by sqlite
-      - CGO_ENABLED=1
-    goos:
-      - linux
-    goarch:
-      - amd64
-    flags:
-      - -trimpath
-    ldflags:
-      - -s -w -X github.com/ustclug/Yuki/pkg/info.Version={{.Version}} -X github.com/ustclug/Yuki/pkg/info.BuildDate={{.Date}}
+      - -s -w -X github.com/ustclug/Yuki/pkg/info.Version={{.Version}} -X github.com/ustclug/Yuki/pkg/info.BuildDate={{.Date}} -X github.com/ustclug/Yuki/pkg/info.GitCommit={{.Commit}}
 archives:
   - format: binary
 checksum:
