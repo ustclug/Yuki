@@ -1,7 +1,7 @@
 README
 =======
 
-[![Build Status](https://github.com/ustclug/Yuki/actions/workflows/pr-presubmit-checks.yml/badge.svg)](https://github.com/ustclug/Yuki/actions/workflows/pr-presubmit-checks.yml)
+[![Presubmit Checks](https://github.com/ustclug/Yuki/actions/workflows/pr-presubmit-checks.yml/badge.svg)](https://github.com/ustclug/Yuki/actions/workflows/pr-presubmit-checks.yml)
 [![Go Report](https://goreportcard.com/badge/github.com/ustclug/Yuki)](https://goreportcard.com/report/github.com/ustclug/Yuki)
 
 - [Requirements](#requirements)
