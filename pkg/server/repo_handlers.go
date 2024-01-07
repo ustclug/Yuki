@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/cpuguy83/go-docker/errdefs"
+	"github.com/cpuguy83/go-docker/image"
 	"github.com/labstack/echo/v4"
 	"github.com/robfig/cron/v3"
 	"gorm.io/gorm/clause"
@@ -118,8 +119,14 @@ func (s *Server) loadRepo(c echo.Context, logger *slog.Logger, dirs []string, fi
 		}
 	}
 
-	if err := s.e.Validator.Validate(&repo); err != nil {
+	err := s.e.Validator.Validate(&repo)
+	if err != nil {
 		return nil, newHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid config: %q: %v", file, err))
+	}
+
+	_, err = image.ParseRef(repo.Image)
+	if err != nil {
+		return nil, newHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid image: %q: %v", repo.Image, err))
 	}
 
 	schedule, err := cron.ParseStandard(repo.Cron)
