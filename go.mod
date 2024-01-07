@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	// https://github.com/moby/moby/issues/46621
-	github.com/docker/docker v25.0.0-beta.3+incompatible
+	github.com/docker/docker v25.0.0-rc.1+incompatible
 	github.com/docker/go-units v0.5.0
 	github.com/go-playground/validator/v10 v10.16.0
 	github.com/go-resty/resty/v2 v2.11.0
