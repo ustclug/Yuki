@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
@@ -53,10 +54,13 @@ func New(configPath string) (*Server, error) {
 }
 
 func NewWithConfig(cfg Config) (*Server, error) {
-	// TODO: enforce shared cache mode?
-	db, err := gorm.Open(sqlite.Open(cfg.DbURL), &gorm.Config{
-		QueryFields:            true,
-		SkipDefaultTransaction: true,
+	dbURL := cfg.DbURL
+	if !strings.ContainsRune(dbURL, '?') {
+		// enable WAL mode by default to improve performance
+		dbURL += "?_journal_mode=WAL"
+	}
+	db, err := gorm.Open(sqlite.Open(dbURL), &gorm.Config{
+		QueryFields: true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)

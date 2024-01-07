@@ -13,17 +13,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/mount"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/errdefs"
+	"github.com/cpuguy83/go-docker/errdefs"
 	"github.com/labstack/echo/v4"
 	"github.com/robfig/cron/v3"
-	"golang.org/x/sync/errgroup"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
 	"github.com/ustclug/Yuki/pkg/api"
+	"github.com/ustclug/Yuki/pkg/docker"
 	"github.com/ustclug/Yuki/pkg/model"
 )
 
@@ -273,27 +270,9 @@ func (s *Server) upgradeImages() {
 		logger.Error("Fail to query images", slogErrAttr(err))
 		return
 	}
-	eg, egCtx := errgroup.WithContext(context.Background())
-	eg.SetLimit(5)
-	for _, i := range images {
-		img := i
-		eg.Go(func() error {
-			pullCtx, cancel := context.WithTimeout(egCtx, time.Minute*5)
-			defer cancel()
-			err := s.dockerCli.PullImage(pullCtx, img)
-			if err != nil {
-				logger.Error("Fail to pull image", slogErrAttr(err), slog.String("image", img))
-			}
-			return nil
-		})
-	}
-	_ = eg.Wait()
-
-	logger.Debug("Removing dangling images")
-
-	err = s.dockerCli.RemoveDanglingImages()
+	err = s.dockerCli.UpgradeImages(images)
 	if err != nil {
-		logger.Error("Fail to remove dangling images", slogErrAttr(err))
+		logger.Error("Fail to upgrade images", slogErrAttr(err))
 	}
 }
 
@@ -310,8 +289,7 @@ func (s *Server) scheduleTasks(ctx context.Context) {
 				l := s.logger.With(slog.String("repo", name))
 				err := s.syncRepo(context.Background(), name, false)
 				if err != nil {
-					var dkErr errdefs.ErrConflict
-					if errors.As(err, &dkErr) {
+					if errdefs.IsConflict(err) {
 						l.Warn("Still syncing")
 					} else {
 						l.Error("Fail to sync", slogErrAttr(err))
@@ -439,47 +417,22 @@ func (s *Server) syncRepo(ctx context.Context, name string, debug bool) error {
 	for k, v := range repo.Volumes {
 		binds = append(binds, k+":"+v)
 	}
-
-	containerConfig := &container.Config{
-		Image:     repo.Image,
-		OpenStdin: true,
-		Env:       envs,
-		Labels: map[string]string{
-			api.LabelRepoName:   repo.Name,
-			api.LabelStorageDir: repo.StorageDir,
-		},
-	}
-	hostConfig := &container.HostConfig{
-		SecurityOpt: securityOpt,
-		// NOTE: difference between "-v" and "--mount":
-		// https://docs.docker.com/storage/bind-mounts/#choose-the--v-or---mount-flag
-		Mounts: []mount.Mount{
-			{
-				// TODO: make it configurable?
-				Type:   mount.TypeTmpfs,
-				Target: "/tmp",
-			},
-		},
-		Binds: binds,
-	}
-	networkingConfig := &network.NetworkingConfig{
-		EndpointsConfig: make(map[string]*network.EndpointSettings, 1),
-	}
-	switch repo.Network {
-	case "", "host":
-		hostConfig.NetworkMode = "host"
-	default:
-		// https://github.com/moby/moby/blob/master/daemon/create_test.go#L15
-		networkingConfig.EndpointsConfig[repo.Network] = &network.EndpointSettings{}
-	}
 	ctName := s.config.NamePrefix + name
 
 	ctID, err := s.dockerCli.RunContainer(
 		ctx,
-		containerConfig,
-		hostConfig,
-		networkingConfig,
-		ctName,
+		docker.RunContainerConfig{
+			Labels: map[string]string{
+				api.LabelRepoName:   repo.Name,
+				api.LabelStorageDir: repo.StorageDir,
+			},
+			Env:         envs,
+			Image:       repo.Image,
+			Name:        ctName,
+			SecurityOpt: securityOpt,
+			Binds:       binds,
+			Network:     repo.Network,
+		},
 	)
 	if err != nil {
 		return fmt.Errorf("run container: %w", err)

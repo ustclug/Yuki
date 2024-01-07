@@ -10,7 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/errdefs"
+	"github.com/cpuguy83/go-docker/errdefs"
+	"github.com/cpuguy83/go-docker/image"
 	"github.com/labstack/echo/v4"
 	"github.com/robfig/cron/v3"
 	"gorm.io/gorm/clause"
@@ -118,8 +119,14 @@ func (s *Server) loadRepo(c echo.Context, logger *slog.Logger, dirs []string, fi
 		}
 	}
 
-	if err := s.e.Validator.Validate(&repo); err != nil {
+	err := s.e.Validator.Validate(&repo)
+	if err != nil {
 		return nil, newHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid config: %q: %v", file, err))
+	}
+
+	_, err = image.ParseRef(repo.Image)
+	if err != nil {
+		return nil, newHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid image: %q: %v", repo.Image, err))
 	}
 
 	schedule, err := cron.ParseStandard(repo.Cron)
@@ -253,9 +260,7 @@ func (s *Server) handlerSyncRepo(c echo.Context) error {
 		if errors.Is(err, errNotFound) {
 			return newHTTPError(http.StatusNotFound, "Repo not found")
 		}
-		// https://github.com/moby/moby/issues/47018
-		var dkErr errdefs.ErrConflict
-		if errors.As(err, &dkErr) {
+		if errdefs.IsConflict(err) {
 			return newHTTPError(http.StatusConflict, "Repo is syncing")
 		}
 		const msg = "Fail to sync Repo"
