@@ -22,7 +22,6 @@ type Config struct {
 	PostSync              []string      `mapstructure:"post_sync"`
 	ImagesUpgradeInterval time.Duration `mapstructure:"images_upgrade_interval" validate:"min=0"`
 	SyncTimeout           time.Duration `mapstructure:"sync_timeout" validate:"min=0"`
-	SeccompProfile        string        `mapstructure:"seccomp_profile" validate:"omitempty,filepath"`
 }
 
 var DefaultConfig = Config{

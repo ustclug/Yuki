@@ -26,8 +26,7 @@ type RunContainerConfig struct {
 	Name   string
 
 	// HostConfig
-	SecurityOpt []string
-	Binds       []string
+	Binds []string
 
 	// NetworkingConfig
 	Network string
@@ -80,8 +79,7 @@ func (c *clientImpl) RunContainer(ctx context.Context, config RunContainerConfig
 		}
 
 		cfg.Spec.HostConfig = containerapi.HostConfig{
-			Binds:       config.Binds,
-			SecurityOpt: config.SecurityOpt,
+			Binds: config.Binds,
 		}
 		cfg.Spec.HostConfig.Mounts = []mount.Mount{
 			{

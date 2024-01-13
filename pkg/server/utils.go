@@ -386,11 +386,6 @@ func (s *Server) syncRepo(ctx context.Context, name string, debug bool) error {
 		repo.User = s.config.Owner
 	}
 
-	var securityOpt []string
-	if len(s.config.SeccompProfile) > 0 {
-		securityOpt = append(securityOpt, "seccomp="+s.config.SeccompProfile)
-	}
-
 	envMap := repo.Envs
 	if len(envMap) == 0 {
 		envMap = make(map[string]string)
@@ -425,12 +420,11 @@ func (s *Server) syncRepo(ctx context.Context, name string, debug bool) error {
 				api.LabelRepoName:   repo.Name,
 				api.LabelStorageDir: repo.StorageDir,
 			},
-			Env:         envs,
-			Image:       repo.Image,
-			Name:        ctName,
-			SecurityOpt: securityOpt,
-			Binds:       binds,
-			Network:     repo.Network,
+			Env:     envs,
+			Image:   repo.Image,
+			Name:    ctName,
+			Binds:   binds,
+			Network: repo.Network,
 		},
 	)
 	if err != nil {
