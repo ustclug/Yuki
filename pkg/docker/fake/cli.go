@@ -34,7 +34,7 @@ func (f *Client) WaitContainerWithTimeout(id string, timeout time.Duration) (int
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	ct, ok := f.containers[id]
+	_, ok := f.containers[id]
 	if !ok {
 		return 0, fmt.Errorf("container %s not found", id)
 	}
@@ -44,7 +44,6 @@ func (f *Client) WaitContainerWithTimeout(id string, timeout time.Duration) (int
 		return 0, context.DeadlineExceeded
 	}
 	time.Sleep(delay)
-	f.containers[id] = ct
 	return 0, nil
 }
 

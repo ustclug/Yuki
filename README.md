@@ -27,6 +27,7 @@ wget https://github.com/ustclug/Yuki/releases/latest/download/yukid_linux_amd64
 
 sudo cp yukictl_linux_amd64 /usr/local/bin/yukictl
 sudo cp yukid_linux_amd64 /usr/local/bin/yukid
+sudo chmod +x /usr/local/bin/{yukid,yukictl}
 ```
 
 Configure yukid:

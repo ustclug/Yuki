@@ -128,3 +128,60 @@ func TestWaitRunningContainers(t *testing.T) {
 		return !meta.Syncing
 	})
 }
+
+func TestWaitForSync(t *testing.T) {
+	const name = "repo0"
+	t.Run("last_success should be updated", func(t *testing.T) {
+		te := NewTestEnv(t)
+		require.NoError(t, te.server.db.Create([]model.RepoMeta{
+			{
+				Name:     name,
+				Syncing:  true,
+				ExitCode: 2,
+				Size:     3,
+			},
+		}).Error)
+
+		id, err := te.server.dockerCli.RunContainer(context.TODO(), docker.RunContainerConfig{
+			Name: name,
+		})
+		require.NoError(t, err)
+		te.server.waitForSync(name, id, "")
+
+		meta := model.RepoMeta{Name: name}
+		require.NoError(t, te.server.db.Take(&meta).Error)
+		require.EqualValues(t, name, meta.Name)
+		require.EqualValues(t, -1, meta.Size)
+		require.False(t, meta.Syncing)
+		require.Empty(t, meta.ExitCode)
+		require.NotEmpty(t, meta.LastSuccess)
+	})
+
+	t.Run("last_success should not be updated upon sync failure", func(t *testing.T) {
+		te := NewTestEnv(t)
+		lastSuccess := time.Now().Add(-time.Hour * 24).Unix()
+		require.NoError(t, te.server.db.Create([]model.RepoMeta{
+			{
+				Name:        name,
+				LastSuccess: lastSuccess,
+				ExitCode:    2,
+				Size:        3,
+			},
+		}).Error)
+
+		te.server.config.SyncTimeout = time.Second
+		id, err := te.server.dockerCli.RunContainer(context.TODO(), docker.RunContainerConfig{
+			Name: name,
+		})
+		require.NoError(t, err)
+		te.server.waitForSync(name, id, "")
+
+		meta := model.RepoMeta{Name: name}
+		require.NoError(t, te.server.db.Take(&meta).Error)
+		require.EqualValues(t, name, meta.Name)
+		require.EqualValues(t, -1, meta.Size)
+		require.False(t, meta.Syncing)
+		require.EqualValues(t, -2, meta.ExitCode)
+		require.EqualValues(t, lastSuccess, meta.LastSuccess)
+	})
+}

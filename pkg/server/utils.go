@@ -82,20 +82,19 @@ func (s *Server) waitForSync(name, ctID, storageDir string) {
 		l.Error("Fail to remove container", slogErrAttr(err))
 	}
 
-	var lastSuccess int64
+	updates := map[string]any{
+		"size":      s.getSize(storageDir),
+		"exit_code": code,
+		"syncing":   false,
+	}
 	if code == 0 {
-		lastSuccess = time.Now().Unix()
+		updates["last_success"] = time.Now().Unix()
 	}
 
 	err = s.db.
 		Model(&model.RepoMeta{}).
 		Where(model.RepoMeta{Name: name}).
-		Updates(map[string]any{
-			"size":         s.getSize(storageDir),
-			"exit_code":    code,
-			"last_success": lastSuccess,
-			"syncing":      false,
-		}).Error
+		Updates(updates).Error
 	if err != nil {
 		l.Error("Fail to update RepoMeta", slogErrAttr(err))
 	}
