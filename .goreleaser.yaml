@@ -6,8 +6,7 @@ builds:
     id: yukid
     binary: yukid
     env:
-      # required by sqlite lib
-      - CGO_ENABLED=1
+      - CGO_ENABLED=0
     main: ./cmd/yukid
     goos:
       - linux
