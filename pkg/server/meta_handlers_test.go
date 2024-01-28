@@ -13,7 +13,10 @@ func TestHandlerListRepoMetas(t *testing.T) {
 	te := NewTestEnv(t)
 	require.NoError(t, te.server.db.Create([]model.RepoMeta{
 		{
-			Name: t.Name(),
+			Name: "repo2",
+		},
+		{
+			Name: "repo1",
 		},
 	}).Error)
 
@@ -23,8 +26,8 @@ func TestHandlerListRepoMetas(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, resp.IsSuccess(), "Unexpected response: %s", resp.Body())
 
-	require.Len(t, metas, 1)
-	require.EqualValues(t, t.Name(), metas[0].Name)
+	require.Len(t, metas, 2)
+	require.EqualValues(t, "repo1", metas[0].Name)
 }
 
 func TestHandlerGetRepoMeta(t *testing.T) {
