@@ -14,7 +14,7 @@ func (s *Server) handlerListRepoMetas(c echo.Context) error {
 	l.Debug("Invoked")
 
 	var metas []model.RepoMeta
-	err := s.getDB(c).Find(&metas).Error
+	err := s.getDB(c).Order("name").Find(&metas).Error
 	if err != nil {
 		const msg = "Fail to list RepoMetas"
 		l.Error(msg, slogErrAttr(err))
