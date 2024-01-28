@@ -9,6 +9,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/glebarez/sqlite"
 	"github.com/go-playground/validator/v10"
 	"github.com/go-resty/resty/v2"
 	"github.com/labstack/echo/v4"
@@ -16,7 +17,6 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/robfig/cron/v3"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
 	fakedocker "github.com/ustclug/Yuki/pkg/docker/fake"
@@ -57,7 +57,7 @@ func NewTestEnv(t *testing.T) *TestEnv {
 		_ = os.Remove(dbFile.Name())
 	})
 	// Switch to WAL mode to avoid "database is locked" error.
-	db, err := gorm.Open(sqlite.Open(dbFile.Name()+"?_journal_mode=WAL"), &gorm.Config{
+	db, err := gorm.Open(sqlite.Open(dbFile.Name()), &gorm.Config{
 		QueryFields: true,
 	})
 	require.NoError(t, err)
