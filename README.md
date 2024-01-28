@@ -7,7 +7,6 @@ README
 - [Requirements](#requirements)
 - [Quickstart](#quickstart)
 - [Handbook](#handbook)
-- [Troubleshooting](#troubleshooting)
 - [Development](#development)
 
 Sync local repositories with remote.
@@ -108,30 +107,6 @@ sed -i.bak 's/interval/cron/' /path/to/repo/configs/*.yaml
 For post sync hook, the environment variables that are passed to the hook script are changed:
 * `Dir` -> `DIR`: the directory of the repository
 * `Name` -> `NAME`: the name of the repository
-
-## Troubleshooting
-
-### version `GLIBC_2.XX' not found
-
-You might encounter the following error when running yukid:
-
-```
-$ ./yukid -V
-./yukid: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.33' not found (required by ./yukid)
-./yukid: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.32' not found (required by ./yukid)
-./yukid: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.34' not found (required by ./yukid)
-```
-
-This is because `yukid` is complied with CGO enabled, which is required by https://github.com/mattn/go-sqlite3.
-The version of glibc that is linked to `yukid` might differ from the actual one that exists on your current machine.
-You will need to compile `yukid` on your current machine or run `yukid` in container.
-
-Tips:
-* To check your current glibc version:
-```
-$ /lib/x86_64-linux-gnu/libc.so.6 | grep -i glibc
-```
-* The docker images of `yukid`: https://github.com/ustclug/Yuki/pkgs/container/yukid
 
 ## Development
 

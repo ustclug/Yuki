@@ -8,15 +8,14 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"strings"
 
+	"github.com/glebarez/sqlite"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/robfig/cron/v3"
 	"github.com/spf13/viper"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
 	"github.com/ustclug/Yuki/pkg/docker"
@@ -54,12 +53,7 @@ func New(configPath string) (*Server, error) {
 }
 
 func NewWithConfig(cfg Config) (*Server, error) {
-	dbURL := cfg.DbURL
-	if !strings.ContainsRune(dbURL, '?') {
-		// enable WAL mode by default to improve performance
-		dbURL += "?_journal_mode=WAL"
-	}
-	db, err := gorm.Open(sqlite.Open(dbURL), &gorm.Config{
+	db, err := gorm.Open(sqlite.Open(cfg.DbURL), &gorm.Config{
 		QueryFields: true,
 	})
 	if err != nil {
