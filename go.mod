@@ -6,7 +6,7 @@ require (
 	github.com/cpuguy83/go-docker v0.3.0
 	github.com/docker/go-units v0.5.0
 	github.com/glebarez/sqlite v1.10.0
-	github.com/go-playground/validator/v10 v10.18.0
+	github.com/go-playground/validator/v10 v10.19.0
 	github.com/go-resty/resty/v2 v2.11.0
 	github.com/labstack/echo/v4 v4.11.4
 	github.com/orcaman/concurrent-map/v2 v2.0.1
@@ -14,7 +14,7 @@ require (
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.18.2
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	golang.org/x/sync v0.6.0
 	gorm.io/gorm v1.25.7
 	sigs.k8s.io/yaml v1.4.0
