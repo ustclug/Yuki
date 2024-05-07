@@ -6,7 +6,7 @@ require (
 	github.com/cpuguy83/go-docker v0.3.0
 	github.com/docker/go-units v0.5.0
 	github.com/glebarez/sqlite v1.11.0
-	github.com/go-playground/validator/v10 v10.19.0
+	github.com/go-playground/validator/v10 v10.20.0
 	github.com/go-resty/resty/v2 v2.12.0
 	github.com/labstack/echo/v4 v4.12.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
