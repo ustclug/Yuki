@@ -25,11 +25,9 @@ jobs:
           go-version: stable
           check-latest: true
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v5
+        uses: golangci/golangci-lint-action@v6
         with:
-          version: v1.55.0
-          skip-build-cache: true
-          skip-pkg-cache: true
+          version: v1.58.1
 
   unit-test:
     name: Unit Test
