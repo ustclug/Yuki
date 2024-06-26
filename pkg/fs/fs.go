@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
 	"path"
 	"strconv"
@@ -48,18 +49,37 @@ func (f *defaultFs) GetSize(d string) int64 {
 
 type zfs struct{}
 
+func getMountSource(d string) (string, error) {
+	if !dirExists(d) {
+		return "", os.ErrNotExist
+	}
+	var buf bytes.Buffer
+	cmd := exec.Command("df", "--output=source", d)
+	cmd.Stdout = &buf
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+	scanner := bufio.NewScanner(&buf)
+	scanner.Scan()
+	scanner.Scan()
+	return strings.TrimSpace(scanner.Text()), nil
+}
+
 func (f *zfs) GetSize(d string) int64 {
 	if !dirExists(d) {
 		return -1
 	}
+	src, err := getMountSource(d)
+	if err != nil {
+		return -1
+	}
 	var buf bytes.Buffer
-	cmd := exec.Command("df", "-B1", "--output=used", d)
+	cmd := exec.Command("zfs", "get", "-H", "-p", "-o", "value", "logicalused", src)
 	cmd.Stdout = &buf
 	if err := cmd.Run(); err != nil {
 		return -1
 	}
 	scanner := bufio.NewScanner(&buf)
-	scanner.Scan()
 	scanner.Scan()
 	bs, err := strconv.ParseInt(scanner.Text(), 10, 64)
 	if err != nil {
