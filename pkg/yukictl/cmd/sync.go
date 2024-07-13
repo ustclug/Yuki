@@ -43,7 +43,7 @@ func NewCmdSync(f factory.Factory) *cobra.Command {
 		Example: "  yukictl sync REPO",
 		Short:   "Sync local repository with remote",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			o.name = args[0]
+			o.name = stripSuffix(args[0])
 			return o.Run(f)
 		},
 	}
