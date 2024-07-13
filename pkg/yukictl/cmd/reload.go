@@ -42,7 +42,7 @@ func NewCmdReload(f factory.Factory) *cobra.Command {
 		Short: "Reload config of one or all repos",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
-				o.repo = args[0]
+				o.repo = stripSuffix(args[0])
 			}
 			return o.Run(f)
 		},
