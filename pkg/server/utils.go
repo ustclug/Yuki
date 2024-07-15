@@ -392,7 +392,9 @@ func (s *Server) syncRepo(ctx context.Context, name string, debug bool) error {
 	}
 	envMap["REPO"] = repo.Name
 	envMap["OWNER"] = repo.User
-	envMap["BIND_ADDRESS"] = repo.BindIP
+	if repo.BindIP != "" {
+		envMap["BIND_ADDRESS"] = repo.BindIP
+	}
 	envMap["RETRY"] = strconv.Itoa(repo.Retry)
 	envMap["LOG_ROTATE_CYCLE"] = strconv.Itoa(repo.LogRotCycle)
 	if debug {
