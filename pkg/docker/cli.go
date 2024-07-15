@@ -93,7 +93,7 @@ func (c *clientImpl) RunContainer(ctx context.Context, config RunContainerConfig
 		case "host", "":
 			cfg.Spec.HostConfig.NetworkMode = "host"
 		default:
-			cfg.Spec.NetworkConfig.EndpointsConfig[config.Network] = &containerapi.EndpointSettings{}
+			cfg.Spec.HostConfig.NetworkMode = config.Network
 		}
 	}
 	ct, err := c.client.ContainerService().Create(ctx, "", setCfg)
