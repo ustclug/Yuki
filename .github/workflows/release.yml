@@ -20,10 +20,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-go@v5
-        with:
-          go-version: stable
-
       - name: Install Go
         uses: actions/setup-go@v5
         with:
@@ -42,7 +38,7 @@ jobs:
 
       - name: Build yukid
         run: |
-          CGO_ENABLED=0 make yukid
+          CGO_ENABLED=0 make yukid yukictl deb
 
       - name: Build and Push Image
         uses: docker/build-push-action@v6
@@ -51,11 +47,9 @@ jobs:
           push: true
           tags: ghcr.io/ustclug/yukid:${{ github.ref_name }}
 
-      # More assembly might be required: Docker logins, GPG, etc.
-      # It all depends on your needs.
-      - uses: goreleaser/goreleaser-action@v6
+      - uses: softprops/action-gh-release@v1
         with:
-          version: latest
-          args: release --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          files: |
+            yukid
+            yukictl
+            yuki*.deb

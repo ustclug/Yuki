@@ -1,6 +1,10 @@
 .PHONY: all
 all: yukid yukictl
 
+.PHONY: clean
+clean:
+	rm -f yukid yukictl *.deb
+
 .PHONY: lint
 lint:
 	golangci-lint run --fix ./...
@@ -17,19 +21,18 @@ git_commit := $(shell git rev-parse HEAD)
 build_date := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 version ?= $(shell git describe --tags)
 
+go_ldflags := -s -w \
+			  -X github.com/ustclug/Yuki/pkg/info.BuildDate=$(build_date) \
+			  -X github.com/ustclug/Yuki/pkg/info.GitCommit=$(git_commit) \
+			  -X github.com/ustclug/Yuki/pkg/info.Version=$(version)
+
 .PHONY: yukid
 yukid:
-	go build -ldflags "-X github.com/ustclug/Yuki/pkg/info.BuildDate=$(build_date) \
-		-X github.com/ustclug/Yuki/pkg/info.GitCommit=$(git_commit) \
-		-X github.com/ustclug/Yuki/pkg/info.Version=$(version)" \
-		-trimpath ./cmd/yukid
+	go build -ldflags "$(go_ldflags)" -trimpath ./cmd/yukid
 
 .PHONY: yukictl
 yukictl:
-	go build -ldflags "-X github.com/ustclug/Yuki/pkg/info.BuildDate=$(build_date) \
-		-X github.com/ustclug/Yuki/pkg/info.GitCommit=$(git_commit) \
-		-X github.com/ustclug/Yuki/pkg/info.Version=$(version)" \
-		-trimpath ./cmd/yukictl
+	go build -ldflags "$(go_ldflags)" -trimpath ./cmd/yukictl
 
 .PHONY: deb
 
@@ -39,7 +42,8 @@ deb: | yukid yukictl
 	cp etc/daemon.example.toml $(deb_dir)/etc/yuki
 	cp etc/yukid.service $(deb_dir)/lib/systemd/system
 	cp yukid yukictl $(deb_dir)/usr/local/bin
+	ln -s yukictl $(deb_dir)/usr/local/bin/yuki
 	$(deb_dir)/usr/local/bin/yukictl completion bash > $(deb_dir)/etc/bash_completion.d/yukictl
 	sed "s/\$$VERSION\>/$(version)/g;s/^Version: v/Version: /g;s/\$$ARCH\>/$(shell go env GOARCH)/g" \
 		etc/debian-control > $(deb_dir)/DEBIAN/control
-	dpkg-deb --build -Zxz $(deb_dir) .
+	dpkg-deb --root-owner-group --build -Zxz $(deb_dir) .
