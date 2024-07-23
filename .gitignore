@@ -1,8 +1,10 @@
 # Build output files
 /yukictl
 /yukid
+/*.deb
 
 .idea/
+/debian/
 dist/
 
 *.swp
