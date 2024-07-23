@@ -47,9 +47,16 @@ jobs:
           push: true
           tags: ghcr.io/ustclug/yukid:${{ github.ref_name }}
 
+      # More assembly might be required: Docker logins, GPG, etc.
+      # It all depends on your needs.
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - uses: softprops/action-gh-release@v1
         with:
           files: |
-            yukid
-            yukictl
             yuki*.deb
