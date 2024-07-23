@@ -176,4 +176,8 @@ func TestHandlerRemoveRepo(t *testing.T) {
 	require.False(t, te.server.repoSchedules.Has(name))
 	require.ErrorContains(t, te.server.db.First(&model.Repo{Name: name}).Error, "record not found")
 	require.ErrorContains(t, te.server.db.First(&model.RepoMeta{Name: name}).Error, "record not found")
+
+	resp, err = cli.R().Delete("/repos/nonexist")
+	require.NoError(t, err)
+	require.Equal(t, 404, resp.StatusCode(), "Removing non-exist repo does not return 404")
 }
