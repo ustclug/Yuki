@@ -62,7 +62,7 @@ func (s *Server) handlerGetRepo(c echo.Context) error {
 		Where(model.Repo{Name: name}).
 		Limit(1).
 		Find(&repo)
-	if err != nil {
+	if res.Error != nil {
 		const msg = "Fail to get Repo"
 		l.Error(msg, slogErrAttr(err))
 		return newHTTPError(http.StatusInternalServerError, msg)
