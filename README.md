@@ -18,7 +18,32 @@ Sync local repositories with remote.
 
 ## Quickstart
 
-Download the binaries from the [Release](https://github.com/ustclug/Yuki/releases) page. For example:
+### Setup
+
+#### Debian and Ubuntu
+
+Download `yuki_*_amd64.deb` from the [latest release][latest-release] and install it:
+
+  [latest-release]: https://github.com/ustclug/Yuki/releases/latest
+
+```shell
+# Using v0.6.1 for example
+wget https://github.com/ustclug/Yuki/releases/download/v0.6.1/yuki_0.6.1_amd64.deb
+sudo dpkg -i yuki_0.6.1_amd64.deb
+```
+
+Copy `/etc/yuki/daemon.example.toml` to `/etc/yuki/daemon.toml` and edit accordingly.
+
+Create the `mirror` user and start the system service:
+
+```shell
+sudo useradd -m mirror
+sudo systemctl enable --now yukid.service
+```
+
+#### Other distros
+
+Download the binaries from the [latest release][latest-release]. For example:
 
 ```bash
 wget https://github.com/ustclug/Yuki/releases/latest/download/yukictl_linux_amd64
@@ -53,6 +78,8 @@ systemctl enable yukid
 systemctl start yukid
 systemctl status yukid
 ```
+
+### Configure repositories
 
 Setup repository:
 
@@ -105,6 +132,7 @@ sed -i.bak 's/interval/cron/' /path/to/repo/configs/*.yaml
 ```
 
 For post sync hook, the environment variables that are passed to the hook script are changed:
+
 * `Dir` -> `DIR`: the directory of the repository
 * `Name` -> `NAME`: the name of the repository
 
@@ -112,18 +140,24 @@ For post sync hook, the environment variables that are passed to the hook script
 
 * Build `yukid`:
 
-```
-make yukid
-```
+    ```shell
+    make yukid
+    ```
 
 * Build `yukictl`:
 
-```
-make yukictl
-```
+    ```shell
+    make yukictl
+    ```
+
+* Build Debian package:
+
+    ```shell
+    make deb
+    ```
 
 * Lint the whole project:
 
-```
-make lint
-```
+    ```shell
+    make lint
+    ```
