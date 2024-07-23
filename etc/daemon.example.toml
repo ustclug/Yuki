@@ -1,0 +1,24 @@
+debug = false
+
+listen_addr = "127.0.0.1:9999"
+db_url = "/home/mirror/yukid.db"
+repo_config_dir = "/home/mirror/repos/"
+
+fs = "zfs"
+
+# uid:gid
+owner = "1000:1000"
+
+log_file = "/home/mirror/log/yukid.log"
+repo_logs_dir = "/home/mirror/log/"
+log_level = "error"
+
+bind_ip = "0.0.0.0"
+
+name_prefix = "syncing-"
+
+images_upgrade_interval = "1h"
+
+post_sync = ["/home/mirror/scripts/post_sync.sh"]
+
+sync_timeout = "48h"

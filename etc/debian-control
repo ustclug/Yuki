@@ -1,0 +1,9 @@
+Package: yuki
+Version: $VERSION
+Architecture: $ARCH
+Priority: optional
+Section: admin
+Maintainer: USTC LUG <lug@ustc.edu.cn>
+Homepage: https://github.com/ustclug/Yuki
+Depends: docker-engine | docker.io | docker-ce
+Description: USTC Mirror Manager
