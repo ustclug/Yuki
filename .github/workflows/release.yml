@@ -36,9 +36,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build yukid
+      - name: Build
         run: |
-          CGO_ENABLED=0 make yukid yukictl deb
+          CGO_ENABLED=0 make yukictl yukid
 
       - name: Build and Push Image
         uses: docker/build-push-action@v6
@@ -55,8 +55,3 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            yuki*.deb
