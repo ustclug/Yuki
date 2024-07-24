@@ -60,6 +60,8 @@ nfpms:
     provides:
       - yukid
       - yukictl
+    scripts:
+      postinstall: etc/postinst.sh
     contents:
       - src: dist/bash_completion
         dst: /etc/bash_completion.d/yukictl
