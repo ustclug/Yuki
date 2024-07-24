@@ -62,6 +62,7 @@ nfpms:
       - yukictl
     scripts:
       postinstall: etc/postinst.sh
+      preremove: etc/prerm.sh
     contents:
       - src: dist/bash_completion
         dst: /etc/bash_completion.d/yukictl
