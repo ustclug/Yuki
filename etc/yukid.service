@@ -8,8 +8,8 @@ ConditionPathExists=/etc/yuki/daemon.toml
 [Service]
 Type=exec
 User=mirror
-ExecStart=/usr/local/bin/yukid
-ExecReload=/usr/local/bin/yukictl reload
+ExecStart=/usr/bin/yukid
+ExecReload=/usr/bin/yukictl reload
 Restart=on-failure
 RestartSec=5
 
