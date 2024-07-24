@@ -62,7 +62,7 @@ func (s *Server) handlerGetRepo(c echo.Context) error {
 		Where(model.Repo{Name: name}).
 		Limit(1).
 		Find(&repo)
-	if err != nil {
+	if res.Error != nil {
 		const msg = "Fail to get Repo"
 		l.Error(msg, slogErrAttr(err))
 		return newHTTPError(http.StatusInternalServerError, msg)
@@ -84,8 +84,8 @@ func (s *Server) handlerRemoveRepo(c echo.Context) error {
 	}
 
 	db := s.getDB(c)
-	err = db.Where(model.Repo{Name: name}).Delete(&model.Repo{}).Error
-	if err != nil {
+	res := db.Where(model.Repo{Name: name}).Delete(&model.Repo{})
+	if res.Error != nil {
 		const msg = "Fail to delete Repo"
 		l.Error(msg, slogErrAttr(err), slog.String("repo", name))
 		return newHTTPError(http.StatusInternalServerError, msg)
@@ -95,6 +95,10 @@ func (s *Server) handlerRemoveRepo(c echo.Context) error {
 		l.Error("Fail to delete RepoMeta", slogErrAttr(err), slog.String("repo", name))
 	}
 	s.repoSchedules.Remove(name)
+	// Check repo existence after RepoMeta and schedule removal, to prevent inconsistency
+	if res.RowsAffected == 0 {
+		return newHTTPError(http.StatusNotFound, "Repo not found")
+	}
 	return c.NoContent(http.StatusNoContent)
 }
 

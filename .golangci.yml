@@ -65,6 +65,9 @@ linters-settings:
       - standard # Standard section: captures all standard packages.
       - default # Default section: contains all imports that could not be matched to another section type.
       - prefix(github.com/ustclug/Yuki)
+  govet:
+    enable:
+      - nilness
   exhaustive:
     # Only run exhaustive check on switches with "//exhaustive:enforce" comment.
     explicit-exhaustive-switch: true
