@@ -1,9 +1,9 @@
+version: 2
 before:
   hooks:
     - go mod tidy
 builds:
-  -
-    id: yukid
+  - id: yukid
     binary: yukid
     env:
       - CGO_ENABLED=0
@@ -16,8 +16,7 @@ builds:
       - -trimpath
     ldflags:
       - -s -w -X github.com/ustclug/Yuki/pkg/info.Version={{.Version}} -X github.com/ustclug/Yuki/pkg/info.BuildDate={{.Date}} -X github.com/ustclug/Yuki/pkg/info.GitCommit={{.Commit}}
-  -
-    id: yukictl
+  - id: yukictl
     binary: yukictl
     env:
       - CGO_ENABLED=0
@@ -30,6 +29,11 @@ builds:
       - -trimpath
     ldflags:
       - -s -w -X github.com/ustclug/Yuki/pkg/info.Version={{.Version}} -X github.com/ustclug/Yuki/pkg/info.BuildDate={{.Date}} -X github.com/ustclug/Yuki/pkg/info.GitCommit={{.Commit}}
+    hooks:
+      post:
+        - cmd: sh -c "{{ .Path }} completion bash > bash_completion"
+          dir: "{{ dir (dir .Path) }}"
+          output: true
 archives:
   - format: binary
     name_template: "{{ .Binary }}_{{ .Os  }}_{{ .Arch }}"
@@ -39,6 +43,36 @@ snapshot:
   name_template: "{{ incpatch .Version }}-next"
 changelog:
   use: github-native
+nfpms:
+  - id: default
+    package_name: yuki
+    homepage: https://github.com/ustclug/Yuki
+    maintainer: "USTC LUG <lug@ustc.edu.cn>"
+    description: |-
+      USTC Mirror Manager
+    formats:
+      - deb
+    umask: 0o022
+    dependencies:
+      - "docker.io | docker-engine | docker-ce"
+    section: admin
+    priority: extra
+    provides:
+      - yukid
+      - yukictl
+    scripts:
+      postinstall: etc/postinst.sh
+      preremove: etc/prerm.sh
+    contents:
+      - src: dist/bash_completion
+        dst: /etc/bash_completion.d/yukictl
+      - src: etc/daemon.example.toml
+        dst: /etc/yuki/
+      - src: etc/yukid.service
+        dst: /lib/systemd/system/
+      - src: yukictl
+        dst: /usr/bin/yuki
+        type: symlink
 
 # modelines, feel free to remove those if you don't want/use them:
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
