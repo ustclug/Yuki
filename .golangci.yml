@@ -32,9 +32,9 @@ run:
 # https://golangci-lint.run/usage/linters/
 linters:
   enable:
+  - copyloopvar
   - depguard
   - exhaustive
-  - exportloopref
   - gci
   - gochecknoinits
   - goconst
