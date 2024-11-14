@@ -199,6 +199,8 @@ func getUpstream(image string, envs model.StringMap) (upstream string) {
 			domain = envs["RCLONE_CONFIG_REMOTE_URL"]
 		case "s3":
 			domain = envs["RCLONE_CONFIG_REMOTE_ENDPOINT"]
+		case "webdav":
+			domain = envs["RCLONE_CONFIG_REMOTE_URL"]
 		}
 		return fmt.Sprintf("%s%s", domain, path)
 	case "rubygems":
