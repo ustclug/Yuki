@@ -17,7 +17,7 @@ require (
 	github.com/spf13/pflag v1.0.6
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/sync v0.11.0
+	golang.org/x/sync v0.12.0
 	gorm.io/gorm v1.25.12
 	sigs.k8s.io/yaml v1.4.0
 )
