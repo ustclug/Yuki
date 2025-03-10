@@ -1,6 +1,8 @@
 module github.com/ustclug/Yuki
 
-go 1.21
+go 1.24
+
+toolchain go1.24.1
 
 require (
 	github.com/cpuguy83/go-docker v0.3.0
