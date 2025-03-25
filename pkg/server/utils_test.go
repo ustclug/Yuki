@@ -39,11 +39,11 @@ func TestInitRepoMetas(t *testing.T) {
 	var metas []model.RepoMeta
 	require.NoError(t, te.server.db.Order("name").Find(&metas).Error)
 	require.Len(t, metas, 2)
-	require.EqualValues(t, -1, metas[0].Size)
-	require.EqualValues(t, 0, metas[0].ExitCode)
+	require.Equal(t, int64(-1), metas[0].Size)
+	require.Equal(t, 0, metas[0].ExitCode)
 
-	require.EqualValues(t, -1, metas[1].Size)
-	require.EqualValues(t, -1, metas[1].ExitCode)
+	require.Equal(t, int64(-1), metas[1].Size)
+	require.Equal(t, -1, metas[1].ExitCode)
 }
 
 type fakeImageClient struct {
@@ -150,8 +150,8 @@ func TestWaitForSync(t *testing.T) {
 
 		meta := model.RepoMeta{Name: name}
 		require.NoError(t, te.server.db.Take(&meta).Error)
-		require.EqualValues(t, name, meta.Name)
-		require.EqualValues(t, -1, meta.Size)
+		require.Equal(t, name, meta.Name)
+		require.Equal(t, int64(-1), meta.Size)
 		require.False(t, meta.Syncing)
 		require.Empty(t, meta.ExitCode)
 		require.NotEmpty(t, meta.LastSuccess)
@@ -178,10 +178,10 @@ func TestWaitForSync(t *testing.T) {
 
 		meta := model.RepoMeta{Name: name}
 		require.NoError(t, te.server.db.Take(&meta).Error)
-		require.EqualValues(t, name, meta.Name)
-		require.EqualValues(t, -1, meta.Size)
+		require.Equal(t, name, meta.Name)
+		require.Equal(t, int64(-1), meta.Size)
 		require.False(t, meta.Syncing)
-		require.EqualValues(t, -2, meta.ExitCode)
-		require.EqualValues(t, lastSuccess, meta.LastSuccess)
+		require.Equal(t, -2, meta.ExitCode)
+		require.Equal(t, lastSuccess, meta.LastSuccess)
 	})
 }
