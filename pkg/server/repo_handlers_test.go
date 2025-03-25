@@ -35,7 +35,7 @@ func TestHandlerListRepos(t *testing.T) {
 	require.True(t, resp.IsSuccess(), "Unexpected response: %s", resp.Body())
 
 	require.Len(t, repos, 2)
-	require.EqualValues(t, "/data/2", repos[1].StorageDir)
+	require.Equal(t, "/data/2", repos[1].StorageDir)
 }
 
 func TestHandlerReloadAllRepos(t *testing.T) {
@@ -98,27 +98,27 @@ envs:
 	require.NoError(t, err)
 	require.True(t, resp.IsSuccess(), "Unexpected response: %s", resp.Body())
 
-	require.EqualValues(t, 2, te.server.repoSchedules.Count())
+	require.Equal(t, 2, te.server.repoSchedules.Count())
 
 	var repos []model.Repo
 	require.NoError(t, te.server.db.Order("name").Find(&repos).Error)
 	require.Len(t, repos, 2)
 
-	require.EqualValues(t, "repo0", repos[0].Name)
-	require.EqualValues(t, "ubuntu", repos[0].Image)
-	require.EqualValues(t, "* * * * *", repos[0].Cron)
+	require.Equal(t, "repo0", repos[0].Name)
+	require.Equal(t, "ubuntu", repos[0].Image)
+	require.Equal(t, "* * * * *", repos[0].Cron)
 	require.NotEmpty(t, repos[0].Envs)
 
-	require.EqualValues(t, "repo1", repos[1].Name)
-	require.EqualValues(t, "alpine:latest", repos[1].Image)
+	require.Equal(t, "repo1", repos[1].Name)
+	require.Equal(t, "alpine:latest", repos[1].Image)
 
 	var metas []model.RepoMeta
 	require.NoError(t, te.server.db.Order("name").Find(&metas).Error)
 	require.Len(t, repos, 2)
-	require.EqualValues(t, "repo0", metas[0].Name)
-	require.EqualValues(t, "http://bar.com", metas[0].Upstream)
+	require.Equal(t, "repo0", metas[0].Name)
+	require.Equal(t, "http://bar.com", metas[0].Upstream)
 
-	require.EqualValues(t, "repo1", metas[1].Name)
+	require.Equal(t, "repo1", metas[1].Name)
 }
 
 func TestHandlerSyncRepo(t *testing.T) {

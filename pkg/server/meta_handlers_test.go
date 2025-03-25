@@ -27,7 +27,7 @@ func TestHandlerListRepoMetas(t *testing.T) {
 	require.True(t, resp.IsSuccess(), "Unexpected response: %s", resp.Body())
 
 	require.Len(t, metas, 2)
-	require.EqualValues(t, "repo1", metas[0].Name)
+	require.Equal(t, "repo1", metas[0].Name)
 }
 
 func TestHandlerGetRepoMeta(t *testing.T) {
@@ -56,7 +56,7 @@ func TestHandlerGetRepoMeta(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			resp, err := cli.R().Get("/metas/" + tc.name)
 			require.NoError(t, err)
-			require.EqualValues(t, tc.expectStatus, resp.StatusCode())
+			require.Equal(t, tc.expectStatus, resp.StatusCode())
 		})
 	}
 }

@@ -23,6 +23,6 @@ sync_timeout = "15s"
 `)
 	srv, err := New(tmp.Name())
 	require.NoError(t, err)
-	require.EqualValues(t, time.Second*15, srv.config.SyncTimeout)
-	require.EqualValues(t, "/tmp", srv.config.RepoConfigDir[0])
+	require.Equal(t, time.Second*15, srv.config.SyncTimeout)
+	require.Equal(t, "/tmp", srv.config.RepoConfigDir[0])
 }

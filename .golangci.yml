@@ -1,79 +1,72 @@
-# Options for analysis running.
+version: "2"
 run:
-  # Timeout for analysis, e.g. 30s, 5m.
-  # Default: 1m
-  timeout: 5m
-
-  # If set we pass it to "go list -mod={option}". From "go help modules":
-  # If invoked with -mod=readonly, the go command is disallowed from the implicit
-  # automatic updating of go.mod described above. Instead, it fails when any changes
-  # to go.mod are needed. This setting is most useful to check that go.mod does
-  # not need updates, such as in a continuous integration and testing system.
-  # If invoked with -mod=vendor, the go command assumes that the vendor
-  # directory holds the correct copies of dependencies and ignores
-  # the dependency descriptions in go.mod.
-  #
-  # Allowed values: readonly|vendor|mod
-  # By default, it isn't set.
   modules-download-mode: readonly
-
-# https://golangci-lint.run/usage/linters/
 linters:
   enable:
-  - copyloopvar
-  - depguard
-  - exhaustive
-  - gci
-  - gochecknoinits
-  - goconst
-  - gocritic
-  - gofmt
-  - goimports
-  - importas
-  - misspell
-  - nolintlint
-  - prealloc
-  - revive
-  - staticcheck
-  - testifylint
-  - unconvert
-  - unparam
-  - usestdlibvars
-  - whitespace
-
-linters-settings:
-  depguard:
+    - copyloopvar
+    - depguard
+    - exhaustive
+    - gochecknoinits
+    - goconst
+    - gocritic
+    - importas
+    - misspell
+    - nolintlint
+    - prealloc
+    - revive
+    - testifylint
+    - unconvert
+    - unparam
+    - usestdlibvars
+    - whitespace
+  settings:
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: github.com/docker/docker
+              desc: https://github.com/ustclug/Yuki/issues/44
+    exhaustive:
+      explicit-exhaustive-switch: true
+    govet:
+      enable:
+        - nilness
+    revive:
+      confidence: 0.6
+      rules:
+        - name: blank-imports
+        - name: dot-imports
+        - name: error-strings
+        - name: errorf
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
     rules:
-      main:
-        deny:
-          - pkg: github.com/docker/docker
-            desc: https://github.com/ustclug/Yuki/issues/44
-  gci:
-    sections:
-      - standard # Standard section: captures all standard packages.
-      - default # Default section: contains all imports that could not be matched to another section type.
-      - prefix(github.com/ustclug/Yuki)
-  govet:
-    enable:
-      - nilness
-  exhaustive:
-    # Only run exhaustive check on switches with "//exhaustive:enforce" comment.
-    explicit-exhaustive-switch: true
-  # https://golangci-lint.run/usage/linters/#revive
-  revive:
-    confidence: 0.6
-    rules:
-      # https://github.com/mgechev/revive/blob/master/RULES_DESCRIPTIONS.md#blank-imports
-      - name: blank-imports
-      # https://github.com/mgechev/revive/blob/master/RULES_DESCRIPTIONS.md#dot-imports
-      - name: dot-imports
-      # https://github.com/mgechev/revive/blob/master/RULES_DESCRIPTIONS.md#error-strings
-      - name: error-strings
-      # https://github.com/mgechev/revive/blob/master/RULES_DESCRIPTIONS.md#errorf
-      - name: errorf
-
-issues:
-  exclude-rules:
-  - path: _test.go
-    linters:
-    - errcheck
+      - linters:
+          - errcheck
+        path: _test.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - goimports
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/ustclug/Yuki)
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
