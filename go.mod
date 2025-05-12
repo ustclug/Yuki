@@ -16,7 +16,7 @@ require (
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/sync v0.14.0
-	gorm.io/gorm v1.26.0
+	gorm.io/gorm v1.26.1
 	sigs.k8s.io/yaml v1.4.0
 )
 
