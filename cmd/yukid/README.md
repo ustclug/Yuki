@@ -165,3 +165,9 @@ envs:
   }
 }
 ```
+
+### RESTful API
+
+yukid 提供的 API 参考 [`registerAPIs` 函数](../../pkg/server/main.go) 的实现。其中 `/api/v1/metas` 和 `/api/v1/metas/{name}` 是可公开访问的，可以用于搭建状态页。
+
+yukictl 也会使用这些 API 来操作 yukid。
