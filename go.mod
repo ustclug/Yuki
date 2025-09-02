@@ -11,12 +11,12 @@ require (
 	github.com/labstack/echo/v4 v4.13.4
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/spf13/cobra v1.9.1
-	github.com/spf13/pflag v1.0.7
+	github.com/spf13/cobra v1.10.1
+	github.com/spf13/pflag v1.0.9
 	github.com/spf13/viper v1.20.1
-	github.com/stretchr/testify v1.11.0
+	github.com/stretchr/testify v1.11.1
 	golang.org/x/sync v0.16.0
-	gorm.io/gorm v1.30.1
+	gorm.io/gorm v1.30.2
 	sigs.k8s.io/yaml v1.6.0
 )
 
