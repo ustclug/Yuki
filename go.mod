@@ -6,7 +6,7 @@ require (
 	github.com/cpuguy83/go-docker v0.4.0
 	github.com/docker/go-units v0.5.0
 	github.com/glebarez/sqlite v1.11.0
-	github.com/go-playground/validator/v10 v10.29.0
+	github.com/go-playground/validator/v10 v10.30.0
 	github.com/go-resty/resty/v2 v2.17.1
 	github.com/labstack/echo/v4 v4.14.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
@@ -25,7 +25,7 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
-	github.com/gabriel-vasile/mimetype v1.4.11 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.12 // indirect
 	github.com/glebarez/go-sqlite v1.21.2 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
