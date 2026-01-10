@@ -395,6 +395,10 @@ func (s *Server) syncRepo(ctx context.Context, name string, debug bool) error {
 	envMap["REPO"] = repo.Name
 	envMap["OWNER"] = repo.User
 	if repo.BindIP != "" {
+		logger.Warn(
+			"`bindIP` is deprecated and will be removed in a future version. Please migrate to Docker network if you need to sync with specific IP address. See https://github.com/ustclug/Yuki/issues/155 for more details.",
+			slog.String("bindIP", repo.BindIP),
+		)
 		envMap["BIND_ADDRESS"] = repo.BindIP
 	}
 	envMap["RETRY"] = strconv.Itoa(repo.Retry)
