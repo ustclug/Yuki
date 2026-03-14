@@ -90,7 +90,7 @@ storageDir: /tmp
 	testutils.WriteFile(t, filepath.Join(cfgDir2, "repo0.yaml"), `
 image: ubuntu
 envs:
-  UPSTREAM: http://bar.com
+  $UPSTREAM: http://bar.com
 `)
 
 	cli := te.RESTClient()

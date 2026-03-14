@@ -2,6 +2,8 @@ package server
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -146,7 +148,7 @@ func TestWaitForSync(t *testing.T) {
 			Name: name,
 		})
 		require.NoError(t, err)
-		te.server.waitForSync(name, id, "")
+		te.server.waitForSync(name, id, "", "")
 
 		meta := model.RepoMeta{Name: name}
 		require.NoError(t, te.server.db.Take(&meta).Error)
@@ -174,7 +176,7 @@ func TestWaitForSync(t *testing.T) {
 			Name: name,
 		})
 		require.NoError(t, err)
-		te.server.waitForSync(name, id, "")
+		te.server.waitForSync(name, id, "", "")
 
 		meta := model.RepoMeta{Name: name}
 		require.NoError(t, te.server.db.Take(&meta).Error)
@@ -183,5 +185,54 @@ func TestWaitForSync(t *testing.T) {
 		require.False(t, meta.Syncing)
 		require.Equal(t, -2, meta.ExitCode)
 		require.Equal(t, lastSuccess, meta.LastSuccess)
+	})
+
+	t.Run("upstream should be updated from log file", func(t *testing.T) {
+		te := NewTestEnv(t)
+		te.server.config.RepoLogsDir = t.TempDir()
+
+		logDir := filepath.Join(te.server.config.RepoLogsDir, name)
+		require.NoError(t, os.MkdirAll(logDir, 0o755))
+		content := "http://mirror.example.com/foo  \n"
+		require.NoError(t, os.WriteFile(filepath.Join(logDir, "yuki_upstream.txt"), []byte(content), 0o644))
+
+		require.NoError(t, te.server.db.Create([]model.RepoMeta{
+			{
+				Name: name,
+			},
+		}).Error)
+
+		id, err := te.server.dockerCli.RunContainer(context.TODO(), docker.RunContainerConfig{
+			Name: name,
+		})
+		require.NoError(t, err)
+		te.server.waitForSync(name, id, "", "")
+
+		meta := model.RepoMeta{Name: name}
+		require.NoError(t, te.server.db.Take(&meta).Error)
+		require.Equal(t, "http://mirror.example.com/foo", meta.Upstream)
+	})
+
+	t.Run("$UPSTREAM env should override log file", func(t *testing.T) {
+		te := NewTestEnv(t)
+		te.server.config.RepoLogsDir = t.TempDir()
+
+		logDir := filepath.Join(te.server.config.RepoLogsDir, name)
+		require.NoError(t, os.MkdirAll(logDir, 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(logDir, "yuki_upstream.txt"), []byte("http://log.example.com"), 0o644))
+
+		require.NoError(t, te.server.db.Create(&model.RepoMeta{
+			Name: name,
+		}).Error)
+
+		id, err := te.server.dockerCli.RunContainer(context.TODO(), docker.RunContainerConfig{
+			Name: name,
+		})
+		require.NoError(t, err)
+		te.server.waitForSync(name, id, "", "https://env.example.com")
+
+		meta := model.RepoMeta{Name: name}
+		require.NoError(t, te.server.db.Take(&meta).Error)
+		require.Equal(t, "https://env.example.com", meta.Upstream)
 	})
 }
