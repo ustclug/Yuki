@@ -38,6 +38,8 @@ linters:
         - name: dot-imports
         - name: error-strings
         - name: errorf
+    goconst:
+      ignore-tests: true
   exclusions:
     generated: lax
     presets:
