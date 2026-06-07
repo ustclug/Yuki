@@ -8,10 +8,8 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"strings"
 
 	"github.com/glebarez/sqlite"
-	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	cmap "github.com/orcaman/concurrent-map/v2"
@@ -46,7 +44,7 @@ func New(configPath string) (*Server, error) {
 	if err := v.Unmarshal(&cfg); err != nil {
 		return nil, err
 	}
-	validate := validator.New()
+	validate := InitValidator()
 	if err := validate.Struct(&cfg); err != nil {
 		return nil, err
 	}
@@ -104,12 +102,7 @@ func NewWithConfig(cfg Config) (*Server, error) {
 		s.getSize = fs.New(fs.DEFAULT).GetSize
 	}
 
-	validate := validator.New()
-	validate.RegisterValidation("repo-name", func(fl validator.FieldLevel) bool {
-		// Avoid possible issues when using filepath.Join with repo name
-		field := fl.Field().String()
-		return !strings.Contains(field, "/") && field != ".."
-	})
+	validate := InitValidator()
 	s.e.Validator = echoValidator(validate.Struct)
 	s.e.Debug = cfg.Debug
 	s.e.HideBanner = true

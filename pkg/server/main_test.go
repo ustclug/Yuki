@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/glebarez/sqlite"
-	"github.com/go-playground/validator/v10"
 	"github.com/go-resty/resty/v2"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -47,7 +46,7 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	e := echo.New()
 	e.HideBanner = true
 	e.HidePort = true
-	v := validator.New()
+	v := InitValidator()
 	e.Validator = echoValidator(v.Struct)
 
 	dbFile, err := os.CreateTemp("", "yukid*.db")
