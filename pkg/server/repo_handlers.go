@@ -158,12 +158,23 @@ func (s *Server) loadRepo(c echo.Context, logger *slog.Logger, dirs []string, fi
 	}
 
 	nextRun := schedule.Next(time.Now()).Unix()
+
+	var doUpdatesOnConflictClause clause.Set
+	if envUpstream == "" {
+		// If envUpstream has no value, do not set upstream to empty string if it already exists.
+		doUpdatesOnConflictClause = clause.Assignments(map[string]any{
+			"next_run": nextRun,
+		})
+	} else {
+		doUpdatesOnConflictClause = clause.Assignments(map[string]any{
+			"upstream": envUpstream,
+			"next_run": nextRun,
+		})
+	}
+
 	err = db.
 		Clauses(clause.OnConflict{
-			DoUpdates: clause.Assignments(map[string]any{
-				"upstream": envUpstream,
-				"next_run": nextRun,
-			}),
+			DoUpdates: doUpdatesOnConflictClause,
 		}).
 		Create(&model.RepoMeta{
 			Name:     repo.Name,
