@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/glebarez/sqlite"
 	"github.com/labstack/echo/v4"
@@ -17,6 +19,7 @@ import (
 	"github.com/spf13/viper"
 	"gorm.io/gorm"
 
+	"github.com/ustclug/Yuki/pkg/controlplane"
 	"github.com/ustclug/Yuki/pkg/docker"
 	"github.com/ustclug/Yuki/pkg/fs"
 	"github.com/ustclug/Yuki/pkg/model"
@@ -166,8 +169,20 @@ func (s *Server) Start(rootCtx context.Context) error {
 	s.scheduleTasks(ctx)
 
 	go func() {
-		l.Info("Running HTTP server", slog.String("addr", s.config.ListenAddr))
-		if err := s.e.Start(s.config.ListenAddr); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		endpoint, err := controlplane.ParseEndpoint(s.config.ListenAddr)
+		if err != nil {
+			cancel(err)
+			return
+		}
+		ln, err := s.listen(endpoint)
+		if err != nil {
+			l.Error("Fail to create HTTP listener", slogErrAttr(err))
+			cancel(err)
+			return
+		}
+		s.e.Listener = ln
+		l.Info("Running HTTP server", slog.String("endpoint", s.config.ListenAddr))
+		if err := s.e.Start(""); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			l.Error("Fail to run HTTP server", slogErrAttr(err))
 			cancel(err)
 		}
@@ -188,6 +203,23 @@ func (s *Server) Start(rootCtx context.Context) error {
 // It is useful when the server is configured to listen on a random port.
 func (s *Server) ListenAddr() string {
 	return s.e.Listener.Addr().String()
+}
+
+func (s *Server) listen(endpoint controlplane.Endpoint) (net.Listener, error) {
+	if endpoint.Type == controlplane.EndpointUnix {
+		if err := os.MkdirAll(filepath.Dir(endpoint.Address), 0755); err != nil {
+			return nil, fmt.Errorf("create unix socket dir: %w", err)
+		}
+		if err := os.Remove(endpoint.Address); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("remove unix socket: %w", err)
+		}
+	}
+
+	ln, err := net.Listen(string(endpoint.Type), endpoint.Address)
+	if err != nil {
+		return nil, err
+	}
+	return ln, nil
 }
 
 func (s *Server) registerAPIs(e *echo.Echo) {
