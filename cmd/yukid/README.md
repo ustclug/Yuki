@@ -63,9 +63,12 @@ repo_config_dir = ["/path/to/config-dir"]
 ## 默认值是 "info"
 #log_level = "info"
 
-## 设置监听地址
-## 默认值是 "127.0.0.1:9999"
-#listen_addr = "127.0.0.1:9999"
+## 设置控制面的监听端点
+## 可选格式：
+## host:port，例如 127.0.0.1:9999
+## 绝对路径，例如 /run/yuki/yukid.sock
+## 默认值是 "/run/yuki/yukid.sock"
+#listen_addr = "/run/yuki/yukid.sock"
 
 ## 设置同步仓库的时候默认绑定的 IP
 ## 默认值为空，即不绑定
@@ -169,5 +172,22 @@ envs:
 ### RESTful API
 
 yukid 提供的 API 参考 [`registerAPIs` 函数](../../pkg/server/main.go) 的实现。其中 `/api/v1/metas` 和 `/api/v1/metas/{name}` 是可公开访问的，可以用于搭建状态页。
+
+如果 `listen_addr` 配置成 Unix socket，例如 `/run/yuki/yukid.sock`，可以通过 Nginx 暴露公开状态页：
+
+```nginx
+server {
+    listen 80;
+    server_name mirror-status.example.com;
+
+    location / {
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass http://unix:/run/yuki/yukid.sock;
+    }
+}
+```
 
 yukictl 也会使用这些 API 来操作 yukid。

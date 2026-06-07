@@ -31,6 +31,12 @@ $ yukictl completion bash
 $ yukictl meta ls [repo]
 ```
 
+如果控制面监听在非默认的 socket（`/run/yuki/yukid.sock`）上，可以用 `--remote` 指定 socket 路径：
+
+```bash
+$ yukictl --remote 127.0.0.1:9999 meta ls
+```
+
 #### 手动开始同步任务
 
 ```bash
@@ -55,5 +61,6 @@ $ yukictl reload <repo>
 $ yukictl reload
 ```
 
-若需要删除仓库，则可以删除相应的配置文件，然后执行 `yukictl repo rm <repo>` 或 `yukictl reload` 来从数据库里删除配置。
+默认情况下 `--remote` 是 `/run/yuki/yukid.sock`。也支持 `127.0.0.1:9999` 和旧的 `http://127.0.0.1:9999/` 写法。
 
+若需要删除仓库，则可以删除相应的配置文件，然后执行 `yukictl repo rm <repo>` 或 `yukictl reload` 来从数据库里删除配置。

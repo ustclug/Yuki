@@ -79,6 +79,8 @@ systemctl start yukid
 systemctl status yukid
 ```
 
+`yukid` and `yukictl` use `/run/yuki/yukid.sock` by default. To switch back to TCP, set `listen_addr` to a `host:port` value such as `127.0.0.1:9999`.
+
 ### Configure repositories
 
 Setup repository:

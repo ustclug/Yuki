@@ -44,9 +44,12 @@ repo_config_dir = ["/path/to/config-dir"]
 ## 默认值是 "info"
 #log_level = "info"
 
-## 设置监听地址
-## 默认值是 "127.0.0.1:9999"
-#listen_addr = "127.0.0.1:9999"
+## 设置控制面的监听端点
+## 可选格式：
+## host:port，例如 127.0.0.1:9999
+## 绝对路径，例如 /run/yuki/yukid.sock
+## 默认值是 "/run/yuki/yukid.sock"
+#listen_addr = "/run/yuki/yukid.sock"
 
 ## 设置同步仓库的时候默认绑定的 IP
 ## 默认值为空，即不绑定
