@@ -139,6 +139,8 @@ func (s *Server) loadRepo(c echo.Context, logger *slog.Logger, dirs []string, fi
 	}
 	s.repoSchedules.Set(repo.Name, schedule)
 
+	envUpstream := getEnvUpstream(repo.Envs)
+
 	logDir := filepath.Join(s.config.RepoLogsDir, repo.Name)
 	err = os.MkdirAll(logDir, 0o755)
 	if err != nil {
@@ -155,18 +157,22 @@ func (s *Server) loadRepo(c echo.Context, logger *slog.Logger, dirs []string, fi
 		return nil, newHTTPError(http.StatusInternalServerError, msg)
 	}
 
-	upstream := getUpstream(repo.Image, repo.Envs)
 	nextRun := schedule.Next(time.Now()).Unix()
+
+	doUpdatesOnConflictAssignment := map[string]any{
+		"next_run": nextRun,
+	}
+	if envUpstream != "" {
+		doUpdatesOnConflictAssignment["upstream"] = envUpstream
+	}
+
 	err = db.
 		Clauses(clause.OnConflict{
-			DoUpdates: clause.Assignments(map[string]any{
-				"upstream": upstream,
-				"next_run": nextRun,
-			}),
+			DoUpdates: clause.Assignments(doUpdatesOnConflictAssignment),
 		}).
 		Create(&model.RepoMeta{
 			Name:     repo.Name,
-			Upstream: upstream,
+			Upstream: envUpstream,
 			Size:     s.getSize(repo.StorageDir),
 			NextRun:  nextRun,
 		}).Error
