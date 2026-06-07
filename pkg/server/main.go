@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/glebarez/sqlite"
 	"github.com/go-playground/validator/v10"
@@ -104,6 +105,11 @@ func NewWithConfig(cfg Config) (*Server, error) {
 	}
 
 	validate := validator.New()
+	validate.RegisterValidation("repo-name", func(fl validator.FieldLevel) bool {
+		// Avoid possible issues when using filepath.Join with repo name
+		field := fl.Field().String()
+		return !strings.Contains(field, "/") && field != ".."
+	})
 	s.e.Validator = echoValidator(validate.Struct)
 	s.e.Debug = cfg.Debug
 	s.e.HideBanner = true
