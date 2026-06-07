@@ -24,9 +24,17 @@ type Config struct {
 	SyncTimeout           time.Duration `mapstructure:"sync_timeout" validate:"min=0"`
 }
 
+func defaultDockerSocketLocation() string {
+	// Add DOCKER_HOST (common convention) support for non-rootful-Docker implementation.
+	if dockerHost, exists := os.LookupEnv("DOCKER_HOST"); exists {
+		return dockerHost
+	}
+	return "unix:///var/run/docker.sock"
+}
+
 var DefaultConfig = Config{
 	FileSystem:            "default",
-	DockerEndpoint:        "unix:///var/run/docker.sock",
+	DockerEndpoint:        defaultDockerSocketLocation(),
 	LogFile:               "/dev/stderr",
 	Owner:                 fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
 	RepoLogsDir:           "/var/log/yuki/",
