@@ -19,10 +19,6 @@ import (
 )
 
 func TestSyncRepo(t *testing.T) {
-	if _, err := os.Stat("/var/run/docker.sock"); err != nil {
-		t.Skip("docker socket is required for integration test")
-	}
-
 	tmpdir, err := os.MkdirTemp("", t.Name())
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -84,10 +80,6 @@ storageDir: "/tmp"
 }
 
 func TestSyncRepoUnixSocket(t *testing.T) {
-	if _, err := os.Stat("/var/run/docker.sock"); err != nil {
-		t.Skip("docker socket is required for integration test")
-	}
-
 	tmpdir, err := os.MkdirTemp("", t.Name())
 	require.NoError(t, err)
 	t.Cleanup(func() {
