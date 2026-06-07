@@ -27,7 +27,7 @@ repo_config_dir = ["/path/to/config-dir"]
 ## 设置 Docker Daemon 地址
 ## unix local socket: unix:///var/run/docker.sock
 ## tcp: tcp://127.0.0.1:2375
-## 默认值是 "unix:///var/run/docker.sock"
+## 默认会读取 DOCKER_HOST 环境变量，如果环境变量未设置则是 "unix:///var/run/docker.sock"
 #docker_endpoint = "unix:///var/run/docker.sock"
 
 ## 设置同步程序的运行时的 uid 跟 gid，会影响仓库文件的 uid 跟 gid
