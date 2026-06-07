@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -25,5 +26,8 @@ func main() {
 	rootCmd.Flags().BoolVarP(&printVersion, "version", "V", false, "Print version information and quit")
 	f := factory.New(rootCmd.PersistentFlags())
 	yukictl.Register(rootCmd, f)
-	_ = rootCmd.Execute()
+
+	if err := rootCmd.Execute(); err != nil {
+		os.Exit(1)
+	}
 }

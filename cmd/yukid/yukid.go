@@ -44,5 +44,7 @@ func main() {
 	cmd.Flags().StringVar(&configPath, "config", "/etc/yuki/daemon.toml", "The path to config file")
 	cmd.Flags().BoolVarP(&printVersion, "version", "V", false, "Print version information and quit")
 
-	_ = cmd.Execute()
+	if err := cmd.Execute(); err != nil {
+		os.Exit(1)
+	}
 }
