@@ -14,7 +14,7 @@ func (v echoValidator) Validate(i any) error {
 
 func InitValidator() *validator.Validate {
 	validate := validator.New()
-	validate.RegisterValidation("repo-name", func(fl validator.FieldLevel) bool {
+	_ = validate.RegisterValidation("repo-name", func(fl validator.FieldLevel) bool {
 		// Avoid possible issues when using filepath.Join with repo name
 		field := fl.Field().String()
 		return !strings.Contains(field, "/") && field != ".."
