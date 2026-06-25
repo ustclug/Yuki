@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/signal"
 
@@ -44,5 +45,8 @@ func main() {
 	cmd.Flags().StringVar(&configPath, "config", "/etc/yuki/daemon.toml", "The path to config file")
 	cmd.Flags().BoolVarP(&printVersion, "version", "V", false, "Print version information and quit")
 
-	_ = cmd.Execute()
+	if err := cmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }
