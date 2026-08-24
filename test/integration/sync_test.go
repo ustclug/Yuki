@@ -34,6 +34,7 @@ func TestSyncRepo(t *testing.T) {
 	cfg.RepoConfigDir = []string{cfgDir}
 	cfg.RepoLogsDir = logDir
 	cfg.ListenAddr = "127.0.0.1:0"
+	cfg.PublicListenAddr = ""
 	srv, err := server.NewWithConfig(cfg)
 	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -96,6 +97,7 @@ func TestSyncRepoUnixSocket(t *testing.T) {
 	cfg.RepoConfigDir = []string{cfgDir}
 	cfg.RepoLogsDir = logDir
 	cfg.ListenAddr = sockPath
+	cfg.PublicListenAddr = ""
 	srv, err := server.NewWithConfig(cfg)
 	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(context.Background())

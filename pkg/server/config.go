@@ -17,6 +17,7 @@ type Config struct {
 	RepoConfigDir         []string      `mapstructure:"repo_config_dir" validate:"required,dive,dir"`
 	LogLevel              string        `mapstructure:"log_level" validate:"oneof=debug info warn error"`
 	ListenAddr            string        `mapstructure:"listen_addr" validate:"listen-addr"`
+	PublicListenAddr      string        `mapstructure:"public_listen_addr" validate:"omitempty,hostname_port"`
 	BindIP                string        `mapstructure:"bind_ip" validate:"omitempty,ip"`
 	NamePrefix            string        `mapstructure:"name_prefix"`
 	PostSync              []string      `mapstructure:"post_sync"`
@@ -39,6 +40,7 @@ var DefaultConfig = Config{
 	Owner:                 fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
 	RepoLogsDir:           "/var/log/yuki/",
 	ListenAddr:            "/run/yuki/yukid.sock",
+	PublicListenAddr:      "127.0.0.1:9999",
 	NamePrefix:            "syncing-",
 	LogLevel:              "info",
 	ImagesUpgradeInterval: time.Hour,

@@ -31,7 +31,7 @@ $ yukictl completion bash
 $ yukictl meta ls [repo]
 ```
 
-如果控制面监听在非默认的 socket（`/run/yuki/yukid.sock`）上，可以用 `--remote` 指定 socket 路径：
+如果控制面监听在非默认端点（默认是 `/run/yuki/yukid.sock`）上，可以用 `--remote` 指定地址：
 
 ```bash
 $ yukictl --remote 127.0.0.1:9999 meta ls
