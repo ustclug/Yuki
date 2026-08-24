@@ -8,6 +8,6 @@ import (
 )
 
 type Factory interface {
-	RESTClient() *resty.Client
+	RESTClient() (*resty.Client, error)
 	JSONEncoder(w io.Writer) *json.Encoder
 }

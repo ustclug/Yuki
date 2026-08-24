@@ -15,7 +15,11 @@ type syncOptions struct {
 }
 
 func (o *syncOptions) Run(f factory.Factory) error {
-	req := f.RESTClient().R()
+	cli, err := f.RESTClient()
+	if err != nil {
+		return err
+	}
+	req := cli.R()
 	var errMsg echo.HTTPError
 	if o.debug {
 		req.SetQueryParam("debug", "true")

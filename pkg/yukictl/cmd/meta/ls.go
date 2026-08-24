@@ -23,7 +23,11 @@ func (o *lsOptions) Run(f factory.Factory) error {
 		err    error
 		errMsg echo.HTTPError
 	)
-	req := f.RESTClient().R().SetError(&errMsg)
+	cli, err := f.RESTClient()
+	if err != nil {
+		return err
+	}
+	req := cli.R().SetError(&errMsg)
 	encoder := f.JSONEncoder(os.Stdout)
 	if len(o.name) > 0 {
 		var result api.GetRepoMetaResponse

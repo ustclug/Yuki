@@ -2,8 +2,10 @@ package controlplane
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -33,7 +35,7 @@ func ParseEndpoint(raw string) (Endpoint, error) {
 		if err != nil {
 			return Endpoint{}, fmt.Errorf("parse control plane endpoint: %w", err)
 		}
-		if u.Host == "" || u.Path != "" && u.Path != "/" {
+		if u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || u.Path != "" && u.Path != "/" {
 			return Endpoint{}, fmt.Errorf("invalid control plane endpoint %q", raw)
 		}
 		raw = u.Host
@@ -51,7 +53,12 @@ func ParseEndpoint(raw string) (Endpoint, error) {
 		return Endpoint{}, fmt.Errorf("invalid control plane endpoint %q", raw)
 	}
 
-	if !strings.Contains(raw, ":") {
+	_, port, err := net.SplitHostPort(raw)
+	if err != nil {
+		return Endpoint{}, fmt.Errorf("invalid control plane endpoint %q", raw)
+	}
+	portNumber, err := strconv.Atoi(port)
+	if err != nil || portNumber < 1 || portNumber > 65535 {
 		return Endpoint{}, fmt.Errorf("invalid control plane endpoint %q", raw)
 	}
 

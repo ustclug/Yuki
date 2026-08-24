@@ -14,7 +14,11 @@ type reloadOptions struct {
 }
 
 func (o *reloadOptions) Run(f factory.Factory) error {
-	req := f.RESTClient().R()
+	cli, err := f.RESTClient()
+	if err != nil {
+		return err
+	}
+	req := cli.R()
 	path := "api/v1/repos"
 	if len(o.repo) > 0 {
 		path += "/" + o.repo

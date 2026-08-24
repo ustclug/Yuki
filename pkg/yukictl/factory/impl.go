@@ -3,6 +3,7 @@ package factory
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -17,14 +18,25 @@ type factoryImpl struct {
 	remote string
 }
 
-func (f *factoryImpl) RESTClient() *resty.Client {
+func (f *factoryImpl) RESTClient() (*resty.Client, error) {
 	endpoint, err := controlplane.ParseEndpoint(f.remote)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	cli := resty.New().SetBaseURL(endpoint.BaseURL)
-	return cli.SetTransport(newHTTPTransport(endpoint))
+	if endpoint.Type != controlplane.EndpointUnix {
+		return cli, nil
+	}
+	transport, ok := cli.GetClient().Transport.(*http.Transport)
+	if !ok {
+		return nil, fmt.Errorf("unsupported HTTP transport type %T", cli.GetClient().Transport)
+	}
+	transport = transport.Clone()
+	transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		return (&net.Dialer{}).DialContext(ctx, "unix", endpoint.Address)
+	}
+	return cli.SetTransport(transport), nil
 }
 
 func (f *factoryImpl) JSONEncoder(w io.Writer) *json.Encoder {
@@ -37,16 +49,4 @@ func New(flags *pflag.FlagSet) Factory {
 	s := factoryImpl{}
 	flags.StringVarP(&s.remote, "remote", "r", "/run/yuki/yukid.sock", "Remote address")
 	return &s
-}
-
-func newHTTPTransport(endpoint controlplane.Endpoint) *http.Transport {
-	if endpoint.Type != controlplane.EndpointUnix {
-		return &http.Transport{}
-	}
-
-	return &http.Transport{
-		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			return (&net.Dialer{}).DialContext(ctx, "unix", endpoint.Address)
-		},
-	}
 }
