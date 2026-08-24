@@ -33,7 +33,7 @@ func TestSyncRepo(t *testing.T) {
 	cfg.DbURL = filepath.Join(tmpdir, "yukid.db")
 	cfg.RepoConfigDir = []string{cfgDir}
 	cfg.RepoLogsDir = logDir
-	cfg.ListenAddr = "127.0.0.1:0"
+	cfg.ListenAddr = availableTCPAddress(t)
 	cfg.PublicListenAddr = ""
 	srv, err := server.NewWithConfig(cfg)
 	require.NoError(t, err)
@@ -78,6 +78,15 @@ storageDir: "/tmp"
 		t.Log("Waiting for syncing to finish")
 		return false
 	})
+}
+
+func availableTCPAddress(t *testing.T) string {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	address := ln.Addr().String()
+	require.NoError(t, ln.Close())
+	return address
 }
 
 func TestSyncRepoUnixSocket(t *testing.T) {

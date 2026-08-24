@@ -84,6 +84,11 @@ func TestParseEndpoint(t *testing.T) {
 			raw:     "127.0.0.1:65536",
 			wantErr: "invalid control plane endpoint",
 		},
+		{
+			name:    "zero port",
+			raw:     "127.0.0.1:0",
+			wantErr: "invalid control plane endpoint",
+		},
 	}
 
 	for _, tc := range tests {

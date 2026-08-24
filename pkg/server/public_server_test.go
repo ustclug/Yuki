@@ -105,7 +105,7 @@ func TestPublicListenAddrValidation(t *testing.T) {
 		require.NoError(t, validate.Struct(cfg), address)
 	}
 
-	for _, address := range []string{"/run/yuki/public.sock", "http://127.0.0.1:9999/", "localhost"} {
+	for _, address := range []string{"/run/yuki/public.sock", "http://127.0.0.1:9999/", "127.0.0.1:0", "localhost"} {
 		cfg.PublicListenAddr = address
 		require.Error(t, validate.Struct(cfg), address)
 	}
