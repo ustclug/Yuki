@@ -63,9 +63,17 @@ repo_config_dir = ["/path/to/config-dir"]
 ## 默认值是 "info"
 #log_level = "info"
 
-## 设置监听地址
-## 默认值是 "127.0.0.1:9999"
-#listen_addr = "127.0.0.1:9999"
+## 设置控制面的监听端点
+## 可选格式：
+## host:port，例如 127.0.0.1:9999
+## 绝对路径，例如 /run/yuki/yukid.sock
+## 默认值是 "/run/yuki/yukid.sock"
+#listen_addr = "/run/yuki/yukid.sock"
+
+## 设置只读公开 API 的 HTTP 监听地址
+## 只提供 /api/v1/metas 和 /api/v1/metas/{name}
+## 默认值是 "127.0.0.1:9999"；设置为空字符串可关闭
+#public_listen_addr = "127.0.0.1:9999"
 
 ## 设置同步仓库的时候默认绑定的 IP
 ## 默认值为空，即不绑定
@@ -168,6 +176,29 @@ envs:
 
 ### RESTful API
 
-yukid 提供的 API 参考 [`registerAPIs` 函数](../../pkg/server/main.go) 的实现。其中 `/api/v1/metas` 和 `/api/v1/metas/{name}` 是可公开访问的，可以用于搭建状态页。
+yukid 的完整控制面默认监听 Unix socket `/run/yuki/yukid.sock`。独立的公开 HTTP server 默认监听 `127.0.0.1:9999`，只注册 `/api/v1/metas` 和 `/api/v1/metas/{name}` 两个只读接口，可用于搭建状态页。不要将控制面 socket 直接暴露给反向代理。
 
-yukictl 也会使用这些 API 来操作 yukid。
+可以通过 Nginx 代理公开 HTTP server：
+
+```nginx
+server {
+    listen 80;
+    server_name mirror-status.example.com;
+
+    location / {
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass http://127.0.0.1:9999;
+    }
+}
+```
+
+如需直接监听外部网络，可以设置 `public_listen_addr = "0.0.0.0:9999"`，并配合防火墙限制访问。设置为空字符串会关闭公开 HTTP server。
+
+官方 systemd unit 使用 `RuntimeDirectory=yuki`：systemd 会以服务用户创建 `/run/yuki`，并在服务停止或重启时清理该目录。手动运行或使用自定义 socket 路径时，需要自行创建可写的父目录；若异常退出后遗留 socket，应先确认没有运行中的 `yukid`，再手动删除，程序不会主动删除已有路径。
+
+若 `listen_addr` 和 `public_listen_addr` 指向同一个 TCP 地址，yukid 会为兼容旧配置启动一个包含完整控制 API 的 listener，并输出安全警告。要获得权限隔离，应让 `listen_addr` 使用 Unix socket。
+
+yukictl 通过完整控制面操作 yukid。

@@ -82,8 +82,9 @@ func NewTestEnv(t *testing.T) *TestEnv {
 			return nil
 		},
 	}))
-	s.registerAPIs(e)
+	s.registerControlAPIs(e)
 	srv := httptest.NewServer(e)
+	t.Cleanup(srv.Close)
 	return &TestEnv{
 		t:       t,
 		httpSrv: srv,

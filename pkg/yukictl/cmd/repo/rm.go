@@ -15,7 +15,11 @@ type rmOptions struct {
 
 func (o *rmOptions) Run(f factory.Factory) error {
 	var errMsg echo.HTTPError
-	resp, err := f.RESTClient().R().
+	cli, err := f.RESTClient()
+	if err != nil {
+		return err
+	}
+	resp, err := cli.R().
 		SetError(&errMsg).
 		SetPathParam("name", o.name).
 		Delete("api/v1/repos/{name}")
