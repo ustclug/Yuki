@@ -41,8 +41,8 @@ func getRepoNameFromRoute(c echo.Context) (string, error) {
 	return val, nil
 }
 
-func (s *Server) convertModelRepoMetaToGetMetaResponse(in model.RepoMeta) api.GetRepoMetaResponse {
-	return api.GetRepoMetaResponse{
+func (s *Server) convertModelRepoMetaToGetMetaResponse(in model.RepoMeta, mirrorz []model.MirrorzRepo) api.GetRepoMetaResponse {
+	resp := api.GetRepoMetaResponse{
 		Name:        in.Name,
 		Upstream:    in.Upstream,
 		Syncing:     in.Syncing,
@@ -53,6 +53,19 @@ func (s *Server) convertModelRepoMetaToGetMetaResponse(in model.RepoMeta) api.Ge
 		PrevRun:     in.PrevRun,
 		NextRun:     in.NextRun,
 	}
+	resp.Mirrorz = make([]api.MirrorzRepo, len(mirrorz))
+	for i, repo := range mirrorz {
+		resp.Mirrorz[i] = api.MirrorzRepo{
+			Name:     repo.Name,
+			CName:    repo.CName,
+			Desc:     repo.Desc,
+			URL:      repo.URL,
+			Help:     repo.Help,
+			Upstream: repo.Upstream,
+			Disable:  repo.Disable,
+		}
+	}
+	return resp
 }
 
 func slogErrAttr(err error) slog.Attr {

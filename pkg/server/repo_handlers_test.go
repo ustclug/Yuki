@@ -76,6 +76,13 @@ func TestHandlerReloadAllRepos(t *testing.T) {
 	}).Error)
 
 	for i := 0; i < 2; i++ {
+		mirrorz := `
+mirrorz:
+  - desc: Default mapping
+`
+		if i == 1 {
+			mirrorz = "\nmirrorz: []\n"
+		}
 		testutils.WriteFile(
 			t,
 			filepath.Join(cfgDir1, fmt.Sprintf("repo%d.yaml", i)),
@@ -84,7 +91,7 @@ name: repo%d
 cron: "* * * * *"
 image: "alpine:latest"
 storageDir: /tmp
-`, i),
+%s`, i, mirrorz),
 		)
 	}
 	testutils.WriteFile(t, filepath.Join(cfgDir2, "repo0.yaml"), `
@@ -108,9 +115,15 @@ envs:
 	require.Equal(t, "ubuntu", repos[0].Image)
 	require.Equal(t, "* * * * *", repos[0].Cron)
 	require.NotEmpty(t, repos[0].Envs)
+	require.Equal(t, []model.MirrorzRepo{{
+		Name: "repo0",
+		Desc: "Default mapping",
+	}}, repos[0].Mirrorz)
 
 	require.Equal(t, "repo1", repos[1].Name)
 	require.Equal(t, "alpine:latest", repos[1].Image)
+	require.Empty(t, repos[1].Mirrorz)
+	require.NotNil(t, repos[1].Mirrorz)
 
 	var metas []model.RepoMeta
 	require.NoError(t, te.server.db.Order("name").Find(&metas).Error)
@@ -119,6 +132,27 @@ envs:
 	require.Equal(t, "http://bar.com", metas[0].Upstream)
 
 	require.Equal(t, "repo1", metas[1].Name)
+}
+
+func TestHandlerReloadRepoRejectsDuplicateMirrorzRepo(t *testing.T) {
+	te := NewTestEnv(t)
+	cfgDir := t.TempDir()
+	te.server.config.RepoConfigDir = []string{cfgDir}
+	te.server.config.RepoLogsDir = t.TempDir()
+	testutils.WriteFile(t, filepath.Join(cfgDir, "repo.yaml"), `
+name: repo
+cron: "* * * * *"
+image: alpine:latest
+storageDir: /tmp
+mirrorz:
+  - name: logical-repo
+  - name: logical-repo
+`)
+
+	resp, err := te.RESTClient().R().Post("/repos/repo")
+	require.NoError(t, err)
+	require.Equal(t, 400, resp.StatusCode())
+	require.Contains(t, string(resp.Body()), "duplicate MirrorZ repository")
 }
 
 func TestHandlerSyncRepo(t *testing.T) {

@@ -70,6 +70,9 @@ func (s *Server) handlerGetRepo(c echo.Context) error {
 	if res.RowsAffected == 0 {
 		return newHTTPError(http.StatusNotFound, "Repo not found")
 	}
+	if err := repo.NormalizeMirrorz(); err != nil {
+		return newHTTPError(http.StatusInternalServerError, "Stored Repo has invalid MirrorZ mapping")
+	}
 
 	return c.JSON(http.StatusOK, repo)
 }
@@ -121,6 +124,9 @@ func (s *Server) loadRepo(c echo.Context, logger *slog.Logger, dirs []string, fi
 		if err != nil {
 			return nil, newHTTPError(http.StatusBadRequest, fmt.Sprintf("Fail to parse config: %q: %v", file, err))
 		}
+	}
+	if err := repo.NormalizeMirrorz(); err != nil {
+		return nil, newHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid config: %q: %v", file, err))
 	}
 
 	err := s.e.Validator.Validate(&repo)
