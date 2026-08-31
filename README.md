@@ -103,6 +103,8 @@ envs:
   RSYNC_EXCLUDE: --exclude=.~tmp~/
   RSYNC_EXTRA: --size-only
   RSYNC_MAXDELETE: "50000"
+mirrorz:
+  - desc: Docker 软件仓库
 EOF
 
 yukictl reload
@@ -112,6 +114,13 @@ yukictl repo ls
 # Trigger synchronization immediately
 yukictl sync docker-ce
 ```
+
+Each sync task is mapped to a same-named logical MirrorZ repository by default.
+Use `mirrorz: []` to exclude an internal task, or list one or more logical
+repositories when tasks and repositories do not have a one-to-one relationship.
+The public metadata API returns this mapping together with each task's raw
+status and size; deployment tooling can aggregate it into a complete
+`mirrorz.json`.
 
 For more details of the configuration file, please refer to the [yukid handbook](./cmd/yukid/README.md).
 

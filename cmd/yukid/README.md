@@ -124,7 +124,52 @@ envs: # 传给同步程序的环境变量
 volumes: # 同步的时候需要挂载的 volume
   /etc/passwd: /etc/passwd:ro
   /home/mirror/.ssh: /home/mirror/.ssh:ro
+mirrorz: # 此同步任务所贡献的逻辑 MirrorZ 仓库；省略时默认使用任务名
+  - desc: Bioconductor 软件仓库
 ```
+
+#### MirrorZ 映射
+
+Yuki 管理的是同步任务，而 MirrorZ 展示的是逻辑仓库。两者可能是多对多关系：多个任务可以共同维护一个逻辑仓库，一个任务也可以同时维护多个逻辑仓库。每个任务通过 `mirrorz` 列表声明其贡献的逻辑仓库。
+
+省略 `mirrorz` 时，默认映射到与任务 `name` 同名的逻辑仓库；空列表会将内部或辅助任务排除：
+
+```yaml
+name: pypi-index
+# ...同步配置省略...
+mirrorz: []
+```
+
+多个任务映射同一仓库时，在各自 YAML 中使用相同的逻辑仓库名：
+
+```yaml
+# pypi.yaml
+mirrorz:
+  - name: pypi
+    desc: Python 软件包索引
+
+# pypi-index.yaml
+mirrorz:
+  - name: pypi
+```
+
+一个任务映射多个仓库时，可以列出多个条目：
+
+```yaml
+mirrorz:
+  - name: repo-a
+    desc: Repository A
+  - name: repo-b
+    desc: Repository B
+```
+
+逻辑仓库条目支持以下字段：
+
+- `name`：跨任务、跨节点聚合所使用的稳定名称；省略时使用当前任务名。
+- `desc`：仓库描述。
+- `cname`、`url`、`help`、`upstream`、`disable`：特殊部署需要时使用的 MirrorZ 字段覆盖。
+
+Yuki 不生成完整的 `mirrorz.json`，也不负责抓取 `cname.json` 或聚合大小。公开 metadata API 返回每个任务的原始状态、原始 `size` 和 `mirrorz` 映射；Nginx Lua 等部署层可以按逻辑仓库名合并多个节点，并自行选择 size 策略（例如取有效 task size 的最大值），最后加入 `version`、`site` 和单独生成的 `info`。
 
 当存在多个目录时，配置将被字段级合并，同名字段 last win。举例：
 
@@ -176,7 +221,7 @@ envs:
 
 ### RESTful API
 
-yukid 的完整控制面默认监听 Unix socket `/run/yuki/yukid.sock`。独立的公开 HTTP server 默认监听 `127.0.0.1:9999`，只注册 `/api/v1/metas` 和 `/api/v1/metas/{name}` 两个只读接口，可用于搭建状态页。不要将控制面 socket 直接暴露给反向代理。
+yukid 的完整控制面默认监听 Unix socket `/run/yuki/yukid.sock`。独立的公开 HTTP server 默认监听 `127.0.0.1:9999`，只注册 `/api/v1/metas` 和 `/api/v1/metas/{name}` 两个只读接口，可用于搭建状态页和生成 MirrorZ 数据。metadata 响应中的 `mirrorz` 数组描述当前 task 到逻辑仓库的映射；不会暴露 image、envs、volumes 或 storageDir。不要将控制面 socket 直接暴露给反向代理。
 
 可以通过 Nginx 代理公开 HTTP server：
 
