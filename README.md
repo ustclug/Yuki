@@ -79,7 +79,7 @@ systemctl start yukid
 systemctl status yukid
 ```
 
-`yukid` and `yukictl` use `/run/yuki/yukid.sock` for the full control API by default. A separate read-only status API listens on `127.0.0.1:9999`; configure `public_listen_addr` to move or disable it. The bundled systemd unit creates and cleans `/run/yuki` through `RuntimeDirectory=yuki`.
+`yukid` and `yukictl` use `/run/yuki/yukid.sock` for the control API by default. The same server provides the read-only metadata routes `/api/v1/metas` and `/api/v1/metas/{name}`. The bundled systemd unit creates and cleans `/run/yuki` through `RuntimeDirectory=yuki`.
 
 ### Configure repositories
 

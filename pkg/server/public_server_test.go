@@ -17,11 +17,11 @@ import (
 	"github.com/ustclug/Yuki/pkg/model"
 )
 
-func TestPublicServerRoutes(t *testing.T) {
+func TestControlServerMetaRoutes(t *testing.T) {
 	te := NewTestEnv(t)
 	require.NoError(t, te.server.db.Create(&model.RepoMeta{Name: "example"}).Error)
 	e := te.server.newEcho()
-	te.server.registerPublicAPIs(e)
+	te.server.registerControlAPIs(e)
 	srv := httptest.NewServer(e)
 	t.Cleanup(srv.Close)
 	cli := resty.New().SetBaseURL(srv.URL)
@@ -31,28 +31,13 @@ func TestPublicServerRoutes(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEqual(t, http.StatusNotFound, resp.StatusCode(), path)
 	}
-
-	privateRequests := []struct {
-		method string
-		path   string
-	}{
-		{method: http.MethodGet, path: "/api/v1/repos"},
-		{method: http.MethodPost, path: "/api/v1/repos"},
-		{method: http.MethodPost, path: "/api/v1/repos/example/sync"},
-		{method: http.MethodDelete, path: "/api/v1/repos/example"},
-	}
-	for _, req := range privateRequests {
-		resp, err := cli.R().Execute(req.method, req.path)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusNotFound, resp.StatusCode(), "%s %s", req.method, req.path)
-	}
 }
 
 func TestListenDoesNotRemoveExistingUnixSocketPath(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "yukid.sock")
 	require.NoError(t, os.WriteFile(path, []byte("keep me"), 0o600))
 
-	_, err := (&Server{}).listen("control", controlplane.Endpoint{
+	_, err := (&Server{}).listen(controlplane.Endpoint{
 		Type:    controlplane.EndpointUnix,
 		Address: path,
 	})
@@ -69,7 +54,7 @@ func TestListenRejectsActiveUnixSocket(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = ln.Close() })
 
-	_, err = (&Server{}).listen("control", controlplane.Endpoint{
+	_, err = (&Server{}).listen(controlplane.Endpoint{
 		Type:    controlplane.EndpointUnix,
 		Address: path,
 	})
@@ -84,7 +69,7 @@ func TestListenDoesNotRemoveStaleUnixSocket(t *testing.T) {
 	ln.SetUnlinkOnClose(false)
 	require.NoError(t, ln.Close())
 
-	_, err = (&Server{}).listen("control", controlplane.Endpoint{
+	_, err = (&Server{}).listen(controlplane.Endpoint{
 		Type:    controlplane.EndpointUnix,
 		Address: path,
 	})
@@ -92,106 +77,32 @@ func TestListenDoesNotRemoveStaleUnixSocket(t *testing.T) {
 	require.FileExists(t, path)
 }
 
-func TestPublicListenAddrValidation(t *testing.T) {
-	cfg := DefaultConfig
-	cfg.DbURL = ":memory:"
-	tmpDir := t.TempDir()
-	cfg.RepoLogsDir = tmpDir
-	cfg.RepoConfigDir = []string{tmpDir}
-	validate := InitValidator()
-
-	for _, address := range []string{"", "127.0.0.1:9999", "localhost:9999"} {
-		cfg.PublicListenAddr = address
-		require.NoError(t, validate.Struct(cfg), address)
-	}
-
-	for _, address := range []string{"/run/yuki/public.sock", "http://127.0.0.1:9999/", "127.0.0.1:0", "localhost"} {
-		cfg.PublicListenAddr = address
-		require.Error(t, validate.Struct(cfg), address)
-	}
-}
-
-func TestStartSeparatesPublicAndControlListeners(t *testing.T) {
+func TestStartUsesOneControlListener(t *testing.T) {
 	te := NewTestEnv(t)
 	te.httpSrv.Close()
 	s := te.server
-	s.config.ListenAddr = filepath.Join(t.TempDir(), "yukid.sock")
-	s.config.PublicListenAddr = availableTCPAddress(t)
+	s.config.ListenAddr = availableTCPAddress(t)
 	s.config.RepoConfigDir = []string{t.TempDir()}
 	s.config.RepoLogsDir = t.TempDir()
 	s.e = s.newEcho()
-	s.publicE = s.newEcho()
 	s.registerControlAPIs(s.e)
-	s.registerPublicAPIs(s.publicE)
 
 	cancel, done := startTestServer(t, s)
 	t.Cleanup(cancel)
-	publicClient := resty.New().SetBaseURL("http://" + s.config.PublicListenAddr)
+	client := resty.New().SetBaseURL("http://" + s.config.ListenAddr)
 	var resp *resty.Response
 	require.Eventually(t, func() bool {
 		var err error
-		resp, err = publicClient.R().Get("/api/v1/metas")
+		resp, err = client.R().Get("/api/v1/metas")
 		return err == nil
 	}, time.Second, 10*time.Millisecond)
 	require.Equal(t, http.StatusOK, resp.StatusCode())
-	resp, err := publicClient.R().Get("/api/v1/repos")
+	resp, err := client.R().Get("/api/v1/repos")
 	require.NoError(t, err)
-	require.Equal(t, http.StatusNotFound, resp.StatusCode())
-
-	cancel()
-	require.NoError(t, <-done)
-}
-
-func TestStartMergesIdenticalTCPListeners(t *testing.T) {
-	te := NewTestEnv(t)
-	te.httpSrv.Close()
-	s := te.server
-	address := availableTCPAddress(t)
-	s.config.ListenAddr = address
-	s.config.PublicListenAddr = address
-	s.config.RepoConfigDir = []string{t.TempDir()}
-	s.config.RepoLogsDir = t.TempDir()
-	s.e = s.newEcho()
-	s.publicE = s.newEcho()
-	s.registerControlAPIs(s.e)
-	s.registerPublicAPIs(s.publicE)
-
-	cancel, done := startTestServer(t, s)
-	t.Cleanup(cancel)
-	client := resty.New().SetBaseURL("http://" + address)
-	var resp *resty.Response
-	require.Eventually(t, func() bool {
-		var err error
-		resp, err = client.R().Get("/api/v1/repos")
-		return err == nil
-	}, time.Second, 10*time.Millisecond)
 	require.Equal(t, http.StatusOK, resp.StatusCode())
 
 	cancel()
 	require.NoError(t, <-done)
-}
-
-func TestStartFailsWhenPublicListenerCannotBind(t *testing.T) {
-	occupied, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = occupied.Close() })
-
-	te := NewTestEnv(t)
-	te.httpSrv.Close()
-	s := te.server
-	socketPath := filepath.Join(t.TempDir(), "yukid.sock")
-	s.config.ListenAddr = socketPath
-	s.config.PublicListenAddr = occupied.Addr().String()
-	s.config.RepoConfigDir = []string{t.TempDir()}
-	s.config.RepoLogsDir = t.TempDir()
-	s.e = s.newEcho()
-	s.publicE = s.newEcho()
-	s.registerControlAPIs(s.e)
-	s.registerPublicAPIs(s.publicE)
-
-	err = s.Start(context.Background())
-	require.ErrorContains(t, err, "listen on public endpoint")
-	require.NoFileExists(t, socketPath)
 }
 
 func startTestServer(t *testing.T, s *Server) (context.CancelFunc, <-chan error) {

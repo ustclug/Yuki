@@ -29,7 +29,6 @@ type Server struct {
 	repoSchedules cmap.ConcurrentMap[string, cron.Schedule]
 
 	e         *echo.Echo
-	publicE   *echo.Echo
 	dockerCli docker.Client
 	config    Config
 	db        *gorm.DB
@@ -107,9 +106,7 @@ func NewWithConfig(cfg Config) (*Server, error) {
 	}
 
 	s.e = s.newEcho()
-	s.publicE = s.newEcho()
 	s.registerControlAPIs(s.e)
-	s.registerPublicAPIs(s.publicE)
 
 	return &s, nil
 }
@@ -177,64 +174,27 @@ func (s *Server) Start(rootCtx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("parse control endpoint: %w", err)
 	}
-	controlLn, err := s.listen("control", controlEndpoint)
+	controlLn, err := s.listen(controlEndpoint)
 	if err != nil {
 		return err
 	}
 	s.e.Listener = controlLn
 
-	var publicEndpoint *controlplane.Endpoint
-	mergedListener := false
-	if s.config.PublicListenAddr != "" {
-		parsed, err := controlplane.ParseEndpoint(s.config.PublicListenAddr)
-		if err != nil {
-			_ = controlLn.Close()
-			return fmt.Errorf("parse public endpoint: %w", err)
-		}
-		if parsed.Type != controlplane.EndpointTCP {
-			_ = controlLn.Close()
-			return fmt.Errorf("public endpoint must be a TCP host:port address")
-		}
-		publicEndpoint = &parsed
-		mergedListener = parsed.Type == controlEndpoint.Type && parsed.Address == controlEndpoint.Address
-		if mergedListener {
-			l.Warn("Public and control endpoints are identical; the HTTP listener exposes the full control API",
-				slog.String("endpoint", parsed.Address),
-				slog.String("recommendation", "move listen_addr to a Unix socket to isolate the control API"))
-		} else {
-			publicLn, err := s.listen("public", parsed)
-			if err != nil {
-				_ = controlLn.Close()
-				return err
-			}
-			s.publicE.Listener = publicLn
-		}
-	}
-
 	l.Info("Scheduling tasks")
 	s.scheduleTasks(ctx)
 
-	start := func(name string, e *echo.Echo, endpoint string) {
-		go func() {
-			l.Info("Running HTTP server", slog.String("server", name), slog.String("endpoint", endpoint))
-			if err := e.Start(""); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				wrapped := fmt.Errorf("run %s HTTP server: %w", name, err)
-				l.Error("Fail to run HTTP server", slog.String("server", name), slogErrAttr(err))
-				cancel(wrapped)
-			}
-		}()
-	}
-	start("control", s.e, s.config.ListenAddr)
-	if publicEndpoint != nil && !mergedListener {
-		start("public", s.publicE, s.config.PublicListenAddr)
-	}
+	go func() {
+		l.Info("Running HTTP server", slog.String("endpoint", s.config.ListenAddr))
+		if err := s.e.Start(""); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			wrapped := fmt.Errorf("run HTTP server: %w", err)
+			l.Error("Fail to run HTTP server", slogErrAttr(err))
+			cancel(wrapped)
+		}
+	}()
 
 	<-ctx.Done()
 	l.Info("Shutting down HTTP servers")
 	_ = s.e.Shutdown(context.Background())
-	if publicEndpoint != nil && !mergedListener {
-		_ = s.publicE.Shutdown(context.Background())
-	}
 
 	caused := context.Cause(ctx)
 	if errors.Is(caused, context.Canceled) {
@@ -249,33 +209,27 @@ func (s *Server) ListenAddr() string {
 	return s.e.Listener.Addr().String()
 }
 
-func (s *Server) listen(name string, endpoint controlplane.Endpoint) (net.Listener, error) {
+func (s *Server) listen(endpoint controlplane.Endpoint) (net.Listener, error) {
 	if endpoint.Type == controlplane.EndpointUnix {
 		if err := os.MkdirAll(filepath.Dir(endpoint.Address), 0755); err != nil {
-			return nil, fmt.Errorf("create %s Unix socket directory %q: %w; the bundled systemd unit uses RuntimeDirectory=yuki, while manual starts require a writable parent directory", name, filepath.Dir(endpoint.Address), err)
+			return nil, fmt.Errorf("create Unix socket directory %q: %w; the bundled systemd unit uses RuntimeDirectory=yuki, while manual starts require a writable parent directory", filepath.Dir(endpoint.Address), err)
 		}
 	}
 
 	ln, err := net.Listen(string(endpoint.Type), endpoint.Address)
 	if err != nil {
 		if endpoint.Type == controlplane.EndpointUnix {
-			return nil, fmt.Errorf("listen on %s Unix socket %q: %w; systemd cleans the default /run/yuki directory, while custom or manual deployments must verify that no yukid process is running before removing a stale socket", name, endpoint.Address, err)
+			return nil, fmt.Errorf("listen on Unix socket %q: %w; systemd cleans the default /run/yuki directory, while custom or manual deployments must verify that no yukid process is running before removing a stale socket", endpoint.Address, err)
 		}
-		return nil, fmt.Errorf("listen on %s endpoint %q: %w", name, endpoint.Address, err)
+		return nil, fmt.Errorf("listen on endpoint %q: %w", endpoint.Address, err)
 	}
 	return ln, nil
 }
 
-func (s *Server) registerPublicAPIs(e *echo.Echo) {
+func (s *Server) registerControlAPIs(e *echo.Echo) {
 	v1API := e.Group("/api/v1/")
-
 	v1API.GET("metas", s.handlerListRepoMetas)
 	v1API.GET("metas/:name", s.handlerGetRepoMeta)
-}
-
-func (s *Server) registerControlAPIs(e *echo.Echo) {
-	s.registerPublicAPIs(e)
-	v1API := e.Group("/api/v1/")
 
 	v1API.GET("repos", s.handlerListRepos)
 	v1API.GET("repos/:name", s.handlerGetRepo)

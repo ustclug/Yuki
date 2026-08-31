@@ -70,11 +70,6 @@ repo_config_dir = ["/path/to/config-dir"]
 ## 默认值是 "/run/yuki/yukid.sock"
 #listen_addr = "/run/yuki/yukid.sock"
 
-## 设置只读公开 API 的 HTTP 监听地址
-## 只提供 /api/v1/metas 和 /api/v1/metas/{name}
-## 默认值是 "127.0.0.1:9999"；设置为空字符串可关闭
-#public_listen_addr = "127.0.0.1:9999"
-
 ## 设置同步仓库的时候默认绑定的 IP
 ## 默认值为空，即不绑定
 #bind_ip = "1.2.3.4"
@@ -221,29 +216,43 @@ envs:
 
 ### RESTful API
 
-yukid 的完整控制面默认监听 Unix socket `/run/yuki/yukid.sock`。独立的公开 HTTP server 默认监听 `127.0.0.1:9999`，只注册 `/api/v1/metas` 和 `/api/v1/metas/{name}` 两个只读接口，可用于搭建状态页和生成 MirrorZ 数据。metadata 响应中的 `mirrorz` 数组描述当前 task 到逻辑仓库的映射；不会暴露 image、envs、volumes 或 storageDir。不要将控制面 socket 直接暴露给反向代理。
+yukid 的完整控制面默认监听 Unix socket `/run/yuki/yukid.sock`。同一个 server 提供 `/api/v1/metas` 和 `/api/v1/metas/{name}` 两个只读接口，可用于搭建状态页和生成 MirrorZ 数据。metadata 响应中的 `mirrorz` 数组描述当前 task 到逻辑仓库的映射；不会暴露 image、envs、volumes 或 storageDir。对外公开时应让 Nginx 只代理这两个 GET/HEAD 路径，不要把控制面 socket 作为通用反向代理。
 
-可以通过 Nginx 代理公开 HTTP server：
+可以通过 Nginx 代理公开 meta 接口：
 
 ```nginx
+upstream yukid {
+    server unix:/run/yuki/yukid.sock;
+}
+
 server {
     listen 80;
     server_name mirror-status.example.com;
 
-    location / {
+    location = /api/v1/metas {
+        limit_except GET { deny all; }
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_pass http://127.0.0.1:9999;
+        proxy_pass http://yukid;
+    }
+    location ~ ^/api/v1/metas/[^/]+$ {
+        limit_except GET { deny all; }
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass http://yukid;
+    }
+    location / {
+        return 404;
     }
 }
 ```
 
-如需直接监听外部网络，可以设置 `public_listen_addr = "0.0.0.0:9999"`，并配合防火墙限制访问。设置为空字符串会关闭公开 HTTP server。
+Nginx worker 用户需要有权访问 `/run/yuki/yukid.sock`；请通过服务用户/用户组配置授予该权限。
 
 官方 systemd unit 使用 `RuntimeDirectory=yuki`：systemd 会以服务用户创建 `/run/yuki`，并在服务停止或重启时清理该目录。手动运行或使用自定义 socket 路径时，需要自行创建可写的父目录；若异常退出后遗留 socket，应先确认没有运行中的 `yukid`，再手动删除，程序不会主动删除已有路径。
-
-若 `listen_addr` 和 `public_listen_addr` 指向同一个 TCP 地址，yukid 会为兼容旧配置启动一个包含完整控制 API 的 listener，并输出安全警告。要获得权限隔离，应让 `listen_addr` 使用 Unix socket。
 
 yukictl 通过完整控制面操作 yukid。
