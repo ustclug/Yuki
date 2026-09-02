@@ -7,6 +7,7 @@ README
 - [Requirements](#requirements)
 - [Quickstart](#quickstart)
 - [Handbook](#handbook)
+- [Migration Guide](#migration-guide)
 - [Development](#development)
 
 Sync local repositories with remote.
@@ -130,6 +131,94 @@ For more details of the configuration file, please refer to the [yukid handbook]
 * [yukictl](./cmd/yukictl/README.md): Yuki cli
 
 ## Migration Guide
+
+### v0.6.2 -> v0.7.0
+
+This release changes the default control-plane endpoint and the way repository
+upstream information is reported. Upgrade `yukid` and `yukictl` together; there
+is no transparent rolling-upgrade order when both sides use their defaults:
+
+* An old `yukictl` connects to the full API on `127.0.0.1:9999`, while a new
+  default `yukid` exposes only the read-only metadata API there.
+* A new `yukictl` connects to `/run/yuki/yukid.sock`, which an old `yukid` does
+  not create.
+
+For a normal systemd installation:
+
+1. Stop `yukid` and upgrade both binaries or the package.
+2. Install the new service unit and run `systemctl daemon-reload`. The unit uses
+   `RuntimeDirectory=yuki` to create and clean `/run/yuki`.
+3. Start `yukid`, then verify the control plane with `yukictl repo ls` and the
+   public API with `curl http://127.0.0.1:9999/api/v1/metas`.
+
+The new defaults are equivalent to:
+
+```toml
+# Full control API used by yukictl.
+listen_addr = "/run/yuki/yukid.sock"
+
+# Read-only /api/v1/metas endpoints for status-page consumers.
+public_listen_addr = "127.0.0.1:9999"
+```
+
+Manual and containerized installations must create a writable parent directory
+for the Unix socket. An unclean shutdown can leave a stale socket; verify that
+no `yukid` process is running before removing it. Also ensure that users which
+run `yukictl` have permission to connect to the socket. Reverse proxies should
+use `public_listen_addr` instead of exposing the control socket.
+
+As a temporary compatibility mode, explicitly setting both addresses to the
+same TCP endpoint keeps the complete API on that endpoint:
+
+```toml
+listen_addr = "127.0.0.1:9999"
+public_listen_addr = "127.0.0.1:9999"
+```
+
+This preserves the old access model and therefore does not isolate privileged
+control APIs. Migrate clients to the Unix socket before separating the two
+listeners. To use a non-default endpoint explicitly, pass it to
+`yukictl --remote`; both `127.0.0.1:9999` and the legacy
+`http://127.0.0.1:9999/` form are accepted.
+
+Repository upstream detection is no longer inferred from the sync image name
+and image-specific environment variables. Each repository must use one of
+these mechanisms:
+
+* Set the special `$UPSTREAM` entry explicitly in its YAML configuration:
+
+    ```yaml
+    envs:
+      $UPSTREAM: rsync://rsync.example.org/module
+    ```
+
+* Have the sync container write the upstream URL to
+  `/log/yuki_upstream.txt`. Yuki mounts the repository's log directory at
+  `/log` and reads this file after the sync finishes.
+
+The ordinary `UPSTREAM` key and variables such as `RSYNC_HOST`, `RSYNC_PATH`,
+`APTSYNC_URL`, or rclone-specific settings are no longer interpreted by Yuki.
+Until a new repository completes its first sync, its metadata may therefore
+contain an empty `upstream`. Existing database values are retained when no new
+upstream is provided.
+
+Other compatibility notes:
+
+* Repository names containing `/`, or equal to `..`, are now rejected during
+  reload.
+* `/api/v1/metas` responses contain a new `mirrorz` array. Update strict JSON
+  schemas or consumers which reject unknown fields. Omitting `mirrorz` in a
+  task configuration creates a same-name mapping; `mirrorz: []` explicitly
+  excludes the task.
+* `yukid` and `yukictl` now exit with status 1 when command execution fails.
+* If `docker_endpoint` is omitted, `DOCKER_HOST` is honored before falling back
+  to `unix:///var/run/docker.sock`. Set `docker_endpoint` explicitly when the
+  service environment must not affect daemon selection.
+* `bindIP` still works but is deprecated; migrate source-address selection to a
+  Docker network before a future release removes it.
+* Building Yuki now requires Go 1.25 or newer. Go users of
+  `pkg/yukictl/factory.Factory` must also update implementations and calls for
+  `RESTClient() (*resty.Client, error)`.
 
 ### v0.3.x -> v0.4.x
 
