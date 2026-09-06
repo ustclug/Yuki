@@ -22,7 +22,9 @@ func TestHandlerListRepoMetas(t *testing.T) {
 	}).Error)
 	require.NoError(t, te.server.db.Create([]model.Repo{
 		{
-			Name: "repo1",
+			Name:    "repo1",
+			Mirrorz: []model.MirrorzRepo{{Name: "repo1", Cache: true}},
+			Disable: true,
 		},
 		{
 			Name:    "repo2",
@@ -38,8 +40,10 @@ func TestHandlerListRepoMetas(t *testing.T) {
 
 	require.Len(t, metas, 2)
 	require.Equal(t, "repo1", metas[0].Name)
-	require.Equal(t, []api.MirrorzRepo{{Name: "repo1"}}, metas[0].Mirrorz)
+	require.Equal(t, []api.MirrorzRepo{{Name: "repo1", Cache: true}}, metas[0].Mirrorz)
+	require.True(t, metas[0].Disable)
 	require.Empty(t, metas[1].Mirrorz)
+	require.False(t, metas[1].Disable)
 }
 
 func TestHandlerGetRepoMeta(t *testing.T) {
@@ -50,13 +54,9 @@ func TestHandlerGetRepoMeta(t *testing.T) {
 		},
 	}).Error)
 	require.NoError(t, te.server.db.Create(&model.Repo{
-		Name: t.Name(),
-		Mirrorz: []model.MirrorzRepo{
-			{
-				Name: "logical-repo",
-				Desc: "A logical repository",
-			},
-		},
+		Name:    t.Name(),
+		Mirrorz: []model.MirrorzRepo{{Name: "logical-repo", Cache: true}},
+		Disable: true,
 	}).Error)
 
 	cli := te.RESTClient()
@@ -80,10 +80,8 @@ func TestHandlerGetRepoMeta(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tc.expectStatus, resp.StatusCode())
 			if tc.expectStatus == http.StatusOK {
-				require.Equal(t, []api.MirrorzRepo{{
-					Name: "logical-repo",
-					Desc: "A logical repository",
-				}}, meta.Mirrorz)
+				require.Equal(t, []api.MirrorzRepo{{Name: "logical-repo", Cache: true}}, meta.Mirrorz)
+				require.True(t, meta.Disable)
 			}
 		})
 	}

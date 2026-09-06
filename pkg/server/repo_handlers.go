@@ -143,7 +143,7 @@ func (s *Server) loadRepo(c echo.Context, logger *slog.Logger, dirs []string, fi
 	if err != nil {
 		return nil, newHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid cron: %q: %v", repo.Cron, err))
 	}
-	s.repoSchedules.Set(repo.Name, schedule)
+	nextRun := s.updateRepoSchedule(repo, schedule, time.Now())
 
 	envUpstream := getEnvUpstream(repo.Envs)
 
@@ -162,8 +162,6 @@ func (s *Server) loadRepo(c echo.Context, logger *slog.Logger, dirs []string, fi
 		l.Error(msg, slogErrAttr(err))
 		return nil, newHTTPError(http.StatusInternalServerError, msg)
 	}
-
-	nextRun := schedule.Next(time.Now()).Unix()
 
 	doUpdatesOnConflictAssignment := map[string]any{
 		"next_run": nextRun,

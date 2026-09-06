@@ -115,6 +115,7 @@ logRotCycle: 1 # 保留多少次同步日志
 bindIP: 1.2.3.4 # 同步的时候绑定的 IP，可选，默认为空；未来版本将移除
 network: host # 容器所属的 docker network，可选，默认为 host
 retry: 2 # 同步失败后的重试次数
+disable: false # 是否禁用此任务的定时调度；仍允许手动同步
 envs: # 传给同步程序的环境变量
   RSYNC_HOST: rsync.exmaple.com
   RSYNC_PATH: /
@@ -125,7 +126,7 @@ volumes: # 同步的时候需要挂载的 volume
   /etc/passwd: /etc/passwd:ro
   /home/mirror/.ssh: /home/mirror/.ssh:ro
 mirrorz: # 此同步任务所贡献的逻辑 MirrorZ 仓库；省略时默认使用任务名
-  - desc: Bioconductor 软件仓库
+  - name: bioc
 ```
 
 #### MirrorZ 映射
@@ -146,7 +147,7 @@ mirrorz: []
 # pypi.yaml
 mirrorz:
   - name: pypi
-    desc: Python 软件包索引
+    cache: true
 
 # pypi-index.yaml
 mirrorz:
@@ -158,16 +159,10 @@ mirrorz:
 ```yaml
 mirrorz:
   - name: repo-a
-    desc: Repository A
   - name: repo-b
-    desc: Repository B
 ```
 
-逻辑仓库条目支持以下字段：
-
-- `name`：跨任务、跨节点聚合所使用的稳定名称；省略时使用当前任务名。
-- `desc`：仓库描述。
-- `cname`、`url`、`help`、`upstream`、`disable`：特殊部署需要时使用的 MirrorZ 字段覆盖。
+逻辑仓库条目包含必填的 `name` 和可选的 `cache`；省略整个 `mirrorz` 字段时，Yuki 才会生成与任务同名的默认映射。`name` 是跨任务、跨节点聚合所使用的稳定名称；`cache: true` 表示此任务为该逻辑仓库提供按需缓存，聚合时只要任一任务标记为 cache，整个逻辑仓库即视为 cache。仓库描述、展示名称、URL 和帮助链接等展示元数据由部署层统一维护，避免多个任务为同一逻辑仓库提供相互冲突的值。任务级 `disable: true` 会停止该任务的定时调度，将公开 metadata 的顶层 `disable` 设为 `true`、`nextRun` 设为 `-1`；已在运行的同步不会被中断，仍可手动触发同步。
 
 Yuki 不生成完整的 `mirrorz.json`，也不负责抓取 `cname.json` 或聚合大小。公开 metadata API 返回每个任务的原始状态、原始 `size` 和 `mirrorz` 映射；Nginx Lua 等部署层可以按逻辑仓库名合并多个节点，并自行选择 size 策略（例如取有效 task size 的最大值），最后加入 `version`、`site` 和单独生成的 `info`。
 
@@ -221,7 +216,7 @@ envs:
 
 ### RESTful API
 
-yukid 的完整控制面默认监听 Unix socket `/run/yuki/yukid.sock`。独立的公开 HTTP server 默认监听 `127.0.0.1:9999`，只注册 `/api/v1/metas` 和 `/api/v1/metas/{name}` 两个只读接口，可用于搭建状态页和生成 MirrorZ 数据。metadata 响应中的 `mirrorz` 数组描述当前 task 到逻辑仓库的映射；不会暴露 image、envs、volumes 或 storageDir。不要将控制面 socket 直接暴露给反向代理。
+yukid 的完整控制面默认监听 Unix socket `/run/yuki/yukid.sock`。独立的公开 HTTP server 默认监听 `127.0.0.1:9999`，只注册 `/api/v1/metas` 和 `/api/v1/metas/{name}` 两个只读接口，可用于搭建状态页和生成 MirrorZ 数据。metadata 响应中的 `mirrorz` 数组描述当前 task 到逻辑仓库的映射，顶层 `disable` 表示 task 级禁用标记；不会暴露 image、envs、volumes 或 storageDir。不要将控制面 socket 直接暴露给反向代理。
 
 可以通过 Nginx 代理公开 HTTP server：
 

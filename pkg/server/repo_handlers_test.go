@@ -54,6 +54,7 @@ func TestHandlerReloadAllRepos(t *testing.T) {
 		RepoConfigDir: []string{"/no/such/dir", cfgDir1, cfgDir2},
 	}
 	te.server.repoSchedules.Set("should-be-deleted", cron.Schedule(nil))
+	te.server.repoSchedules.Set("repo1", cron.Schedule(nil))
 
 	require.NoError(t, te.server.db.Create([]model.Repo{
 		{
@@ -78,10 +79,10 @@ func TestHandlerReloadAllRepos(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		mirrorz := `
 mirrorz:
-  - desc: Default mapping
+  - {}
 `
 		if i == 1 {
-			mirrorz = "\nmirrorz: []\n"
+			mirrorz = "\nmirrorz: []\ndisable: true\n"
 		}
 		testutils.WriteFile(
 			t,
@@ -105,7 +106,8 @@ envs:
 	require.NoError(t, err)
 	require.True(t, resp.IsSuccess(), "Unexpected response: %s", resp.Body())
 
-	require.Equal(t, 2, te.server.repoSchedules.Count())
+	require.Equal(t, 1, te.server.repoSchedules.Count())
+	require.False(t, te.server.repoSchedules.Has("repo1"))
 
 	var repos []model.Repo
 	require.NoError(t, te.server.db.Order("name").Find(&repos).Error)
@@ -115,10 +117,7 @@ envs:
 	require.Equal(t, "ubuntu", repos[0].Image)
 	require.Equal(t, "* * * * *", repos[0].Cron)
 	require.NotEmpty(t, repos[0].Envs)
-	require.Equal(t, []model.MirrorzRepo{{
-		Name: "repo0",
-		Desc: "Default mapping",
-	}}, repos[0].Mirrorz)
+	require.Equal(t, []model.MirrorzRepo{{Name: "repo0"}}, repos[0].Mirrorz)
 
 	require.Equal(t, "repo1", repos[1].Name)
 	require.Equal(t, "alpine:latest", repos[1].Image)
@@ -132,6 +131,7 @@ envs:
 	require.Equal(t, "http://bar.com", metas[0].Upstream)
 
 	require.Equal(t, "repo1", metas[1].Name)
+	require.EqualValues(t, -1, metas[1].NextRun)
 }
 
 func TestHandlerReloadRepoRejectsDuplicateMirrorzRepo(t *testing.T) {

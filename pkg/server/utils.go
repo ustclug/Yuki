@@ -41,7 +41,7 @@ func getRepoNameFromRoute(c echo.Context) (string, error) {
 	return val, nil
 }
 
-func (s *Server) convertModelRepoMetaToGetMetaResponse(in model.RepoMeta, mirrorz []model.MirrorzRepo) api.GetRepoMetaResponse {
+func (s *Server) convertModelRepoMetaToGetMetaResponse(in model.RepoMeta, mirrorz []model.MirrorzRepo, disable bool) api.GetRepoMetaResponse {
 	resp := api.GetRepoMetaResponse{
 		Name:        in.Name,
 		Upstream:    in.Upstream,
@@ -52,17 +52,13 @@ func (s *Server) convertModelRepoMetaToGetMetaResponse(in model.RepoMeta, mirror
 		UpdatedAt:   in.UpdatedAt,
 		PrevRun:     in.PrevRun,
 		NextRun:     in.NextRun,
+		Disable:     disable,
 	}
 	resp.Mirrorz = make([]api.MirrorzRepo, len(mirrorz))
 	for i, repo := range mirrorz {
 		resp.Mirrorz[i] = api.MirrorzRepo{
-			Name:     repo.Name,
-			CName:    repo.CName,
-			Desc:     repo.Desc,
-			URL:      repo.URL,
-			Help:     repo.Help,
-			Upstream: repo.Upstream,
-			Disable:  repo.Disable,
+			Name:  repo.Name,
+			Cache: repo.Cache,
 		}
 	}
 	return resp
@@ -280,15 +276,23 @@ func (s *Server) scheduleTasks(ctx context.Context) {
 	}
 }
 
+func (s *Server) updateRepoSchedule(repo model.Repo, schedule cron.Schedule, now time.Time) int64 {
+	if repo.Disable {
+		s.repoSchedules.Remove(repo.Name)
+		return -1
+	}
+	s.repoSchedules.Set(repo.Name, schedule)
+	return schedule.Next(now).Unix()
+}
+
 func (s *Server) initRepoMetas() error {
 	db := s.db
 	var repos []model.Repo
-	return db.Select("name", "storage_dir", "cron").
+	return db.Select("name", "storage_dir", "cron", "disable").
 		FindInBatches(&repos, 10, func(*gorm.DB, int) error {
 			for _, repo := range repos {
 				schedule, _ := cron.ParseStandard(repo.Cron)
-				s.repoSchedules.Set(repo.Name, schedule)
-				nextRun := schedule.Next(time.Now()).Unix()
+				nextRun := s.updateRepoSchedule(repo, schedule, time.Now())
 				size := s.getSize(repo.StorageDir)
 				err := db.Clauses(clause.OnConflict{
 					DoUpdates: clause.Assignments(map[string]any{
@@ -325,8 +329,9 @@ func (s *Server) syncRepo(ctx context.Context, name string, debug bool) error {
 	logger := s.logger.With(slog.String("repo", name))
 	now := time.Now()
 	var nextRun int64
-	schedule, ok := s.repoSchedules.Get(repo.Name)
-	if ok {
+	if repo.Disable {
+		nextRun = -1
+	} else if schedule, ok := s.repoSchedules.Get(repo.Name); ok {
 		nextRun = schedule.Next(now).Unix()
 	} else {
 		logger.Warn("No schedule found for repo. Fallback to 1 hour")
