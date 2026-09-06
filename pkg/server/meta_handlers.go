@@ -25,19 +25,21 @@ func (s *Server) handlerListRepoMetas(c echo.Context) error {
 		}
 	}
 	var repos []model.Repo
-	err = db.Select("name", "mirrorz").Find(&repos).Error
+	err = db.Select("name", "mirrorz", "disable").Find(&repos).Error
 	if err != nil {
 		const msg = "Fail to list Repo MirrorZ mappings"
 		l.Error(msg, slogErrAttr(err))
 		return newHTTPError(http.StatusInternalServerError, msg)
 	}
 	mirrorzByRepo := make(map[string][]model.MirrorzRepo, len(repos))
+	disableByRepo := make(map[string]bool, len(repos))
 	for _, repo := range repos {
 		mirrorzByRepo[repo.Name] = repo.EffectiveMirrorz()
+		disableByRepo[repo.Name] = repo.Disable
 	}
 	resp := make(api.ListRepoMetasResponse, len(metas))
 	for i, meta := range metas {
-		resp[i] = s.convertModelRepoMetaToGetMetaResponse(meta, mirrorzByRepo[meta.Name])
+		resp[i] = s.convertModelRepoMetaToGetMetaResponse(meta, mirrorzByRepo[meta.Name], disableByRepo[meta.Name])
 	}
 	return c.JSON(http.StatusOK, resp)
 }
@@ -75,7 +77,7 @@ func (s *Server) handlerGetRepoMeta(c echo.Context) error {
 
 	var repo model.Repo
 	repoRes := s.getDB(c).
-		Select("name", "mirrorz").
+		Select("name", "mirrorz", "disable").
 		Where(model.Repo{Name: name}).
 		Limit(1).
 		Find(&repo)
@@ -89,6 +91,6 @@ func (s *Server) handlerGetRepoMeta(c echo.Context) error {
 		mirrorz = repo.EffectiveMirrorz()
 	}
 
-	resp := s.convertModelRepoMetaToGetMetaResponse(meta, mirrorz)
+	resp := s.convertModelRepoMetaToGetMetaResponse(meta, mirrorz, repo.Disable)
 	return c.JSON(http.StatusOK, resp)
 }

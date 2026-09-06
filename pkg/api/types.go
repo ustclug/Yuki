@@ -13,16 +13,12 @@ type GetRepoMetaResponse struct {
 	PrevRun     int64         `json:"prevRun"`
 	NextRun     int64         `json:"nextRun"`
 	Mirrorz     []MirrorzRepo `json:"mirrorz"`
+	Disable     bool          `json:"disable"`
 }
 
 type MirrorzRepo struct {
-	Name     string `json:"name"`
-	CName    string `json:"cname,omitempty"`
-	Desc     string `json:"desc,omitempty"`
-	URL      string `json:"url,omitempty"`
-	Help     string `json:"help,omitempty"`
-	Upstream string `json:"upstream,omitempty"`
-	Disable  bool   `json:"disable,omitempty"`
+	Name  string `json:"name"`
+	Cache bool   `json:"cache,omitempty"`
 }
 
 type ListReposResponseItem struct {

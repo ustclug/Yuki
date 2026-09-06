@@ -8,13 +8,8 @@ type StringMap map[string]string
 // Runtime state remains attached to RepoMeta; consumers are responsible for
 // aggregating multiple tasks that reference the same logical repository.
 type MirrorzRepo struct {
-	Name     string `json:"name" validate:"required"`
-	CName    string `json:"cname,omitempty"`
-	Desc     string `json:"desc,omitempty"`
-	URL      string `json:"url,omitempty"`
-	Help     string `json:"help,omitempty"`
-	Upstream string `json:"upstream,omitempty"`
-	Disable  bool   `json:"disable,omitempty"`
+	Name  string `json:"name" validate:"required"`
+	Cache bool   `json:"cache,omitempty"`
 }
 
 // Repo represents a Repository.
@@ -32,6 +27,7 @@ type Repo struct {
 	Envs        StringMap     `gorm:"type:text;serializer:json" json:"envs"`
 	Volumes     StringMap     `gorm:"type:text;serializer:json" json:"volumes"`
 	Mirrorz     []MirrorzRepo `gorm:"type:text;serializer:json" json:"mirrorz" validate:"dive"`
+	Disable     bool          `json:"disable"`
 	// sqlite3 does not have builtin datetime type
 	CreatedAt int64 `gorm:"autoCreateTime" json:"-"`
 	UpdatedAt int64 `gorm:"autoUpdateTime" json:"-"`
