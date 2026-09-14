@@ -1,6 +1,6 @@
 module github.com/ustclug/Yuki
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/cpuguy83/go-docker v0.4.0
@@ -15,7 +15,7 @@ require (
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.12.1
-	golang.org/x/sync v0.22.0
+	golang.org/x/sync v0.23.0
 	gorm.io/gorm v1.31.2
 	sigs.k8s.io/yaml v1.6.0
 )
