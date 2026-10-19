@@ -27,7 +27,7 @@ linters:
             - pkg: github.com/docker/docker
               desc: https://github.com/ustclug/Yuki/issues/44
     exhaustive:
-      explicit-exhaustive-switch: true
+      explicit-exhaustive: true
     govet:
       enable:
         - nilness
