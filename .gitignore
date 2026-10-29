@@ -1,6 +1,7 @@
 # Build output files
 /yukictl
 /yukid
+/bash_completion
 /*.deb
 
 .idea/
