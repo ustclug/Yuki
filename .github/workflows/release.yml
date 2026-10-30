@@ -36,25 +36,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build
-        run: |
-          for arch in amd64 arm64; do
-            CGO_ENABLED=0 GOOS=linux GOARCH="$arch" make yukid
-            mkdir -p "dist/docker/$arch"
-            cp yukid "dist/docker/$arch/yukid"
-          done
-
-      - name: Build and Push Image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          target: multiarch
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ghcr.io/ustclug/yukid:${{ github.ref_name }}
-
-      # More assembly might be required: Docker logins, GPG, etc.
-      # It all depends on your needs.
       - uses: goreleaser/goreleaser-action@v7
         with:
           version: latest
