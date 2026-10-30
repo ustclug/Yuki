@@ -33,16 +33,23 @@ builds:
     ldflags:
       - -s -w -X github.com/ustclug/Yuki/pkg/info.Version={{.Version}} -X github.com/ustclug/Yuki/pkg/info.BuildDate={{.Date}} -X github.com/ustclug/Yuki/pkg/info.GitCommit={{.Commit}}
 archives:
-  - format: binary
+  - ids:
+      - yukid
+      - yukictl
+    formats:
+      - binary
     name_template: "{{ .Binary }}_{{ .Os  }}_{{ .Arch }}"
 checksum:
   name_template: 'checksums.txt'
 snapshot:
-  name_template: "{{ incpatch .Version }}-next"
+  version_template: "{{ incpatch .Version }}-next"
 changelog:
   use: github-native
 nfpms:
   - id: default
+    ids:
+      - yukid
+      - yukictl
     package_name: yuki
     homepage: https://github.com/ustclug/Yuki
     maintainer: "USTC LUG <lug@ustc.edu.cn>"
@@ -71,6 +78,21 @@ nfpms:
       - src: yukictl
         dst: /usr/bin/yuki
         type: symlink
+
+dockers_v2:
+  - id: yukid
+    ids:
+      - yukid
+    dockerfile: Dockerfile
+    images:
+      - ghcr.io/ustclug/yukid
+    tags:
+      - "{{ .Tag }}"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    flags:
+      - "--target=multiarch"
 
 # modelines, feel free to remove those if you don't want/use them:
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json

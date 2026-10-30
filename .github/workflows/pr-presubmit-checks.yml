@@ -21,11 +21,8 @@ concurrency:
 
 jobs:
   build:
-    name: Build (${{ matrix.arch }})
+    name: Build and package
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        arch: [amd64, arm64]
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -34,12 +31,11 @@ jobs:
         with:
           go-version: stable
           check-latest: true
-      - name: Build
-        env:
-          CGO_ENABLED: '0'
-          GOOS: linux
-          GOARCH: ${{ matrix.arch }}
-        run: make yukictl yukid
+      - name: Build and package
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          version: latest
+          args: release --snapshot --clean --skip=docker
 
   lint:
     runs-on: ubuntu-latest
